@@ -7,10 +7,10 @@ Este projeto é conduzido com apoio das seguintes skills (perfis) da conta do us
 - **techlead-fsg** — Tech Lead
 - **fullstack-dev** — Desenvolvedor Fullstack
 - **fullstack-pleno** — Desenvolvedor Fullstack Pleno
-- **software-architect** — Arquiteto de Software
 - **analista-negocios-po** — Analista de Negócios / Product Owner
 - **process-analyst** — Analista de Processos
 - **dba-data-engineer** — DBA / Engenheiro de Dados
+- **analista-testes-qa** — Analista de QA / Testes
 
 Ao planejar ou executar tarefas do projeto, considere qual papel é mais adequado para a tarefa e invoque a skill correspondente quando fizer sentido.
 
