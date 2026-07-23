@@ -1,0 +1,16 @@
+{
+  "name": "sistemasgo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "@clerk/clerk-sdk-node": "^5.0.0"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.1"
+  }
+}
