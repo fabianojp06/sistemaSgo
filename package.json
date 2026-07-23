@@ -2,15 +2,35 @@
   "name": "sistemasgo",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
   "scripts": {
-    "test": "vitest run"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "test": "vitest run",
+    "format": "prettier --write .",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.45.4",
-    "@clerk/clerk-sdk-node": "^5.0.0"
+    "next": "16.2.11",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "@clerk/nextjs": "^6.12.0",
+    "@prisma/client": "^6.3.0",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.11",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "prisma": "^6.3.0",
+    "prettier": "^3.4.2",
     "vitest": "^2.1.1"
   }
 }

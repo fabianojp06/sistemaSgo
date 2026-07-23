@@ -1,0 +1,22 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Alinhado ao dicionário de dados DC_EP084_24 (Módulo de Autenticação e Tela Principal)
+model Usuario {
+  id          String   @id @default(uuid())
+  clerkUserId String   @unique
+  tenantId    String
+  nome        String
+  email       String   @unique
+  ativo       Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+}
