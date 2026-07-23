@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/sgo"
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_ZHVtbXkuY2xlcmsuYWNjb3VudHMuZGV2JA"
+      CLERK_SECRET_KEY: "sk_test_dummy"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

@@ -7,16 +7,60 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Alinhado ao dicionário de dados DC_EP084_24 (Módulo de Autenticação e Tela Principal)
+// Alinhado a DC_EP084_24 + requisitos/RN_AUTH_Clerk_BancoProprio.md
+// Senha, hash e sessão são responsabilidade do Clerk — não modelados aqui.
+enum StatusUsuario {
+  ATIVO
+  INATIVO
+}
+
+enum TipoOperacao {
+  LOGIN_SUCESSO
+  LOGIN_FALHA
+  LOGOFF
+  BLOQUEIO_AUTOMATICO
+  ACESSO_SIMULTANEO
+}
+
 model Usuario {
-  id          String   @id @default(uuid())
-  clerkUserId String   @unique
-  tenantId    String
-  nome        String
-  email       String   @unique
-  ativo       Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                     String        @id @default(uuid())
+  clerkUserId            String        @unique
+  tenantId               String
+  nomeCompleto           String
+  email                  String        @unique
+  status                 StatusUsuario @default(ATIVO)
+  bloqueado              Boolean       @default(false)
+  contadorFalhas         Int           @default(0)
+  trocarSenhaObrigatoria Boolean       @default(false)
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  historicoOperacoes HistoricoOperacao[]
 
   @@index([tenantId])
+}
+
+// Append-only — nenhuma UPDATE/DELETE deve ser executada nesta tabela [RNF0006]
+model HistoricoOperacao {
+  id                  String       @id @default(uuid())
+  tenantId            String
+  usuarioId           String?
+  usuario             Usuario?     @relation(fields: [usuarioId], references: [id])
+  clerkSessionId      String?
+  tipoOperacao         TipoOperacao
+  descricao           String
+  ipEstacao           String?
+  quantidadeTentativas Int?
+  dadosSerializados   Json?
+  dataHoraEvento      DateTime     @default(now())
+
+  @@index([tenantId])
+  @@index([usuarioId])
+}
+
+// Parâmetros globais do sistema referenciados pelo módulo de autenticação [DC_EP084_24 §7]
+model ParametroSistema {
+  tenantId              String  @id
+  limiteTentativasLogin Int     @default(5)
+  flagManutencao        Boolean @default(false)
 }
