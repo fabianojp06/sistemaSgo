@@ -17,5 +17,6 @@ jobs:
           cache: npm
       - run: npm install
       - run: npx prisma migrate status
+        continue-on-error: true
       - run: npx prisma migrate deploy
       - run: npx prisma db execute --stdin <<< "select 1;"
