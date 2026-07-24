@@ -4,12 +4,12 @@
 // Sem módulos/funcionalidades reais ainda, o perfil nasce sem permissões — passa a
 // recebê-las automaticamente assim que o primeiro módulo de negócio for seedado.
 import { PrismaClient } from '@prisma/client';
-import { clerkClient } from '@clerk/nextjs/server';
+import { createClerkClient } from '@clerk/backend';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  const clerk = await clerkClient();
+  const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
   const usuarios = await prisma.usuario.findMany({
     select: { id: true, tenantId: true, clerkUserId: true },
   });

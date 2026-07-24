@@ -11,10 +11,10 @@
     "format": "prettier --write .",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:seed": "node prisma/seed.mjs"
+    "prisma:seed": "node --env-file=.env prisma/seed.mjs"
   },
   "prisma": {
-    "seed": "node prisma/seed.mjs"
+    "seed": "node --env-file=.env prisma/seed.mjs"
   },
   "dependencies": {
     "next": "16.2.11",

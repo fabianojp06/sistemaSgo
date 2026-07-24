@@ -9,6 +9,7 @@ jobs:
     env:
       DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
       DIRECT_URL: ${{ secrets.SUPABASE_DIRECT_URL }}
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -20,3 +21,4 @@ jobs:
         continue-on-error: true
       - run: npx prisma migrate deploy
       - run: npx prisma db execute --schema prisma/schema.prisma --stdin <<< "select 1;"
+      - run: node prisma/seed.mjs
