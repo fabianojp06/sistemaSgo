@@ -9,6 +9,12 @@ import { createClerkClient } from '@clerk/backend';
 const prisma = new PrismaClient();
 
 async function main() {
+  const url = new URL(process.env.DATABASE_URL);
+  console.log(`conectando em host=${url.host} user=${url.username} db=${url.pathname}`);
+
+  const totalUsuarios = await prisma.$queryRaw`SELECT count(*)::int AS total FROM "Usuario"`;
+  console.log('contagem via SQL bruto:', JSON.stringify(totalUsuarios));
+
   const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
   const usuarios = await prisma.usuario.findMany({
     select: { id: true, tenantId: true, clerkUserId: true },
