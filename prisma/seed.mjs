@@ -14,6 +14,8 @@ async function main() {
     select: { id: true, tenantId: true, clerkUserId: true },
   });
 
+  console.log(`usuarios encontrados: ${usuarios.length}`, JSON.stringify(usuarios));
+
   const tenants = [...new Set(usuarios.map((u) => u.tenantId))];
 
   for (const tenantId of tenants) {
@@ -26,6 +28,7 @@ async function main() {
     for (const usuario of usuarios.filter((u) => u.tenantId === tenantId)) {
       const clerkUser = await clerk.users.getUser(usuario.clerkUserId);
       const ehAdmin = clerkUser.publicMetadata?.role === 'ADMIN';
+      console.log(`${usuario.clerkUserId}: publicMetadata=${JSON.stringify(clerkUser.publicMetadata)} ehAdmin=${ehAdmin}`);
 
       if (!ehAdmin) continue;
 
