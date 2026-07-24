@@ -36,7 +36,64 @@ model Usuario {
   updatedAt              DateTime      @updatedAt
 
   historicoOperacoes HistoricoOperacao[]
+  perfis             UsuarioPerfil[]
 
+  @@index([tenantId])
+}
+
+// Catálogo global de módulos do sistema — não pertence a nenhum tenant específico [ADR-001].
+model Modulo {
+  id     String @id @default(uuid())
+  chave  String @unique // ex: "dotacoes", "empenhos"
+  nome   String
+  ativo  Boolean @default(true) // CA-01.03.03 — inativo é omitido do menu para todos os tenants
+
+  funcionalidades Funcionalidade[]
+}
+
+model Funcionalidade {
+  id       String  @id @default(uuid())
+  moduloId String
+  modulo   Modulo  @relation(fields: [moduloId], references: [id])
+  chave    String  // ex: "empenhos.criar"
+  nome     String
+  ativo    Boolean @default(true)
+
+  perfis PerfilFuncionalidade[]
+
+  @@unique([moduloId, chave])
+}
+
+// Perfis são definidos por tenant [ADR-001] — RN0027/RN0030 pressupõem permissão por perfil, não por usuário.
+model Perfil {
+  id       String @id @default(uuid())
+  tenantId String
+  nome     String
+
+  permissoes PerfilFuncionalidade[]
+  usuarios   UsuarioPerfil[]
+
+  @@unique([tenantId, nome])
+  @@index([tenantId])
+}
+
+model PerfilFuncionalidade {
+  perfilId         String
+  perfil           Perfil         @relation(fields: [perfilId], references: [id])
+  funcionalidadeId String
+  funcionalidade   Funcionalidade @relation(fields: [funcionalidadeId], references: [id])
+
+  @@id([perfilId, funcionalidadeId])
+}
+
+model UsuarioPerfil {
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id])
+  perfilId  String
+  perfil    Perfil  @relation(fields: [perfilId], references: [id])
+  tenantId  String // redundante de propósito — nunca confiar em join solto pra isolar tenant
+
+  @@id([usuarioId, perfilId])
   @@index([tenantId])
 }
 
