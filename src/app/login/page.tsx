@@ -1,8 +1,8 @@
 'use client';
 
-import { useSignIn } from '@clerk/nextjs';
+import { useClerk, useSignIn } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
-import { useActionState, useEffect, useRef } from 'react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 import { efetuarLogin, type EfetuarLoginState } from './actions';
 
 const estadoInicial: EfetuarLoginState = {};
@@ -10,7 +10,9 @@ const estadoInicial: EfetuarLoginState = {};
 // UC01.01 — Efetuar Login [CA-01.01.01: campos Login/Senha, botões Entrar/Cancelar, link "Esqueci minha senha"]
 export default function LoginPage() {
   const [state, formAction, pending] = useActionState(efetuarLogin, estadoInicial);
+  const [erroTrocaSessao, setErroTrocaSessao] = useState<string | null>(null);
   const { signIn, setActive, isLoaded } = useSignIn();
+  const { signOut } = useClerk();
   const router = useRouter();
   const tokenTrocado = useRef<string | null>(null);
 
@@ -22,11 +24,26 @@ export default function LoginPage() {
     tokenTrocado.current = signInToken;
 
     (async () => {
-      const tentativa = await signIn.create({ strategy: 'ticket', ticket: signInToken });
-      await setActive({ session: tentativa.createdSessionId });
-      router.push('/'); // Tela Principal [UC01.03]
+      const trocarPeloTicket = () => signIn.create({ strategy: 'ticket', ticket: signInToken });
+
+      try {
+        let tentativa;
+        try {
+          tentativa = await trocarPeloTicket();
+        } catch {
+          // Sessão de outro login (deste ou de outro usuário) ainda ativa no navegador — encerra e tenta de novo.
+          await signOut();
+          tentativa = await trocarPeloTicket();
+        }
+
+        await setActive({ session: tentativa.createdSessionId, navigate: async () => router.push('/') });
+      } catch (error) {
+        console.error('LoginPage: falha ao trocar signInToken por sessão', error);
+        setErroTrocaSessao('Não foi possível concluir o acesso. Tente novamente.');
+        tokenTrocado.current = null;
+      }
     })();
-  }, [state.signInToken, isLoaded, signIn, setActive, router]);
+  }, [state.signInToken, isLoaded, signIn, setActive, signOut, router]);
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-950">
@@ -59,9 +76,9 @@ export default function LoginPage() {
           />
         </div>
 
-        {state.erro && (
+        {(state.erro || erroTrocaSessao) && (
           <p role="alert" className="text-sm text-red-600">
-            {state.erro}
+            {state.erro ?? erroTrocaSessao}
           </p>
         )}
 
