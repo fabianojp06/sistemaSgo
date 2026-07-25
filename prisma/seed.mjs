@@ -32,7 +32,14 @@ async function main() {
     });
 
     for (const usuario of usuarios.filter((u) => u.tenantId === tenantId)) {
-      const clerkUser = await clerk.users.getUser(usuario.clerkUserId);
+      let clerkUser;
+      try {
+        clerkUser = await clerk.users.getUser(usuario.clerkUserId);
+      } catch (error) {
+        // Usuario órfão (clerkUserId não existe mais no Clerk) não pode travar o seed pros demais.
+        console.error(`${usuario.clerkUserId}: não encontrado no Clerk, pulando —`, error.message ?? error);
+        continue;
+      }
       const ehAdmin = clerkUser.publicMetadata?.role === 'ADMIN';
       console.log(`${usuario.clerkUserId}: publicMetadata=${JSON.stringify(clerkUser.publicMetadata)} ehAdmin=${ehAdmin}`);
 
