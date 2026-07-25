@@ -1,7 +1,6 @@
 'use client';
 
 import { useClerk } from '@clerk/nextjs';
-import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { efetuarLogoff } from './actions';
 
@@ -17,7 +16,6 @@ export function BotaoSair() {
   const [confirmando, setConfirmando] = useState(false);
   const [pending, startTransition] = useTransition();
   const { signOut } = useClerk();
-  const router = useRouter();
 
   function confirmarLogoff() {
     startTransition(async () => {
@@ -27,10 +25,12 @@ export function BotaoSair() {
         // Bundle desatualizado após deploy [CA-01.04.09/10]: a Server Action pode
         // rejeitar antes do finally rodar. O logoff no cliente deve prosseguir mesmo assim.
       } finally {
-        await signOut();
-        // Navegação completa (não router.push): garante que o navegador busque o bundle
-        // atual do servidor, evitando falha silenciosa por Server Action de build antigo.
-        window.location.assign('/login');
+        // Sessão do servidor já foi revogada em efetuarLogoff() acima. Não aguardamos
+        // signOut() aqui: sua promise pode nunca resolver quando o fetch de RSC
+        // interno do Clerk falha [ambiente/proxy], travando a navegação. Disparamos
+        // best-effort e navegamos imediatamente de qualquer forma [E1 — CA-01.04.09/10].
+        signOut().catch(() => {});
+        window.location.href = '/login';
       }
     });
   }
