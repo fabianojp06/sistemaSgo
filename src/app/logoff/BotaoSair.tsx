@@ -23,9 +23,14 @@ export function BotaoSair() {
     startTransition(async () => {
       try {
         await efetuarLogoff();
+      } catch {
+        // Bundle desatualizado após deploy [CA-01.04.09/10]: a Server Action pode
+        // rejeitar antes do finally rodar. O logoff no cliente deve prosseguir mesmo assim.
       } finally {
         await signOut();
-        router.push('/login');
+        // Navegação completa (não router.push): garante que o navegador busque o bundle
+        // atual do servidor, evitando falha silenciosa por Server Action de build antigo.
+        window.location.assign('/login');
       }
     });
   }
