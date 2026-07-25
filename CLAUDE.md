@@ -12,7 +12,7 @@ Este projeto é conduzido com apoio das seguintes skills (perfis) da conta do us
 - **dba-data-engineer** — DBA / Engenheiro de Dados
 - **analista-testes-qa** — Analista de QA / Testes
 
-Ao planejar ou executar tarefas do projeto, considere qual papel é mais adequado para a tarefa e invoque a skill correspondente quando fizer sentido.
+**Regra obrigatória:** toda tarefa relacionada ao projeto deve ser executada através da skill correspondente ao papel responsável (invocar via Skill tool), não diretamente pelo assistente sem skill. Antes de executar, identifique qual papel é dono da tarefa e invoque a skill dele. Se nenhuma das skills listadas cobrir a tarefa, não prossiga sem skill — pare e peça ao usuário autorização para criar uma nova skill para esse papel/tarefa.
 
 ## Stack e decisões técnicas
 
