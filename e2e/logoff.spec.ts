@@ -22,7 +22,7 @@ test('logoff encerra a sessão e bloqueia acesso subsequente à tela principal',
   await expect(page).toHaveURL('/login');
 });
 
-// CT-007 — UC01.04 — E1 (CA-01.04.09/10): Server Action stale/falha de rede
+// CT-009 — UC01.04 — E1 (CA-01.04.09/10): Server Action stale/falha de rede
 test('logoff prossegue no cliente mesmo quando a Server Action falha (bundle desatualizado após deploy)', async ({
   page,
 }) => {
