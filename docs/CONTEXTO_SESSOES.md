@@ -27,6 +27,24 @@ Levantamento de implementação + testes, feito com apoio das skills do time (fu
 
 **Próximo passo combinado:** antes de qualquer nova implementação, priorizar (1) testes E2E do fluxo real de login/logoff via UI e (2) fechar os 3 gaps de implementação acima.
 
+## 2026-07-25 (cont.) — Suíte E2E Playwright para os P0 do UC01 (commit `09003f7`)
+
+QA definiu plano de testes E2E (Playwright, via `@clerk/testing` para evitar UI/captcha do Clerk) com 8 cenários (CT-001 a CT-008); os 5 P0 foram implementados pelo fullstack-dev e revisados/corrigidos após review da QA:
+
+- `e2e/login.spec.ts` — CT-001 (login válido + menu carregado, UC01.01+UC01.03), CT-002 (senha inválida)
+- `e2e/lockout.spec.ts` — CT-004 (bloqueio após esgotar tentativas; lê `ParametroSistema.limiteTentativasLogin` real do tenant em vez de hardcode)
+- `e2e/logoff.spec.ts` — CT-006 (logoff via modal de confirmação)
+- `e2e/route-protection.spec.ts` — CT-007 (acesso direto sem sessão → redirect)
+- `e2e/support/{env,parametro-sistema,reset-lockout-user,global-setup}.ts` — infra de suporte
+
+**Estado real:** código compila (`npx tsc --noEmit` limpo) e não quebrou a suíte unitária (`npx vitest run` — 22/22, após excluir `e2e/` do `vitest.config.ts`, que sem isso tentava rodar os specs do Playwright). **Mas a suíte E2E nunca foi executada de fato** — este ambiente (Codespace) não tem `.env` com credenciais reais de Clerk/Supabase, então `next dev` não sobe. Antes de confiar nela, alguém precisa: criar `.env` com instância Clerk de teste + banco de teste, dois usuários de teste sincronizados na tabela `Usuario` (um "feliz", um dedicado a bloqueio — nunca o mesmo), preencher as variáveis `E2E_*` (ver `.env.example` e `e2e/README.md`), e rodar `npm run test:e2e` de verdade pelo menos uma vez.
+
+**Riscos conhecidos documentados (aceitos, não bloqueantes):** a suíte não pode rodar em paralelo contra o mesmo banco de teste (usuário de lockout é compartilhado, sem lock entre processos — só dentro do mesmo processo Playwright). Ver aviso em `e2e/README.md`.
+
+**Pendente (P1, não implementado ainda):** CT-003 (usuário inexistente), CT-005 (mensagem específica de bloqueio), CT-008 (usuário em manutenção/inativo).
+
+**Próximo passo combinado:** configurar `.env` de teste e rodar a suíte de verdade pela primeira vez; depois avaliar os P1 e os 3 gaps de implementação já conhecidos.
+
 ---
 
 ## Como usar este arquivo em sessões futuras
