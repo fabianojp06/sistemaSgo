@@ -6,7 +6,9 @@ const isRotaPublica = createRouteMatcher(['/login', '/api/webhooks/clerk']);
 
 export default clerkMiddleware(async (auth, req) => {
   if (!isRotaPublica(req)) {
-    await auth.protect();
+    // Sem isso, auth.protect() cai no fallback padrão (404) em vez de redirecionar
+    // para /login — a app não usa a rota /sign-in default do Clerk [UC01.01].
+    await auth.protect({ unauthenticatedUrl: new URL('/login', req.url).toString() });
   }
 });
 
