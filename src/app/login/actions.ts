@@ -40,6 +40,7 @@ export async function efetuarLogin(_prevState: EfetuarLoginState, formData: Form
     if (error instanceof AuthDomainError) {
       return { erro: error.message };
     }
+    console.error('efetuarLogin: erro inesperado', error);
     return { erro: 'Não foi possível estabelecer conexão com o servidor. Verifique sua rede e tente novamente.' };
   }
 }
