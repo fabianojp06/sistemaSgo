@@ -47,6 +47,30 @@ QA definiu plano de testes E2E (Playwright, via `@clerk/testing` para evitar UI/
 
 ---
 
+## 2026-07-26 — Clerk voltou para chaves de desenvolvimento; login em produção (Vercel) funcionando
+
+Na sessão anterior o usuário havia trocado o Clerk do projeto na Vercel para chaves de **produção**, mas isso quebrou o app (`https://sistema-sgo.vercel.app`) porque a instância de produção do Clerk exige domínio próprio verificado (DNS), e o projeto só tem o domínio `*.vercel.app`. Foi decidido reverter para chaves de **desenvolvimento** (não exigem domínio) até que exista domínio próprio.
+
+**O que foi feito:**
+- Instalada a Vercel CLI globalmente (`npm install -g vercel`) e vinculado este diretório ao projeto `fabianojp06s-projects/sistema-sgo` (`vercel link`).
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` e `CLERK_SECRET_KEY` trocadas na Vercel (Production + Preview) para a instância de desenvolvimento `wondrous-mink-17.clerk.accounts.dev` (`pk_test_...`/`sk_test_...`).
+- Removida `NEXT_PUBLIC_CLERK_SIGN_UP_URL` (variável órfã, apontava para rota `/sign-up` que não existe — o app só usa `/login`). Confirmado `NEXT_PUBLIC_CLERK_SIGN_IN_URL="/login"`.
+- Redeploy de produção feito via `vercel deploy --prod`.
+
+**Bug real encontrado (mascarado pela mensagem genérica "Não foi possível estabelecer conexão com o servidor"):** `AutenticarUsuarioUseCase.execute()` (`src/application/use-cases/auth/AutenticarUsuarioUseCase.ts:44`) busca o usuário na tabela `Usuario` do Supabase e usa o `clerkUserId` salvo lá para chamar `clerk.users.getUser()`. Esse ID havia sido criado na instância de **produção** do Clerk — inexistente na instância de desenvolvimento agora ativa (Clerk trata cada instância como um banco de usuários totalmente separado). Erro real nos logs da Vercel (`vercel logs`): `resource_not_found` / `No user was found with id user_...`.
+
+**Correção aplicada:** usuário criou um novo usuário de teste na instância de desenvolvimento do Clerk (`user_3H3OtplL0Wi5Cv1rYHHLTPZsyXG`, e-mail `consultfabiano@gmail.com`) e rodou manualmente no Supabase SQL Editor:
+```sql
+UPDATE "Usuario" SET "clerkUserId" = 'user_3H3OtplL0Wi5Cv1rYHHLTPZsyXG' WHERE email ILIKE 'consultfabiano@gmail.com';
+```
+Senha resetada no Clerk. **Login confirmado funcionando em produção** (`https://sistema-sgo.vercel.app/login`) com esse usuário.
+
+**Lição para o futuro:** ao trocar a instância do Clerk (dev ↔ produção) neste projeto, todo `clerkUserId` salvo em `Usuario` fica órfão e precisa ser resincronizado manualmente (não há job de sync automático). Antes de trocar de instância de novo, avaliar se vale a pena automatizar essa migração/sincronização de usuários.
+
+**Próximo passo combinado:** ainda pendente da sessão anterior — configurar `.env` local de teste e rodar a suíte E2E pela primeira vez; avaliar os P1 e os 3 gaps de implementação já conhecidos.
+
+---
+
 ## Como usar este arquivo em sessões futuras
 
 No início de uma sessão, se o usuário perguntar "qual o contexto/status de X", leia este arquivo antes de assumir que a memória padrão (`~/.claude/.../memory/`) está atualizada — o ambiente deste projeto (Codespace) pode ter sido recriado desde a última sessão, apagando a memória padrão sem apagar o repositório.
