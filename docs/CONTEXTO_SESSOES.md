@@ -67,7 +67,7 @@ Senha resetada no Clerk. **Login confirmado funcionando em produção** (`https:
 
 **Lição para o futuro:** ao trocar a instância do Clerk (dev ↔ produção) neste projeto, todo `clerkUserId` salvo em `Usuario` fica órfão e precisa ser resincronizado manualmente (não há job de sync automático). Antes de trocar de instância de novo, avaliar se vale a pena automatizar essa migração/sincronização de usuários.
 
-**Próximo passo combinado:** ainda pendente da sessão anterior — configurar `.env` local de teste e rodar a suíte E2E pela primeira vez; avaliar os P1 e os 3 gaps de implementação já conhecidos.
+**Decisão do usuário (2026-07-26):** login/autenticação em produção está **encerrado como resolvido** para os fins deste projeto de estudo. A suíte E2E Playwright (criada em `09003f7`) segue existindo no repo mas **nunca foi executada de fato** — decisão consciente de não rodá-la agora, pois o foco do projeto vai mudar para outro ponto. Não retomar a suíte E2E nem os gaps de implementação (P1: CT-003/CT-005/CT-008; link "esqueci senha", aviso de última tentativa, `notificarAdministrador()` stub) por iniciativa própria — só se o usuário pedir explicitamente.
 
 ---
 
