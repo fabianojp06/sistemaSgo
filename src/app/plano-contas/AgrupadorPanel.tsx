@@ -11,6 +11,19 @@ type ModalState = { modo: 'novo' } | { modo: 'editar'; agrupador: Agrupador } | 
 /** UC03.00 / A2-A4 — CRUD de Agrupadores de Contas (RF_PLA_REQ_005). */
 export function AgrupadorPanel({ agrupadores, contasAnaliticas }: { agrupadores: Agrupador[]; contasAnaliticas: ContaOpcao[] }) {
   const [modal, setModal] = useState<ModalState>(null);
+  const [expandidos, setExpandidos] = useState<Set<string>>(new Set());
+
+  function alternarExpandido(id: string) {
+    setExpandidos((atual) => {
+      const proximo = new Set(atual);
+      if (proximo.has(id)) {
+        proximo.delete(id);
+      } else {
+        proximo.add(id);
+      }
+      return proximo;
+    });
+  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -28,24 +41,49 @@ export function AgrupadorPanel({ agrupadores, contasAnaliticas }: { agrupadores:
         <p className="text-sm text-gray-500">Nenhum Agrupador cadastrado.</p>
       ) : (
         <ul className="divide-y rounded border">
-          {agrupadores.map((agrupador) => (
-            <li key={agrupador.id} className="flex items-center justify-between px-3 py-2 text-sm">
-              <div>
-                <p className="font-medium">{agrupador.nome}</p>
-                <p className="text-xs text-gray-500">
-                  {agrupador.contaIds.length} conta(s) — Total: {agrupador.total}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <button type="button" onClick={() => setModal({ modo: 'editar', agrupador })} className="text-xs text-blue-600">
-                  Editar
-                </button>
-                <button type="button" onClick={() => setModal({ modo: 'excluir', agrupador })} className="text-xs text-red-600">
-                  Excluir
-                </button>
-              </div>
-            </li>
-          ))}
+          {agrupadores.map((agrupador) => {
+            const expandido = expandidos.has(agrupador.id);
+            const contasDoAgrupador = contasAnaliticas.filter((c) => agrupador.contaIds.includes(c.id));
+
+            return (
+              <li key={agrupador.id} className="px-3 py-2 text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => alternarExpandido(agrupador.id)}
+                      aria-expanded={expandido}
+                      aria-label={expandido ? `Retrair ${agrupador.nome}` : `Expandir ${agrupador.nome}`}
+                      className="w-4 shrink-0 text-gray-400 hover:text-gray-700"
+                    >
+                      {expandido ? '▾' : '▸'}
+                    </button>
+                    <div>
+                      <p className="font-medium">{agrupador.nome}</p>
+                      <p className="text-xs text-gray-500">
+                        {agrupador.contaIds.length} conta(s) — Total: {agrupador.total}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 gap-2">
+                    <button type="button" onClick={() => setModal({ modo: 'editar', agrupador })} className="text-xs text-blue-600">
+                      Editar
+                    </button>
+                    <button type="button" onClick={() => setModal({ modo: 'excluir', agrupador })} className="text-xs text-red-600">
+                      Excluir
+                    </button>
+                  </div>
+                </div>
+                {expandido && (
+                  <ul className="ml-6 mt-1 space-y-0.5 border-l pl-3 text-xs text-gray-600">
+                    {contasDoAgrupador.map((conta) => (
+                      <li key={conta.id}>{conta.label}</li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
 
