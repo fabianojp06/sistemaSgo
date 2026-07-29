@@ -8,9 +8,31 @@ import { createClerkClient } from '@clerk/backend';
 
 const prisma = new PrismaClient();
 
+async function seedModuloPlanoContas() {
+  const modulo = await prisma.modulo.upsert({
+    where: { chave: 'cadastros' },
+    update: {},
+    create: { chave: 'cadastros', nome: 'Cadastros' },
+  });
+
+  await prisma.funcionalidade.upsert({
+    where: { moduloId_chave: { moduloId: modulo.id, chave: 'plano-contas.visualizar' } },
+    update: {},
+    create: { moduloId: modulo.id, chave: 'plano-contas.visualizar', nome: 'Visualizar Plano de Contas' },
+  });
+
+  await prisma.funcionalidade.upsert({
+    where: { moduloId_chave: { moduloId: modulo.id, chave: 'plano-contas.sincronizar' } },
+    update: {},
+    create: { moduloId: modulo.id, chave: 'plano-contas.sincronizar', nome: 'Sincronizar Plano de Contas com ERP' },
+  });
+}
+
 async function main() {
   const url = new URL(process.env.DATABASE_URL);
   console.log(`conectando em host=${url.host} user=${url.username} db=${url.pathname}`);
+
+  await seedModuloPlanoContas();
 
   const totalUsuarios = await prisma.$queryRaw`SELECT count(*)::int AS total FROM "Usuario"`;
   console.log('contagem via SQL bruto:', JSON.stringify(totalUsuarios));
@@ -30,6 +52,22 @@ async function main() {
       update: {},
       create: { tenantId, nome: 'Administrador' },
     });
+
+    // Administrador recebe automaticamente toda funcionalidade ativa de todo módulo
+    // ativo — ver comentário do cabeçalho deste arquivo.
+    const todasFuncionalidades = await prisma.funcionalidade.findMany({
+      where: { ativo: true, modulo: { ativo: true } },
+      select: { id: true },
+    });
+    for (const funcionalidade of todasFuncionalidades) {
+      await prisma.perfilFuncionalidade.upsert({
+        where: {
+          perfilId_funcionalidadeId: { perfilId: perfilAdministrador.id, funcionalidadeId: funcionalidade.id },
+        },
+        update: {},
+        create: { perfilId: perfilAdministrador.id, funcionalidadeId: funcionalidade.id },
+      });
+    }
 
     for (const usuario of usuarios.filter((u) => u.tenantId === tenantId)) {
       let clerkUser;

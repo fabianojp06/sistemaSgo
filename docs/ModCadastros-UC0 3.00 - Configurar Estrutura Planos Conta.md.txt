@@ -1,0 +1,110 @@
+UC0 3.00 - Configurar Estrutura Plano de Contas
+Objetivo 
+Responsável por duas responsabilidades complementares: (1) prover ao SGO um mecanismo central de importação e sincronização do Plano de Contas Único corporativo, alimentado exclusivamente via integração com o ERP Senior, mantendo a estrutura contábil oficial como Read-only no SGO; e (2) permitir a criação e gestão de Agrupadores de Contas SGO-exclusivos, que possibilitam criar visões de subtotalização personalizadas sobre contas analíticas importadas do ERP, sem interferir na hierarquia oficial. Opera sob as diretrizes "Origem Blindada" e "Trava o Erro" para garantir a blindagem estrutural contábil.
+Atores envolvidos 	Usuário Comum / Orçamentista / Gestor Financeiro / Auditor / Sistema SGO 
+Condições 
+Pré-Condições 
+•	O usuário deve estar autenticado com perfil administrativo ou contábil ativo.
+•	O gateway de comunicação do SeniorIntegrationController deve estar operacional e estável com o ERP Senior (para o fluxo de sincronismo).
+•	O Plano de Contas contábil deve estar previamente homologado e ativo na base de dados do ERP Senior.
+Pós-Condições
+•	Após sincronismo: árvore do Plano de Contas Único atualizada no SGO com status "Sincronizado". Campos core (Número, Nome, Hierarquia) tornam-se imutáveis na tela.
+•	Os nós folhas (Nível 7) ficam disponíveis para seleção nos formulários de Propostas e Dimensionamento.
+•	Após criar/editar Agrupador: Agrupador de Contas registrado e disponível nos relatórios (Cronograma de Desembolso, Previsão de Despesas) como linha de subtotalização.
+•	Todas as operações registradas na trilha de auditoria (HistoricodeOperacoes) (RN_PLA_004).
+Cenários 
+Fluxo Principal – Sincronzação do Plano de Conas com ERP Senior
+1.	O usuário administrador acessa a tela de parâmetros do Plano de Contas Único;
+2.	O sistema renderiza a árvore contábil atual em modo protegido e exibe o botão de comando [Sincronizar com ERP Senior] e o painel de [Agrupadores de Contas];
+3.	O usuário clica em [Sincronizar com ERP Senior] para disparar a atualização em lote [E1];
+4.	O SGO aciona o SeniorIntegrationController, que consome os endpoints do ERP externos e traz o payload estruturado (RNF_PLA_REQ_001 / RNF_PLA_REQ_002);
+5.	O sistema executa as validações de integridade referencial do lote [E2] e realiza commit atômico das contas sintéticas (Níveis 1 a 6) e analíticas (Nível 7) (RNF_PLA_REQ_004);
+6.	A tela atualiza reativamente, exibindo as novas contas com a tag "Sincronizado" e gerando o log de sucesso na trilha de auditoria (RN_PLA_004).
+
+A1 — Cancelar Operação 
+•	A1.1.  O usuário clica em [Cancelar] em qualquer passo antes de confirmar a sincronização;
+•	A1.2.  O sistema aborta o fluxo sem disparar requisições ao ERP e retorna à tela do Plano de Contas no estado anterior.
+
+A2 — Criar Agrupador de Contas 
+•	A2.1.  No passo 2 do fluxo principal, o usuário clica em [Novo Agrupador] no painel de Agrupadores de Contas;
+•	A2.2.  O sistema exibe o formulário modal de criação com os campos: [Nome do Agrupador] (obrigatório) e [Contas Analíticas] — seletor múltiplo das contas de Nível 7 disponíveis no Plano de Contas importado do ERP;
+•	A2.3.  O usuário preenche o Nome (ex.: "Despesas com passagens aéreas") e seleciona as contas analíticas a agrupar (ex.: "Passagens aéreas nacionais" + "Passagens aéreas internacionais");
+•	A2.4.  O usuário clica em [Salvar Agrupador] [E3] [E4];
+•	A2.5.  O sistema valida campos obrigatórios e unicidade do nome (RN_PLA_008), persiste o Agrupador com as contas vinculadas e disponibiliza-o para renderização nos relatórios do módulo Orçamentário (RN_PLA_009);
+•	A2.6.  O sistema grava o log de criação na trilha de auditoria (RN_PLA_004) e fecha o modal, atualizando reativamente o painel de Agrupadores.
+
+A3 — Editar Agrupador de Contas
+•	A3.1.  No painel de Agrupadores, o usuário clica em [Editar] sobre um Agrupador existente;
+•	A3.2.  O sistema carrega o formulário modal com os dados atuais do Agrupador (Nome e Contas vinculadas) em modo edição;
+•	A3.3.  O usuário altera o Nome e/ou a seleção de contas analíticas e clica em [Salvar Agrupador] [E3] [E4];
+•	A3.4.  O sistema valida, persiste as alterações e atualiza reativamente os relatórios que referenciam este Agrupador (RN_PLA_009). O log de alteração é gravado na trilha de auditoria (RN_PLA_004).
+
+A4 — Excluir Agrupador de Contas
+•	A4.1.  No painel de Agrupadores, o usuário clica em [Excluir] sobre um Agrupador existente;
+•	A4.2.  O sistema exibe modal de confirmação: "Deseja excluir o Agrupador [Nome]? Esta ação removerá o subtotal correspondente de todos os relatórios vinculados." — botões [Confirmar] e [Cancelar];
+•	A4.3.  O usuário confirma [E5];
+•	A4.4.  O sistema remove o Agrupador e suas vinculações, grava o log de exclusão (RN_PLA_004) e atualiza o painel reativamente.
+
+Fluxos de Exceções
+
+E1 — Tentativa de Inclusão ou Alteração Manual no Plano de Contas
+•	E1.1.  O usuário tenta forçar uma inserção de nova conta ou alteração nominal de descrição de conta importada do ERP;
+•	E1.2.  O barramento de segurança do backend intercepta a operação inválida e aborta a transação com rollback imediato (RN_PLA_001, RN_PLA_002);
+•	E1.3.  O sistema exibe o alerta: "Operação Negada [TRAVA O ERRO]: O Plano de Contas é governado exclusivamente pelo ERP Senior. Não é permitido incluir, excluir ou alterar nomes de contas diretamente no SGO."
+
+
+E2 — Detecção de Contas Analíticas Órfãs no Lote de Sincronismo
+•	E2.1.  Durante o passo 4 do fluxo principal, o validador identifica contas analíticas (Nível 7) cujos códigos sintéticos pais estão ausentes no lote do ERP;
+•	E2.2.  O SGO aborta a ingestão completa do lote para preservar a integridade referencial da árvore (RNF_PLA_REQ_004);
+•	E2.3.  O sistema exibe o alerta: "Erro de Sincronismo [TRAVA O ERRO]: Ingestão abortada. Foram detectadas contas analíticas sem conta sintética pai correspondente. Verifique a estrutura no ERP Senior."
+
+E3 — Validação do Agrupador: campos obrigatórios ou insuficientes
+•	E3.1.  No passo A2.4 ou A3.3, o sistema identifica Nome em branco ou menos de 2 contas analíticas selecionadas (RN_PLA_008);
+•	E3.2.  O sistema bloqueia o salvamento e exibe o alerta inline: "O Agrupador deve ter um Nome preenchido e ao menos duas contas analíticas selecionadas.";
+•	E3.3.  O sistema mantém o modal aberto com os dados preenchidos intactos para correção imediata.
+
+E4 — Nome de Agrupador duplicado
+•	E4.1.  O sistema identifica que já existe um Agrupador com o mesmo Nome cadastrado;
+•	E4.2.  O sistema bloqueia o salvamento e exibe o alerta: "Já existe um Agrupador com este nome. Utilize um nome único."
+
+E5 — Bloqueio de Exclusão de Agrupador referenciado
+•	E5.1.  O usuário confirma a exclusão mas o sistema identifica que o Agrupador está referenciado em Cronogramas de Desembolso ou Propostas ativas (RN_PLA_010);
+•	E5.2.  O sistema aborta a exclusão e exibe o alerta: "Exclusão Bloqueada: Este Agrupador está referenciado em documentos orçamentários ativos. Remova as referências antes de excluí-lo."
+
+
+Requisitos 
+Requisitos Funcionais:
+•	RF_PLA_REQ_001 — Componente de Gatilho de Sincronismo ERP: A interface deve disponibilizar botão de ação para disparar a rotina síncrona de atualização via gateway de integração com o ERP Senior.
+•	RF_PLA_REQ_002 — Ocultação de Comandos de Escrita no Plano de Contas: Fica proibida a renderização de botões [Novo], [Salvar Alterações] ou [Excluir] para contas importadas do ERP. O Plano de Contas é Read-only para as contas importadas.
+•	RF_PLA_REQ_003 — Painel de Parametrização Operacional: Interface restrita para associação de Tags de Natureza (Custeio/OPEX, Investimento/CAPEX) e faixas do Semáforo Orçamentário sobre contas já importadas.
+•	RF_PLA_REQ_004 — Visualização em Árvore Elástica: A tela deve apresentar os dados em formato de árvore multinível expandível de até 7 níveis, organizando nós sintéticos e analíticos de forma crescente.
+•	RF_PLA_REQ_005 [NOVO] — Painel de Agrupadores de Contas: A interface deve disponibilizar painel dedicado para criação, edição e exclusão de Agrupadores de Contas SGO-exclusivos, com seletor múltiplo de contas analíticas (Nível 7) do Plano de Contas importado.
+•	RF_PLA_REQ_006 [NOVO] — Renderização de Agrupadores nos Relatórios: Agrupadores ativos devem ser renderizados como linhas de subtotalização no Cronograma de Desembolso (UC04.01) e demais relatórios orçamentários do módulo, com valor calculado pelo TotalizerService.
+Requisitos não Funcionais:
+•	RNF_PLA_REQ_001 — Tempo de Resposta da Sincronização: O processamento da ingestão, mapeamento e estruturação da árvore (até 5.000 contas) não deve ultrapassar 5,0 segundos após retorno do payload do ERP.
+•	RNF_PLA_REQ_002 — Resiliência de Conexão e Timeout: As chamadas REST do SeniorIntegrationController devem possuir timeout máximo de 10 segundos, acionando modo de contingência em caso de estouro.
+•	RNF_PLA_REQ_003 — Renderização de Alta Performance: A árvore contábil multinível deve suportar expansão e colapso reativo mantendo taxa mínima de 60 FPS, sem congelamento do navegador.
+•	RNF_PLA_REQ_004 — Integridade Transacional Atômica (ACID): A rotina de sincronismo deve operar sob atomicidade absoluta. Qualquer falha em um único nó provoca rollback imediato, preservando a base anterior intacta.
+•	RNF_PLA_REQ_005 — Segurança e Segregação de Funções (RBAC): Os endpoints de backend do sincronismo devem ser blindados por tokens de autenticação criptografados. Perfis operacionais comuns não podem invocar a rotina de carga contábil.
+•	RNF_PLA_REQ_006 — Precisão Centesimal dos Saldos: O TotalizerService deve utilizar BigDecimal no backend e numeric(18,2) no banco de dados para computar agregações, mitigando erros de arredondamento.
+•	RNF_PLA_REQ_007 — Controle de Sincronismo Concorrente (Pessimistic Locking): O sistema aplica bloqueio pessimista durante a carga. Se um segundo usuário tentar disparar nova sincronização com carga em andamento, a ação é rejeitada com alerta inline.
+
+Regras de Negócio 
+•	RN_PLA_001 — Governança Exclusiva da Origem (Diretriz Origem Blindada): Toda inclusão de conta, modificação de nomenclatura ou exclusão de registros estruturais contábeis deve ocorrer na base mestre do ERP Senior. O SGO atua exclusivamente como receptor — vedada qualquer alteração manual direta sobre estes campos em tela.
+•	RN_PLA_002 — Bloqueio Absoluto de Exclusão e Modificações Locais [TRAVA O ERRO]: O sistema aplica trava rígida a nível de banco de dados e endpoints. Qualquer tentativa de burlar a interface para forçar deleção ou reescrita nominal de contas importadas provoca rollback imediato e gera alerta crítico de violação de governança contábil.
+•	RN_PLA_003 — Isolamento de Lançamentos no Nível Analítico (Nó Folha): A amarração prática de despesas operacionais (Cargos, Viagens, Rateios) ocorre exclusivamente nas contas de Nível 7 (Conta Analítica / Nó Folha). Os níveis superiores (1 a 6) funcionam estritamente como acumuladores sintéticos reativos gerenciados pelo TotalizerService.
+•	RN_PLA_004 — Registro de Auditoria de Sincronismo Contábil: Toda rotina de atualização, carga massiva, criação/edição/exclusão de Agrupador obriga a persistência de trilha de auditoria no HistoricodeOperacoes, capturando: credenciais do usuário, data/hora do servidor, IP, código contábil afetado, estado anterior e estado atualizado (payload JSON).
+•	RN_PLA_005 — Consistência de Tags e Herança Hierárquica: As tags de parametrização operacional (Custeio/OPEX, Investimento/CAPEX) herdam a natureza do nó pai. Se uma conta sintética de Nível 6 for mapeada como Investimento (CAPEX), nenhuma de suas analíticas filhas poderá receber marcação de Custeio (OPEX).
+•	RN_PLA_006 — Alertas Cromáticos do Semáforo Orçamentário: Verde (até 70% de consumo), Amarelo (70% a 85%), Laranja (85% a 95%) e Vermelho (acima de 95% ou estouro de teto de dotação).
+
+Regras dos Agrupadores de Contas
+
+•	RN_PLA_007 [NOVA] — Natureza do Agrupador de Contas: Agrupadores são entidades de totalização SGO-exclusivas que agrupam contas analíticas do ERP para fins de exibição e subtotalização em relatórios orçamentários. Não fazem parte do Plano de Contas oficial, não aparecem na árvore hierárquica importada do ERP e não interferem na estrutura contábil da instituição.
+•	RN_PLA_008 [NOVA] — Restrições de Criação do Agrupador: Um Agrupador deve ter: (a) Nome único no contexto do sistema, (b) ao menos 2 contas analíticas (Nível 7) associadas. A criação de Agrupadores com nome duplicado ou com apenas uma conta analítica é bloqueada [TRAVA O ERRO].
+•	RN_PLA_009 [NOVA] — Cálculo via TotalizerService: O valor totalizado de um Agrupador é calculado dinamicamente pelo TotalizerService como somatório dos valores das contas analíticas associadas, utilizando BigDecimal e sem arredondamento. O valor do Agrupador é Read-only — nunca editável pelo usuário.
+•	RN_PLA_010 [NOVA] — Bloqueio de Exclusão por Referência Ativa [TRAVA O ERRO]: A exclusão de um Agrupador é bloqueada se ele estiver referenciado em Cronogramas de Desembolso, Previsões de Despesas ou Propostas ativas. O usuário deve remover as referências antes de proceder com a exclusão.
+•	RN_PLA_011 [NOVA] — Participação Múltipla de Contas Analíticas: Uma mesma conta analítica (Nível 7) pode participar de múltiplos Agrupadores simultaneamente (relacionamento muitos-para-muitos). A participação em um Agrupador não altera o comportamento da conta no Plano de Contas ERP-importado.
+Protótipos 
+  
+Classes envolvidas 
+tb_plano_contas_unico / tb_conta_sintetica / tb_conta_analitica / SeniorIntegrationController / PlanoContasBulkLoader / TotalizerService / HistoricodeOperacoes /ContaAgrupadora / ContaAgrupadoraItem

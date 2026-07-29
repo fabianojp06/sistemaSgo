@@ -20,6 +20,10 @@ enum TipoOperacao {
   LOGOFF
   BLOQUEIO_AUTOMATICO
   ACESSO_SIMULTANEO
+  SYNC_PLANO_CONTAS
+  AGRUPADOR_CRIADO
+  AGRUPADOR_EDITADO
+  AGRUPADOR_EXCLUIDO
 }
 
 model Usuario {
@@ -120,4 +124,77 @@ model ParametroSistema {
   tenantId              String  @id
   limiteTentativasLogin Int     @default(5)
   flagManutencao        Boolean @default(false)
+}
+
+// UC03.00 — Plano de Contas Único.
+// Cenário de teste atual: 4 níveis (formato N.N.NN.NNN), sem integração real com
+// ERP Senior — payload vem de fixture fictícia via PlanoContasFixtureProvider.
+enum StatusSincronismo {
+  SINCRONIZADO
+  PENDENTE
+  ERRO
+}
+
+enum NaturezaConta {
+  OPEX
+  CAPEX
+}
+
+// Governada exclusivamente pela fonte externa (ERP Senior / fixture) — nenhum
+// código de aplicação fora do PlanoContasBulkLoader escreve nesta tabela
+// [RN_PLA_001, RN_PLA_002 — "Trava o Erro"].
+model ContaContabil {
+  id            String            @id @default(uuid())
+  tenantId      String
+  codigoErp     String
+  nomeConta     String
+  nivel         Int // 1 a 4 no cenário de teste
+  idPai         String?
+  pai           ContaContabil?    @relation("Hierarquia", fields: [idPai], references: [id])
+  filhas        ContaContabil[]   @relation("Hierarquia")
+  isAnalitica   Boolean // true somente no último nível (nó folha) [RN_PLA_003]
+  natureza      NaturezaConta? // parametrização local (RF_PLA_REQ_003), não vem da fonte externa
+  statusSync    StatusSincronismo @default(PENDENTE)
+  syncedAt      DateTime?
+  erpUpdatedAt  DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  agrupadorItens ContaAgrupadoraItem[]
+
+  @@unique([tenantId, codigoErp])
+  @@index([tenantId, nivel])
+  @@index([tenantId, isAnalitica])
+}
+
+// SGO-exclusivo — CRUD completo permitido, isolado da árvore importada [RN_PLA_007].
+model ContaAgrupadora {
+  id        String   @id @default(uuid())
+  tenantId  String
+  nome      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  itens ContaAgrupadoraItem[]
+
+  @@unique([tenantId, nome]) // RN_PLA_008(a)
+  @@index([tenantId])
+}
+
+model ContaAgrupadoraItem {
+  agrupadoraId String
+  agrupadora   ContaAgrupadora @relation(fields: [agrupadoraId], references: [id], onDelete: Cascade)
+  contaId      String
+  conta        ContaContabil   @relation(fields: [contaId], references: [id])
+
+  @@id([agrupadoraId, contaId])
+  @@index([contaId])
+}
+
+// Lock pessimista de sincronismo por tenant [RNF_PLA_REQ_007].
+model SincronismoPlanoContasLock {
+  tenantId    String    @id
+  emAndamento Boolean   @default(false)
+  iniciadoEm  DateTime?
+  iniciadoPor String?
 }
