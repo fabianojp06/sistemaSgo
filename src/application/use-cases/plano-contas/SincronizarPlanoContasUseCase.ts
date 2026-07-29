@@ -1,5 +1,5 @@
 import type { Prisma, PrismaClient, TipoOperacao } from '@prisma/client';
-import type { PlanoContasFixtureProvider } from '@/infrastructure/integrations/senior/PlanoContasFixtureProvider';
+import type { PlanoContasProvider } from '@/infrastructure/integrations/senior/types';
 import type { PlanoContasBulkLoader } from '@/infrastructure/plano-contas/PlanoContasBulkLoader';
 import type { SincronismoLockRepository } from '@/infrastructure/plano-contas/SincronismoLockRepository';
 import { AcessoNegadoSincronismoError, SincronismoEmAndamentoError } from '@/domain/plano-contas/errors';
@@ -12,15 +12,14 @@ type SincronizarPlanoContasInput = {
 };
 
 /**
- * Orquestra o Fluxo Principal do UC03.00. Fonte dos dados é o
- * PlanoContasFixtureProvider (cenário de teste, sem ERP real) — a troca por
- * integração real do ERP Senior não muda este use case, só a implementação do
- * provider injetado.
+ * Orquestra o Fluxo Principal do UC03.00. A fonte dos dados é injetada via
+ * PlanoContasProvider — hoje o PlanoContasArquivoProvider (arquivo .txt do
+ * ERP), amanhã uma integração HTTP real do ERP Senior, sem mudar este use case.
  */
 export class SincronizarPlanoContasUseCase {
   constructor(
     private readonly prisma: PrismaClient,
-    private readonly provider: PlanoContasFixtureProvider,
+    private readonly provider: PlanoContasProvider,
     private readonly loader: PlanoContasBulkLoader,
     private readonly lock: SincronismoLockRepository,
   ) {}

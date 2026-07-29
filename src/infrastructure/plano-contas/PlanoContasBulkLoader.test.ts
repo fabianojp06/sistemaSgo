@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { PlanoContasBulkLoader } from './PlanoContasBulkLoader';
 import { ContasOrfasError } from '@/domain/plano-contas/errors';
-import type { ContaContabilPayload } from '@/infrastructure/integrations/senior/PlanoContasFixtureProvider';
+import type { ContaContabilPayload } from '@/infrastructure/integrations/senior/types';
 
 function criarPrismaMock() {
   const idsGerados = new Map<string, string>();

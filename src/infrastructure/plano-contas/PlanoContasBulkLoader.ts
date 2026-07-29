@@ -1,5 +1,5 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
-import type { ContaContabilPayload } from '@/infrastructure/integrations/senior/PlanoContasFixtureProvider';
+import type { ContaContabilPayload } from '@/infrastructure/integrations/senior/types';
 import { ContasOrfasError } from '@/domain/plano-contas/errors';
 
 export type ResultadoSincronismo = {

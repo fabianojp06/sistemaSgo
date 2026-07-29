@@ -1,5 +1,5 @@
 import { prisma } from '@/infrastructure/db/prisma';
-import { PlanoContasFixtureProvider } from '@/infrastructure/integrations/senior/PlanoContasFixtureProvider';
+import { PlanoContasArquivoProvider } from '@/infrastructure/integrations/senior/PlanoContasArquivoProvider';
 import { PlanoContasBulkLoader } from '@/infrastructure/plano-contas/PlanoContasBulkLoader';
 import { SincronismoLockRepository } from '@/infrastructure/plano-contas/SincronismoLockRepository';
 import { SincronizarPlanoContasUseCase } from './SincronizarPlanoContasUseCase';
@@ -11,7 +11,7 @@ import { ListarAgrupadoresUseCase } from './ListarAgrupadoresUseCase';
 export function getSincronizarPlanoContasUseCase(): SincronizarPlanoContasUseCase {
   return new SincronizarPlanoContasUseCase(
     prisma,
-    new PlanoContasFixtureProvider(),
+    new PlanoContasArquivoProvider(),
     new PlanoContasBulkLoader(prisma),
     new SincronismoLockRepository(prisma),
   );
