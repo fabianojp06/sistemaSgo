@@ -2,6 +2,14 @@ name: Supabase Migrate
 
 on:
   workflow_dispatch:
+    inputs:
+      usuario_id_remover:
+        description: 'Id de Usuario para checar/remover como órfão (deixe vazio para pular)'
+        required: false
+      confirmar_remocao:
+        description: 'true para efetivamente remover; false roda só em modo leitura'
+        required: false
+        default: 'false'
 
 jobs:
   migrate:
@@ -22,3 +30,8 @@ jobs:
       - run: npx prisma migrate deploy
       - run: npx prisma db execute --schema prisma/schema.prisma --stdin <<< "select 1;"
       - run: node prisma/seed.mjs
+      - if: ${{ github.event.inputs.usuario_id_remover != '' }}
+        run: node scripts/remover-usuario-orfao.mjs
+        env:
+          USUARIO_ID: ${{ github.event.inputs.usuario_id_remover }}
+          CONFIRMAR: ${{ github.event.inputs.confirmar_remocao }}
