@@ -21,41 +21,47 @@ export class PlanoContasBulkLoader {
     const ordenado = [...payload].sort((a, b) => a.nivel - b.nivel);
     const agora = new Date();
 
-    await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      const idPorCodigo = new Map<string, string>();
+    await this.prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
+        const idPorCodigo = new Map<string, string>();
 
-      for (const conta of ordenado) {
-        const idPai = conta.codigoPaiErp ? idPorCodigo.get(conta.codigoPaiErp) ?? null : null;
+        for (const conta of ordenado) {
+          const idPai = conta.codigoPaiErp ? idPorCodigo.get(conta.codigoPaiErp) ?? null : null;
 
-        const salvo = await tx.contaContabil.upsert({
-          where: { tenantId_codigoErp: { tenantId, codigoErp: conta.codigoErp } },
-          create: {
-            tenantId,
-            codigoErp: conta.codigoErp,
-            nomeConta: conta.nomeConta,
-            nivel: conta.nivel,
-            idPai,
-            isAnalitica: conta.isAnalitica,
-            statusSync: 'SINCRONIZADO',
-            syncedAt: agora,
-            erpUpdatedAt: agora,
-          },
-          update: {
-            // nome/hierarquia refletem a fonte externa a cada sync; `natureza`
-            // (parametrização local, RF_PLA_REQ_003) nunca é tocada aqui.
-            nomeConta: conta.nomeConta,
-            nivel: conta.nivel,
-            idPai,
-            isAnalitica: conta.isAnalitica,
-            statusSync: 'SINCRONIZADO',
-            syncedAt: agora,
-            erpUpdatedAt: agora,
-          },
-        });
+          const salvo = await tx.contaContabil.upsert({
+            where: { tenantId_codigoErp: { tenantId, codigoErp: conta.codigoErp } },
+            create: {
+              tenantId,
+              codigoErp: conta.codigoErp,
+              nomeConta: conta.nomeConta,
+              nivel: conta.nivel,
+              idPai,
+              isAnalitica: conta.isAnalitica,
+              statusSync: 'SINCRONIZADO',
+              syncedAt: agora,
+              erpUpdatedAt: agora,
+            },
+            update: {
+              // nome/hierarquia refletem a fonte externa a cada sync; `natureza`
+              // (parametrização local, RF_PLA_REQ_003) nunca é tocada aqui.
+              nomeConta: conta.nomeConta,
+              nivel: conta.nivel,
+              idPai,
+              isAnalitica: conta.isAnalitica,
+              statusSync: 'SINCRONIZADO',
+              syncedAt: agora,
+              erpUpdatedAt: agora,
+            },
+          });
 
-        idPorCodigo.set(conta.codigoErp, salvo.id);
-      }
-    });
+          idPorCodigo.set(conta.codigoErp, salvo.id);
+        }
+      },
+      // Default do Prisma (5s de timeout, 2s de maxWait) não é suficiente para
+      // dezenas de upserts sequenciais sobre o pooler do Supabase — cada round-trip
+      // soma latência de rede e a transação interativa expira antes de terminar.
+      { timeout: 30_000, maxWait: 10_000 },
+    );
 
     return { contasProcessadas: ordenado.length };
   }
