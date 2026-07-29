@@ -47,3 +47,22 @@ export class AgrupadorReferenciadoError extends Error {
     this.name = 'AgrupadorReferenciadoError';
   }
 }
+
+// US-003, Cenário 4 — Tag de Natureza só é configurável em conta analítica.
+export class ContaNaoAnaliticaError extends Error {
+  constructor() {
+    super('Tags de Natureza são configuráveis somente em contas analíticas.');
+    this.name = 'ContaNaoAnaliticaError';
+  }
+}
+
+// US-003, Cenário 2, RN_PLA_005 — natureza da conta filha deve ser consistente com a
+// hierarquia; regra simétrica (bloqueia OPEX sob ancestral CAPEX e vice-versa).
+export class NaturezaHierarquiaInvalidaError extends Error {
+  constructor(public readonly naturezaAncestral: 'OPEX' | 'CAPEX', public readonly naturezaTentativa: 'OPEX' | 'CAPEX') {
+    super(
+      `Classificação Inválida [TRAVA O ERRO]: A conta sintética pai desta conta está classificada como ${naturezaAncestral}. Não é permitido classificar uma conta filha como ${naturezaTentativa} — a natureza deve ser consistente com a hierarquia.`,
+    );
+    this.name = 'NaturezaHierarquiaInvalidaError';
+  }
+}

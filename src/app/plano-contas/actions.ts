@@ -10,6 +10,7 @@ import {
   getCriarAgrupadorUseCase,
   getEditarAgrupadorUseCase,
   getExcluirAgrupadorUseCase,
+  getAtribuirNaturezaContaUseCase,
 } from '@/application/use-cases/plano-contas/container';
 
 type ActionResult = { sucesso: true } | { sucesso: false; mensagem: string };
@@ -64,6 +65,27 @@ export async function editarAgrupador(agrupadorId: string, nome: string, contaId
 
   try {
     await getEditarAgrupadorUseCase().execute({ ...contexto, agrupadorId, nome, contaIds });
+    revalidatePath('/plano-contas');
+    return { sucesso: true };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+export async function atribuirNaturezaConta(contaId: string, natureza: 'OPEX' | 'CAPEX' | null): Promise<ActionResult> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const temPermissao = await usuarioTemFuncionalidade(
+    prisma,
+    contexto.tenantId,
+    contexto.usuarioId,
+    'plano-contas.classificar-natureza',
+  );
+  if (!temPermissao) return { sucesso: false, mensagem: 'Perfil sem permissão para classificar natureza de conta.' };
+
+  try {
+    await getAtribuirNaturezaContaUseCase().execute({ ...contexto, contaId, natureza });
     revalidatePath('/plano-contas');
     return { sucesso: true };
   } catch (erro) {

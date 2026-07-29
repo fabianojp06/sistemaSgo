@@ -7,6 +7,7 @@ import { CriarAgrupadorUseCase } from './CriarAgrupadorUseCase';
 import { EditarAgrupadorUseCase } from './EditarAgrupadorUseCase';
 import { ExcluirAgrupadorUseCase } from './ExcluirAgrupadorUseCase';
 import { ListarAgrupadoresUseCase } from './ListarAgrupadoresUseCase';
+import { AtribuirNaturezaContaUseCase } from './AtribuirNaturezaContaUseCase';
 
 export function getSincronizarPlanoContasUseCase(): SincronizarPlanoContasUseCase {
   return new SincronizarPlanoContasUseCase(
@@ -31,4 +32,8 @@ export function getExcluirAgrupadorUseCase(): ExcluirAgrupadorUseCase {
 
 export function getListarAgrupadoresUseCase(): ListarAgrupadoresUseCase {
   return new ListarAgrupadoresUseCase(prisma);
+}
+
+export function getAtribuirNaturezaContaUseCase(): AtribuirNaturezaContaUseCase {
+  return new AtribuirNaturezaContaUseCase(prisma);
 }

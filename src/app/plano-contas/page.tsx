@@ -8,7 +8,7 @@ import { BotaoSincronizar } from './BotaoSincronizar';
 import { AgrupadorPanel } from './AgrupadorPanel';
 import { ArvoreContas, type NoContaContabil } from './ArvoreContas';
 
-function montarArvore(contas: { id: string; codigoErp: string; nomeConta: string; idPai: string | null; isAnalitica: boolean; statusSync: string }[]): NoContaContabil[] {
+function montarArvore(contas: { id: string; codigoErp: string; nomeConta: string; idPai: string | null; isAnalitica: boolean; statusSync: string; natureza: 'OPEX' | 'CAPEX' | null }[]): NoContaContabil[] {
   const porId = new Map<string, NoContaContabil>(
     contas.map((c) => [c.id, { ...c, filhas: [] }]),
   );
@@ -34,12 +34,13 @@ export default async function PlanoContasPage() {
   const usuario = await prisma.usuario.findFirst({ where: { tenantId, clerkUserId: userId }, select: { id: true } });
   if (!usuario) redirect('/login');
 
-  const [podeSincronizar, contas, agrupadores] = await Promise.all([
+  const [podeSincronizar, podeClassificarNatureza, contas, agrupadores] = await Promise.all([
     usuarioTemFuncionalidade(prisma, tenantId, usuario.id, 'plano-contas.sincronizar'),
+    usuarioTemFuncionalidade(prisma, tenantId, usuario.id, 'plano-contas.classificar-natureza'),
     prisma.contaContabil.findMany({
       where: { tenantId },
       orderBy: { codigoErp: 'asc' },
-      select: { id: true, codigoErp: true, nomeConta: true, idPai: true, isAnalitica: true, statusSync: true },
+      select: { id: true, codigoErp: true, nomeConta: true, idPai: true, isAnalitica: true, statusSync: true, natureza: true },
     }),
     getListarAgrupadoresUseCase().execute(tenantId),
   ]);
@@ -61,7 +62,7 @@ export default async function PlanoContasPage() {
             Nenhuma conta sincronizada ainda. Clique em &quot;Sincronizar com ERP Senior&quot; para importar o plano fictício.
           </p>
         ) : (
-          <ArvoreContas nos={arvore} />
+          <ArvoreContas nos={arvore} podeClassificarNatureza={podeClassificarNatureza} />
         )}
       </section>
 
