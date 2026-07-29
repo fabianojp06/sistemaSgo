@@ -1,3 +1,4 @@
+export const PLANO_CONTAS_TXT = `
 1.9    1.692   DESPESAS ORÇAMENTÁRIAS S 2 D      870
 1.9.11    1.702      DESPESAS DE PESSOAL S 3 D      890
 1.9.11.001    1.712         Salários A 4 D      900
@@ -179,3 +180,4 @@ Classificação Reduzida Descrição Tipo Nível NaturezaContabil
 1.9.22.004    3.412         Multas de Trênsito A 4 D    2.774
 1.9.23    3.422      RATEIO DAS DESPESAS DA ADM CENTRAL S 3 D    2.624
 1.9.23.001    3.442         Rateio da Adm. Central A 4 D    2.634
+`;

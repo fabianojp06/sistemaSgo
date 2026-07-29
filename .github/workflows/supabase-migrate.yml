@@ -10,6 +10,13 @@ on:
         description: 'true para efetivamente remover; false roda só em modo leitura'
         required: false
         default: 'false'
+      limpar_plano_contas_tenant:
+        description: 'tenantId para checar/limpar ContaContabil (deixe vazio para pular)'
+        required: false
+      confirmar_limpeza_plano_contas:
+        description: 'true para efetivamente apagar o plano de contas do tenant; false roda só em modo leitura'
+        required: false
+        default: 'false'
 
 jobs:
   migrate:
@@ -35,3 +42,8 @@ jobs:
         env:
           USUARIO_ID: ${{ github.event.inputs.usuario_id_remover }}
           CONFIRMAR: ${{ github.event.inputs.confirmar_remocao }}
+      - if: ${{ github.event.inputs.limpar_plano_contas_tenant != '' }}
+        run: node scripts/limpar-plano-contas.mjs
+        env:
+          TENANT_ID: ${{ github.event.inputs.limpar_plano_contas_tenant }}
+          CONFIRMAR: ${{ github.event.inputs.confirmar_limpeza_plano_contas }}

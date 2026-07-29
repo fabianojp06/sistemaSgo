@@ -1,22 +1,22 @@
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
 import type { ContaContabilPayload, PlanoContasProvider } from './types';
+import { PLANO_CONTAS_TXT } from './plano-contas-raw';
 
 const CODIGO_REGEX = /^\d+(?:\.\d+)*$/;
 
 /**
- * Lê o plano de contas de um arquivo `.txt` exportado do ERP (formato fixo-width,
- * com linhas de cabeçalho/rodapé de página misturadas). Substitui o
- * PlanoContasFixtureProvider [decisão ADR do tech lead: mesma interface de saída,
- * troca de fonte é só implementação — integração HTTP real do ERP Senior fica
- * para depois].
+ * Fonte do plano de contas exportado do ERP (formato fixo-width, com linhas de
+ * cabeçalho/rodapé de página misturadas), embutida como constante em
+ * plano-contas-raw.ts — não usa `fs.readFileSync` em runtime porque o caminho
+ * relativo a `__dirname` não é confiável em serverless functions (Vercel): o
+ * arquivo é rastreado no build (`.nft.json`) mas o bundler não preserva a
+ * mesma estrutura de diretórios do `src/`, gerando ENOENT em produção.
+ * Substitui o PlanoContasFixtureProvider [decisão ADR do tech lead: mesma
+ * interface de saída, troca de fonte é só implementação — integração HTTP
+ * real do ERP Senior fica para depois].
  */
 export class PlanoContasArquivoProvider implements PlanoContasProvider {
-  constructor(private readonly caminhoArquivo: string = path.join(__dirname, 'plano-contas.txt')) {}
-
   async buscarContasAtivas(): Promise<ContaContabilPayload[]> {
-    const conteudo = readFileSync(this.caminhoArquivo, 'utf-8');
-    return parsePlanoContas(conteudo);
+    return parsePlanoContas(PLANO_CONTAS_TXT);
   }
 }
 
