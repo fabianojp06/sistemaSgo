@@ -3,26 +3,18 @@ import { PlanoContasBulkLoader } from './PlanoContasBulkLoader';
 import { ContasOrfasError } from '@/domain/plano-contas/errors';
 import type { ContaContabilPayload } from '@/infrastructure/integrations/senior/types';
 
-function criarPrismaMock() {
-  const idsGerados = new Map<string, string>();
-  let contador = 0;
+function criarPrismaMock(existentes: { id: string; codigoErp: string }[] = []) {
+  const upsert = vi.fn((args: { create: { id: string; codigoErp: string; idPai: string | null } }) => args);
 
-  const tx = {
+  const prisma = {
     contaContabil: {
-      upsert: vi.fn(({ create }: { create: { codigoErp: string; idPai: string | null } }) => {
-        contador += 1;
-        const id = `id-${contador}`;
-        idsGerados.set(create.codigoErp, id);
-        return Promise.resolve({ id });
-      }),
+      findMany: vi.fn().mockResolvedValue(existentes),
+      upsert,
     },
+    $transaction: vi.fn((operacoes: unknown[]) => Promise.resolve(operacoes)),
   };
-  type Tx = typeof tx;
 
-  return {
-    tx,
-    $transaction: vi.fn((callback: (tx: Tx) => Promise<unknown>) => callback(tx)),
-  };
+  return prisma;
 }
 
 describe('PlanoContasBulkLoader [UC03.00]', () => {
@@ -36,9 +28,10 @@ describe('PlanoContasBulkLoader [UC03.00]', () => {
 
     await expect(loader.sincronizar('tenant-1', payload)).rejects.toThrow(ContasOrfasError);
     expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(prisma.contaContabil.findMany).not.toHaveBeenCalled();
   });
 
-  it('sincroniza em ordem de nível resolvendo idPai pelo codigoErp [RNF_PLA_REQ_004]', async () => {
+  it('sincroniza em ordem de nível resolvendo idPai pelo codigoErp, sem transação interativa [RNF_PLA_REQ_004]', async () => {
     const prisma = criarPrismaMock();
     const loader = new PlanoContasBulkLoader(prisma as never);
 
@@ -53,10 +46,38 @@ describe('PlanoContasBulkLoader [UC03.00]', () => {
 
     expect(resultado.contasProcessadas).toBe(4);
 
-    const chamadas = prisma.tx.contaContabil.upsert.mock.calls;
-    expect(chamadas[0][0].create.codigoErp).toBe('1');
-    expect(chamadas[0][0].create.idPai).toBeNull();
-    expect(chamadas[3][0].create.codigoErp).toBe('1.1.11.111');
-    expect(chamadas[3][0].create.idPai).toBe('id-3'); // id gerado para 1.1.11
+    // $transaction recebe um array de operações já montado, nunca um callback
+    // assíncrono — é essa a mudança que evita a transação interativa.
+    const [operacoes] = prisma.$transaction.mock.calls[0];
+    expect(Array.isArray(operacoes)).toBe(true);
+    expect(operacoes).toHaveLength(4);
+
+    const chamadas = prisma.contaContabil.upsert.mock.calls;
+    const porCodigo = new Map(chamadas.map(([args]) => [args.create.codigoErp, args.create]));
+
+    const raiz = porCodigo.get('1')!;
+    const folha = porCodigo.get('1.1.11.111')!;
+    const pai = porCodigo.get('1.1.11')!;
+
+    expect(raiz.idPai).toBeNull();
+    expect(folha.idPai).toBe(pai.id);
+  });
+
+  it('reaproveita o id de uma conta já existente em vez de gerar um novo', async () => {
+    const prisma = criarPrismaMock([{ id: 'id-existente', codigoErp: '1' }]);
+    const loader = new PlanoContasBulkLoader(prisma as never);
+
+    const payload: ContaContabilPayload[] = [
+      { codigoErp: '1', nomeConta: 'Ativo', nivel: 1, codigoPaiErp: null, isAnalitica: false },
+      { codigoErp: '1.1', nomeConta: 'Ativo Circulante', nivel: 2, codigoPaiErp: '1', isAnalitica: false },
+    ];
+
+    await loader.sincronizar('tenant-1', payload);
+
+    const chamadas = prisma.contaContabil.upsert.mock.calls;
+    const porCodigo = new Map(chamadas.map(([args]) => [args.create.codigoErp, args.create]));
+
+    expect(porCodigo.get('1')!.id).toBe('id-existente');
+    expect(porCodigo.get('1.1')!.idPai).toBe('id-existente');
   });
 });
