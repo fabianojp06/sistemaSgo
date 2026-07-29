@@ -1,10 +1,18 @@
 import { auth } from '@clerk/nextjs/server';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { BotaoAjuda } from './ajuda/BotaoAjuda';
 import { BotaoSair } from './logoff/BotaoSair';
 import { getObterMenuUsuarioUseCase } from '@/application/use-cases/menu/container';
 import { prisma } from '@/infrastructure/db/prisma';
 import { getTenantId } from '@/infrastructure/tenant';
+
+// Funcionalidade não tem campo de rota — mapeamento local até o projeto
+// precisar de mais que essas duas entradas (aí sim vale mover pro schema).
+const ROTA_POR_FUNCIONALIDADE: Record<string, string> = {
+  'plano-contas.visualizar': '/plano-contas',
+  'plano-contas.sincronizar': '/plano-contas',
+};
 
 /**
  * UC01.03 — Exibir Tela Principal.
@@ -57,9 +65,20 @@ export default async function TelaPrincipal() {
                 <li key={modulo.chave}>
                   <p className="font-medium">{modulo.nome}</p>
                   <ul className="mt-1 space-y-1 pl-3 text-sm text-gray-500">
-                    {modulo.funcionalidades.map((funcionalidade) => (
-                      <li key={funcionalidade.chave}>{funcionalidade.nome}</li>
-                    ))}
+                    {modulo.funcionalidades.map((funcionalidade) => {
+                      const href = ROTA_POR_FUNCIONALIDADE[funcionalidade.chave];
+                      return (
+                        <li key={funcionalidade.chave}>
+                          {href ? (
+                            <Link href={href} className="hover:text-gray-900 hover:underline">
+                              {funcionalidade.nome}
+                            </Link>
+                          ) : (
+                            funcionalidade.nome
+                          )}
+                        </li>
+                      );
+                    })}
                   </ul>
                 </li>
               ))}
