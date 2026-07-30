@@ -1,0 +1,134 @@
+US-008 
+
+Configurar Semáforo Orçamentário por Conta Analítica 
+
+ 
+
+Módulo: 
+
+Cadastros — Plano de Contas 
+
+Épico: 
+
+EP118/24 
+
+Perfil: 
+
+Orçamentista / GFIN 
+
+Prioridade: 
+
+🟢 Baixa 
+
+Estimativa: 
+
+P 
+
+Depende de: 
+
+US-001 (conta N7 sincronizada) 
+
+ 
+
+Como Orçamentista ou Gestor Financeiro (GFIN),
+
+Quero configurar as faixas percentuais do Semáforo Orçamentário (Verde/Amarelo/Laranja) para contas analíticas específicas,
+
+Para personalizar os limiares que futuramente definirão os alertas visuais de consumo orçamentário por conta, adequando-os à realidade operacional de cada rubrica sem depender dos padrões globais do sistema. [RN_PLA_006, RF_PLA_REQ_003]
+
+
+
+Nota de escopo (fatiamento — Debate do Time, 2026-07-30): esta US cobre apenas a configuração e validação dos 3 percentuais (Cenários 1 e 2). A exibição real do badge colorido com base em consumo (antigo Cenário 3) foi movida para US-008a, pois depende de um módulo de execução orçamentária (empenho/liquidação) que ainda não existe no sistema — ver US-008a para detalhes e bloqueio. Ver também [[modulo-execucao-orcamentaria-status]] se disponível.
+
+
+
+Cenários de Aceite — US-008
+
+✅  Cenário 1 — Configuração válida de faixas do semáforo
+
+Dado que o usuário acessa o painel de parametrização de uma conta analítica N7
+
+Quando o usuário define os limiares: Verde até 70%, Amarelo até 85%, Laranja até 95%
+
+E confirma a configuração
+
+Então o sistema salva semaforo_verde_pct=70, semaforo_amarelo_pct=85, semaforo_laranja_pct=95
+
+E o log de auditoria é gravado com os valores anteriores e posteriores [RN_PLA_004]
+
+
+
+❌  Cenário 2 — Faixas incoerentes (Amarelo < Verde) [TRAVA O ERRO]
+
+Dado que o usuário está configurando os limiares
+
+Quando o usuário define Verde=85% e Amarelo=70% (Amarelo menor que Verde)
+
+E tenta salvar
+
+Então o sistema bloqueia o salvamento
+
+E exibe o alerta: 'Configuração Inválida: O limiar Amarelo deve ser maior que o limiar Verde. Verifique os percentuais informados.'
+
+
+
+❌  Cenário 2a — Faixas incoerentes (Laranja ≤ Amarelo) [TRAVA O ERRO]
+
+Dado que o usuário está configurando os limiares
+
+Quando o usuário define Amarelo=85% e Laranja=80% (Laranja menor ou igual ao Amarelo)
+
+E tenta salvar
+
+Então o sistema bloqueia o salvamento
+
+E exibe o alerta: 'Configuração Inválida: O limiar Laranja deve ser maior que o limiar Amarelo. Verifique os percentuais informados.'
+
+
+
+❌  Cenário 2b — Percentual fora da faixa 0–100% [TRAVA O ERRO]
+
+Dado que o usuário está configurando os limiares
+
+Quando o usuário informa um valor menor ou igual a 0, ou maior que 100, em qualquer um dos três campos
+
+E tenta salvar
+
+Então o sistema bloqueia o salvamento
+
+E exibe o alerta: 'Configuração Inválida: os percentuais devem estar entre 1 e 100.'
+
+
+
+Aspecto
+
+Detalhe
+
+Tabelas afetadas
+
+ContaContabil (UPDATE em semaforoVerdePct, semaforoAmareloPct, semaforoLaranjaPct — nomes de campo a confirmar com o Tech Lead/DBA na modelagem)
+
+Validação
+
+laranja > amarelo > verde > 0 e todos ≤ 100. Validado no backend; avaliar com o DBA se also vale a pena CHECK constraint no banco
+
+Auditoria
+
+tipo_operacao: SEMAFORO_CONFIGURADO (ou equivalente) | delta: valores anteriores e posteriores dos três campos
+
+
+
+Dependências
+
+- US-001 (conta N7 sincronizada)
+- Não depende de módulo de execução orçamentária — essa dependência foi isolada em US-008a
+
+
+
+Definition of Done — US-008
+
+☐  Cenários 1, 2, 2a e 2b implementados e aprovados em homologação
+
+☐  Validação de coerência entre faixas implementada no backend (e no frontend, quando a UI existir)
+
+☐  Log com delta gravado 

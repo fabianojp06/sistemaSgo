@@ -1,0 +1,117 @@
+US-008a
+
+Exibir Badge do Semáforo Orçamentário na Aba de Totalizadores
+
+
+
+Módulo:
+
+Cadastros — Plano de Contas / Relatórios Orçamentários
+
+Épico:
+
+EP118/24
+
+Perfil:
+
+Orçamentista / GFIN
+
+Prioridade:
+
+🟢 Baixa — BLOQUEADA (ver Nota de Bloqueio)
+
+Estimativa:
+
+Não estimável até o bloqueio ser resolvido
+
+Depende de:
+
+US-008 (limiares configurados) e de um módulo de execução orçamentária (empenho/liquidação) ainda inexistente no SGO
+
+
+
+Nota de Bloqueio (Debate do Time, 2026-07-30)
+
+Esta US foi extraída do Cenário 3 original da US-008 ("Configurar Semáforo Orçamentário"). Ela depende de "Valor Realizado / Valor Orçado" por conta analítica, calculado pelo TotalizerService — mas o TotalizerService hoje (src/domain/plano-contas/TotalizerService.ts) é um stub que sempre retorna saldo zero, porque não existe nenhum módulo de execução orçamentária (empenho/liquidação) implementado no SGO ainda. Não há, em nenhuma tabela do sistema, dado de valor orçado nem valor realizado por conta.
+
+Esta US não deve entrar em sprint enquanto o módulo de execução orçamentária não estiver ao menos planejado no backlog. Reavaliar quando esse módulo existir ou tiver data prevista.
+
+
+
+Como Orçamentista ou Gestor Financeiro (GFIN),
+
+Quero visualizar um badge colorido (Verde/Amarelo/Laranja/Vermelho) na aba de Totalizadores de cada conta analítica, refletindo o consumo orçamentário atual frente aos limiares configurados na US-008,
+
+Para identificar visualmente e rapidamente quais contas estão próximas ou já ultrapassaram seus limites de consumo, sem precisar calcular manualmente cada percentual. [RN_PLA_006]
+
+
+
+Cenários de Aceite — US-008a
+
+✅  Cenário 1 — Semáforo exibe Vermelho quando consumo ultrapassa o limiar Laranja
+
+Dado que a conta 'Passagens Aéreas Nacionais' possui semaforoLaranjaPct=95 (configurado via US-008)
+
+E que o consumo atual desta conta representa 97% do valor orçado
+
+Quando o usuário acessa a aba de Totalizadores da Proposta
+
+Então o sistema exibe o badge Vermelho na linha da conta [RN_PLA_006]
+
+E o valor de consumo é calculado pelo TotalizerService: Valor Realizado / Valor Orçado
+
+
+
+✅  Cenário 2 — Semáforo exibe Verde/Amarelo/Laranja conforme faixa de consumo
+
+Dado que a conta possui os limiares configurados (Verde=70, Amarelo=85, Laranja=95)
+
+Quando o consumo da conta está, respectivamente, abaixo de 70%, entre 70% e 85%, ou entre 85% e 95%
+
+Então o sistema exibe o badge correspondente (Verde, Amarelo ou Laranja) na linha da conta
+
+
+
+✅  Cenário 3 — Conta sem limiares configurados usa padrão global do sistema
+
+Dado que a conta analítica não teve limiares configurados via US-008
+
+Quando o usuário acessa a aba de Totalizadores
+
+Então o sistema aplica os limiares padrão globais (a definir pelo PO/Tech Lead)
+
+E exibe o badge normalmente com base nesses valores padrão
+
+
+
+Aspecto
+
+Detalhe
+
+Tabelas afetadas
+
+Nenhuma (somente leitura — ContaContabil para limiares, módulo de execução orçamentária para valor realizado/orçado)
+
+Dependência de módulo
+
+Módulo de Execução Orçamentária (empenho/liquidação) — TotalizerService precisa de uma implementação real de ObtemSaldoContaAnalitica (hoje é semSaldoDisponivel, stub)
+
+Cálculo
+
+percentualConsumo = valorRealizado / valorOrcado; badge = comparação contra os 3 limiares da conta (ou padrão global se não configurados)
+
+Auditoria
+
+Não aplicável — é leitura/exibição, sem alteração de dado
+
+
+
+Definition of Done — US-008a
+
+☐  Módulo de Execução Orçamentária disponível com valorRealizado e valorOrcado por conta
+
+☐  TotalizerService (ou serviço equivalente) calcula percentual de consumo real
+
+☐  Cenários 1 a 3 implementados e aprovados em homologação
+
+☐  Padrão global de limiares definido para contas sem configuração própria (US-008)
