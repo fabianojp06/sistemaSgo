@@ -55,10 +55,21 @@ export class EditarAgrupadorUseCase {
           data: { nome },
         });
 
-        await tx.contaAgrupadoraItem.deleteMany({ where: { agrupadoraId: input.agrupadorId } });
-        await tx.contaAgrupadoraItem.createMany({
-          data: contaIdsUnicos.map((contaId) => ({ agrupadoraId: input.agrupadorId, contaId })),
-        });
+        const contaIdsAnteriores = estadoAnterior.itens.map((i) => i.contaId);
+        const contaIdsRemovidos = contaIdsAnteriores.filter((id) => !contaIdsUnicos.includes(id));
+        const contaIdsAdicionados = contaIdsUnicos.filter((id) => !contaIdsAnteriores.includes(id));
+
+        // Reconciliação diff — nunca DELETE ALL + INSERT, para não recriar vínculos inalterados
+        if (contaIdsRemovidos.length > 0) {
+          await tx.contaAgrupadoraItem.deleteMany({
+            where: { agrupadoraId: input.agrupadorId, contaId: { in: contaIdsRemovidos } },
+          });
+        }
+        if (contaIdsAdicionados.length > 0) {
+          await tx.contaAgrupadoraItem.createMany({
+            data: contaIdsAdicionados.map((contaId) => ({ agrupadoraId: input.agrupadorId, contaId })),
+          });
+        }
 
         await tx.historicoOperacao.create({
           data: {
