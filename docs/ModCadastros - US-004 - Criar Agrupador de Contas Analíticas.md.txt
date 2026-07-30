@@ -158,30 +158,48 @@ Transação?
 
 Sim — INSERT no agrupador + INSERT nos vínculos + log em transação única. Rollback total em falha 
 
-Constraint banco 
+Constraint banco
 
-UNIQUE (org_id, nome) em tb_agrupador_contas; trigger fn_check_conta_analitica em tb_agrupador_conta_item 
+UNIQUE (tenantId, nome) em ContaAgrupadora [implementado]. Validação de conta analítica (N7) feita em código de aplicação, em CriarAgrupadorUseCase, via contaContabil.count({isAnalitica: true}) — não há trigger fn_check_conta_analitica no Postgres (ver Decisões do Debate)
 
-Auditoria 
+Auditoria
 
-tipo_operacao: INSERT | payload: nome, contas vinculadas, usuario_id, timestamp 
+tipo_operacao: AGRUPADOR_CRIADO | payload: agrupadorId, nome, contaIds, usuarioId, timestamp — gravado em HistoricoOperacao dentro da mesma transação
 
-Relatórios 
+Relatórios
 
-Agrupador ativo disponível imediatamente no Cronograma de Desembolso (UC04.01) 
+Agrupador disponível imediatamente no Cronograma de Desembolso (UC04.01) — não há campo `ativo` na tabela; todo Agrupador criado é considerado disponível (ver Decisões do Debate)
 
- 
 
-Definition of Done — US-004 
 
-☐  Cenários 1 a 6 implementados e aprovados em homologação 
+Decisões do Debate do Time (2026-07-30)
 
-☐  Agrupador disponível nos relatórios imediatamente após criação 
 
-☐  Participação múltipla da mesma conta em diferentes agrupadores validada (N:N) 
 
-☐  Trigger fn_check_conta_analitica bloqueando contas N1–N6 testado 
+1. RN_PLA_007 — confirmada: significa que ContaAgrupadora é entidade 100% SGO, isolada da árvore importada do ERP (CRUD completo permitido, sem vínculo de escrita com ContaContabil). Não é regra de isolamento multi-tenant (isso já é coberto por tenantId em todas as tabelas).
 
-☐  Seletor exibe apenas contas N7 no modal 
+2. Campo `ativo = TRUE` do Cenário 1 — texto desatualizado em relação à implementação. Não existe coluna `ativo` no schema (ContaAgrupadora) e não há necessidade de adicioná-la: todo Agrupador criado já é retornado por ListarAgrupadoresUseCase sem filtro de status. Decisão: manter o schema como está, sem migration; texto do Cenário 1 mantido apenas como referência histórica da intenção de negócio ("disponível imediatamente"), já satisfeita.
 
-☐  Log de criação com payload completo gravado 
+3. Trigger fn_check_conta_analitica — decisão do time: não implementar. A validação já ocorre em CriarAgrupadorUseCase (único ponto de escrita em ContaAgrupadoraItem hoje), é testável em unit test e evita lógica de negócio em PL/pgSQL. Reavaliar apenas se surgir uma segunda via de escrita nessa tabela (import em lote, script administrativo, etc.).
+
+4. Transação interativa (prisma.$transaction(async (tx) => {...})) em CriarAgrupadorUseCase — mesmo padrão que causou falha no sync do plano de contas com o pooler do Supabase (commit 814d57e). Risco considerado menor aqui (3 writes fixos, não um loop dinâmico), não bloqueia a US, mas registrado como débito técnico a revisar se houver instabilidade em produção.
+
+5. Cenário 2 (mesma conta em múltiplos Agrupadores) não tinha teste automatizado — TotalizerService usa hoje um stub que sempre retorna saldo zero (não há módulo de empenho/liquidação implementado), então o comportamento nunca era exercitado com valores reais. Teste adicionado em ListarAgrupadoresUseCase.test.ts injetando saldo fake por conta, confirmando totais independentes por Agrupador mesmo com conta compartilhada.
+
+
+
+Definition of Done — US-004
+
+☑  Cenários 1, 3, 4, 5 implementados e cobertos por teste automatizado (CriarAgrupadorUseCase.test.ts)
+
+☑  Cenário 2 implementado e coberto por teste automatizado (ListarAgrupadoresUseCase.test.ts)
+
+☑  Agrupador disponível nos relatórios imediatamente após criação (sem campo `ativo` — ver Decisões do Debate, item 2)
+
+☑  Participação múltipla da mesma conta em diferentes agrupadores validada (N:N)
+
+☑  Validação de conta analítica (N7) implementada em CriarAgrupadorUseCase e testada — decisão do time de não usar trigger de banco (ver Decisões do Debate, item 3)
+
+☐  Seletor exibe apenas contas N7 no modal — pendente de verificação de UI/frontend (fora do escopo dos use cases já auditados)
+
+☑  Log de criação com payload completo gravado 
