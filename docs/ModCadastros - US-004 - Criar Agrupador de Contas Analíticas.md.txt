@@ -1,0 +1,187 @@
+US-004 
+
+Criar Agrupador de Contas Analíticas 
+
+ 
+
+Módulo: 
+
+Cadastros — Plano de Contas 
+
+Épico: 
+
+EP118/24 
+
+Perfil: 
+
+Orçamentista / GFIN 
+
+Prioridade: 
+
+🟡 Média 
+
+Estimativa: 
+
+M 
+
+Depende de: 
+
+US-001 (contas N7 disponíveis) 
+
+ 
+
+Como Orçamentista ou Gestor Financeiro (GFIN), 
+
+Quero criar um Agrupador de Contas que consolide duas ou mais contas analíticas (N7) do ERP sob um rótulo personalizado SGO, 
+
+Para gerar subtotais customizados nos relatórios orçamentários (Cronograma de Desembolso, Previsão de Despesas) sem alterar a hierarquia oficial do ERP Senior. [RF_PLA_REQ_005, RN_PLA_007, RN_PLA_008, RN_PLA_009] 
+
+ 
+
+Cenários de Aceite — US-004 
+
+ 
+
+✅  Cenário 1 — Criação de Agrupador válido com 2 ou mais contas N7 
+
+Dado que o usuário acessa o painel de Agrupadores de Contas 
+
+E que existem contas analíticas N7 sincronizadas no SGO 
+
+Quando o usuário clica em [Novo Agrupador], preenche o nome 'Despesas com Passagens' e seleciona as contas 'Passagens Aéreas Nacionais' e 'Passagens Aéreas Internacionais' 
+
+E clica em [Salvar Agrupador] 
+
+Então o sistema valida nome único e mínimo de 2 contas N7 [RN_PLA_008] 
+
+E persiste o Agrupador em tb_agrupador_contas com ativo = TRUE 
+
+E persiste os vínculos em tb_agrupador_conta_item para cada conta selecionada 
+
+E o Agrupador aparece imediatamente no painel, disponível para os relatórios do módulo Orçamentário [RN_PLA_009] 
+
+E o log de criação é gravado em tb_historico_operacoes com tipo_operacao='INSERT' e payload completo [RN_PLA_004] 
+
+ 
+
+ 
+
+✅  Cenário 2 — Mesma conta N7 participa de múltiplos Agrupadores simultaneamente 
+
+Dado que a conta 'Passagens Aéreas Nacionais' já pertence ao Agrupador 'Despesas com Passagens' 
+
+Quando o usuário cria um novo Agrupador 'Viagens Corporativas' e seleciona a mesma conta 'Passagens Aéreas Nacionais' junto com 'Diárias de Viagem' 
+
+Então o sistema permite o vínculo sem conflito [RN_PLA_011] 
+
+E a conta aparece em ambos os Agrupadores no painel 
+
+E o TotalizerService calcula o valor de cada Agrupador de forma independente 
+
+ 
+
+ 
+
+❌  Cenário 3 — Nome de Agrupador duplicado [TRAVA O ERRO] 
+
+Dado que já existe um Agrupador com o nome 'Despesas com Passagens' cadastrado no tenant 
+
+Quando o usuário tenta criar um novo Agrupador com o mesmo nome 
+
+E clica em [Salvar Agrupador] 
+
+Então o sistema bloqueia o salvamento [RN_PLA_008] 
+
+E exibe o alerta: 'Já existe um Agrupador com este nome. Utilize um nome único.' 
+
+E o modal permanece aberto com os dados preenchidos intactos para correção 
+
+ 
+
+ 
+
+❌  Cenário 4 — Agrupador com menos de 2 contas N7 [TRAVA O ERRO] 
+
+Dado que o usuário está criando um Agrupador e selecionou apenas 1 conta analítica 
+
+Quando clica em [Salvar Agrupador] 
+
+Então o sistema bloqueia o salvamento [RN_PLA_008] 
+
+E exibe o alerta: 'O Agrupador deve ter um Nome preenchido e ao menos duas contas analíticas selecionadas.' 
+
+E o modal permanece aberto com os dados preenchidos intactos 
+
+ 
+
+ 
+
+❌  Cenário 5 — Agrupador com nome em branco [TRAVA O ERRO] 
+
+Dado que o usuário está criando um Agrupador com 2 contas selecionadas mas sem preencher o Nome 
+
+Quando clica em [Salvar Agrupador] 
+
+Então o sistema bloqueia o salvamento 
+
+E exibe o alerta: 'O Agrupador deve ter um Nome preenchido e ao menos duas contas analíticas selecionadas.' 
+
+E o campo Nome é destacado visualmente em vermelho 
+
+ 
+
+ 
+
+❌  Cenário 6 — Tentativa de vincular conta sintética N1–N6 ao Agrupador [TRAVA O ERRO] 
+
+Dado que o usuário tenta selecionar uma conta sintética (Nível 1 a 6) no seletor de contas do modal de Agrupador 
+
+Quando o seletor de contas é renderizado 
+
+Então apenas contas analíticas N7 são exibidas como opções no seletor [RN_PLA_003] 
+
+E contas sintéticas N1–N6 não aparecem na lista de seleção 
+
+ 
+
+ 
+
+Aspecto 
+
+Detalhe 
+
+Tabelas afetadas 
+
+tb_agrupador_contas (INSERT), tb_agrupador_conta_item (INSERT por conta), tb_historico_operacoes (INSERT) 
+
+Transação? 
+
+Sim — INSERT no agrupador + INSERT nos vínculos + log em transação única. Rollback total em falha 
+
+Constraint banco 
+
+UNIQUE (org_id, nome) em tb_agrupador_contas; trigger fn_check_conta_analitica em tb_agrupador_conta_item 
+
+Auditoria 
+
+tipo_operacao: INSERT | payload: nome, contas vinculadas, usuario_id, timestamp 
+
+Relatórios 
+
+Agrupador ativo disponível imediatamente no Cronograma de Desembolso (UC04.01) 
+
+ 
+
+Definition of Done — US-004 
+
+☐  Cenários 1 a 6 implementados e aprovados em homologação 
+
+☐  Agrupador disponível nos relatórios imediatamente após criação 
+
+☐  Participação múltipla da mesma conta em diferentes agrupadores validada (N:N) 
+
+☐  Trigger fn_check_conta_analitica bloqueando contas N1–N6 testado 
+
+☐  Seletor exibe apenas contas N7 no modal 
+
+☐  Log de criação com payload completo gravado 
