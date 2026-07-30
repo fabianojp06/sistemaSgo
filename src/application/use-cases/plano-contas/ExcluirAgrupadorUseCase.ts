@@ -25,7 +25,11 @@ export class ExcluirAgrupadorUseCase {
     }
 
     await this.prisma.$transaction(async (tx) => {
-      const agrupador = await tx.contaAgrupadora.findUniqueOrThrow({ where: { id: input.agrupadorId } });
+      const agrupador = await tx.contaAgrupadora.findUniqueOrThrow({
+        where: { id: input.agrupadorId },
+        include: { itens: true },
+      });
+      const contaIds = agrupador.itens.map((item) => item.contaId);
 
       await tx.contaAgrupadora.delete({ where: { id: input.agrupadorId } });
 
@@ -35,7 +39,7 @@ export class ExcluirAgrupadorUseCase {
           usuarioId: input.usuarioId,
           tipoOperacao: 'AGRUPADOR_EXCLUIDO',
           descricao: `Agrupador de Contas "${agrupador.nome}" excluído`,
-          dadosSerializados: { agrupadorId: agrupador.id, nome: agrupador.nome },
+          dadosSerializados: { agrupadorId: agrupador.id, nome: agrupador.nome, contaIds },
         },
       });
     });

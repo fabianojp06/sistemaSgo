@@ -5,7 +5,14 @@ import { AgrupadorReferenciadoError } from '@/domain/plano-contas/errors';
 function criarPrismaMock() {
   const tx = {
     contaAgrupadora: {
-      findUniqueOrThrow: vi.fn().mockResolvedValue({ id: 'agrupador-1', nome: 'Passagens aéreas' }),
+      findUniqueOrThrow: vi.fn().mockResolvedValue({
+        id: 'agrupador-1',
+        nome: 'Passagens aéreas',
+        itens: [
+          { agrupadoraId: 'agrupador-1', contaId: 'c1' },
+          { agrupadoraId: 'agrupador-1', contaId: 'c2' },
+        ],
+      }),
       delete: vi.fn().mockResolvedValue({}),
     },
     historicoOperacao: { create: vi.fn().mockResolvedValue({}) },
@@ -35,7 +42,12 @@ describe('ExcluirAgrupadorUseCase [UC03.00 / A4]', () => {
 
     expect(prisma.tx.contaAgrupadora.delete).toHaveBeenCalledWith({ where: { id: 'agrupador-1' } });
     expect(prisma.tx.historicoOperacao.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ tipoOperacao: 'AGRUPADOR_EXCLUIDO' }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({
+          tipoOperacao: 'AGRUPADOR_EXCLUIDO',
+          dadosSerializados: expect.objectContaining({ contaIds: ['c1', 'c2'] }),
+        }),
+      }),
     );
   });
 });
