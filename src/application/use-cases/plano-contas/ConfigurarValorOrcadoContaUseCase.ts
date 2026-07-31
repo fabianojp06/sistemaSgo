@@ -1,5 +1,6 @@
 import { Prisma, type PrismaClient } from '@prisma/client';
 import {
+  ConflitoConcorrenciaError,
   ValorOrcadoContaSinteticaError,
   ValorOrcadoInvalidoError,
   VersaoPropostaInvalidaError,
@@ -13,6 +14,8 @@ type ConfigurarValorOrcadoContaInput = {
   contaId: string;
   exercicio: number;
   valor: Prisma.Decimal.Value;
+  /** US-105 — updatedAt lido pelo cliente antes de editar; se divergir do atual, é conflito. */
+  tokenConcorrencia?: Date;
 };
 
 type ConfigurarValorOrcadoContaResult = {
@@ -74,25 +77,31 @@ export class ConfigurarValorOrcadoContaUseCase {
       },
     });
 
+    // US-105 — se o cliente informou o token e ele já diverge do estado lido, nem tenta:
+    // conflito é certo. Evita abrir transação para uma escrita que vamos rejeitar de qualquer forma.
+    if (registroAnterior && input.tokenConcorrencia && input.tokenConcorrencia.getTime() !== registroAnterior.updatedAt.getTime()) {
+      throw new ConflitoConcorrenciaError();
+    }
+
     const registro = await this.prisma.$transaction(async (tx) => {
-      const salvo = await tx.valorOrcadoConta.upsert({
-        where: {
-          tenantId_versaoId_contaId_exercicio: {
-            tenantId: input.tenantId,
-            versaoId: input.versaoId,
-            contaId: input.contaId,
-            exercicio: input.exercicio,
-          },
-        },
-        create: {
-          tenantId: input.tenantId,
-          versaoId: input.versaoId,
-          contaId: input.contaId,
-          exercicio: input.exercicio,
-          valor,
-        },
-        update: { valor },
-      });
+      let salvo: { contaId: string; exercicio: number; valor: Prisma.Decimal };
+
+      if (!registroAnterior) {
+        salvo = await tx.valorOrcadoConta.create({
+          data: { tenantId: input.tenantId, versaoId: input.versaoId, contaId: input.contaId, exercicio: input.exercicio, valor },
+        });
+      } else {
+        // Condição por updatedAt (optimistic locking, US-105) — vale mesmo sem tokenConcorrencia
+        // explícito, usando o valor que este próprio use-case acabou de ler.
+        const resultado = await tx.valorOrcadoConta.updateMany({
+          where: { id: registroAnterior.id, updatedAt: registroAnterior.updatedAt },
+          data: { valor },
+        });
+        if (resultado.count === 0) {
+          throw new ConflitoConcorrenciaError();
+        }
+        salvo = { contaId: input.contaId, exercicio: input.exercicio, valor };
+      }
 
       await tx.historicoOperacao.create({
         data: {

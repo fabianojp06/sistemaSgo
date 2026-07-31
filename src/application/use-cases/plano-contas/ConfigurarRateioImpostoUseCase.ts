@@ -1,6 +1,7 @@
 import { Prisma, type PrismaClient } from '@prisma/client';
 import {
   AliquotaImpostoNaoEncontradaError,
+  ConflitoConcorrenciaError,
   ImpostoNaoDisponivelParaTipoPropostaError,
   ValorOrcadoInvalidoError,
   VersaoOficializadaCongeladaError,
@@ -14,6 +15,8 @@ type ConfigurarRateioImpostoInput = {
   aliquotaParametroId: string;
   competencia: Date;
   valorDeclarado: Prisma.Decimal.Value;
+  /** US-105 — updatedAt lido pelo cliente antes de editar; se divergir do atual, é conflito. */
+  tokenConcorrencia?: Date;
 };
 
 /**
@@ -65,31 +68,42 @@ export class ConfigurarRateioImpostoUseCase {
       },
     });
 
+    // US-105 — rejeita de cara se o token já diverge do estado lido, sem abrir transação.
+    if (
+      registroAnterior &&
+      input.tokenConcorrencia &&
+      input.tokenConcorrencia.getTime() !== registroAnterior.updatedAt.getTime()
+    ) {
+      throw new ConflitoConcorrenciaError();
+    }
+
     return this.prisma.$transaction(async (tx) => {
-      const salvo = await tx.rateioImpostoGrade.upsert({
-        where: {
-          tenantId_versaoId_aliquotaParametroId_competencia: {
+      let salvo: { valorDeclarado: Prisma.Decimal; aliquotaAplicadaSnapshot: Prisma.Decimal; ativo: boolean };
+
+      if (!registroAnterior) {
+        salvo = await tx.rateioImpostoGrade.create({
+          data: {
             tenantId: input.tenantId,
             versaoId: input.versaoId,
             aliquotaParametroId: input.aliquotaParametroId,
             competencia: input.competencia,
+            valorDeclarado: valor,
+            aliquotaAplicadaSnapshot: aliquotaParametro.aliquotaPct,
+            ativo: true,
           },
-        },
-        create: {
-          tenantId: input.tenantId,
-          versaoId: input.versaoId,
-          aliquotaParametroId: input.aliquotaParametroId,
-          competencia: input.competencia,
-          valorDeclarado: valor,
-          aliquotaAplicadaSnapshot: aliquotaParametro.aliquotaPct,
-          ativo: true,
-        },
-        update: {
-          valorDeclarado: valor,
-          aliquotaAplicadaSnapshot: aliquotaParametro.aliquotaPct,
-          ativo: true,
-        },
-      });
+        });
+      } else {
+        // Condição por updatedAt (optimistic locking, US-105) — vale mesmo sem tokenConcorrencia
+        // explícito, usando o valor que este próprio use-case acabou de ler.
+        const resultado = await tx.rateioImpostoGrade.updateMany({
+          where: { id: registroAnterior.id, updatedAt: registroAnterior.updatedAt },
+          data: { valorDeclarado: valor, aliquotaAplicadaSnapshot: aliquotaParametro.aliquotaPct, ativo: true },
+        });
+        if (resultado.count === 0) {
+          throw new ConflitoConcorrenciaError();
+        }
+        salvo = { valorDeclarado: valor, aliquotaAplicadaSnapshot: aliquotaParametro.aliquotaPct, ativo: true };
+      }
 
       await tx.historicoOperacao.create({
         data: {

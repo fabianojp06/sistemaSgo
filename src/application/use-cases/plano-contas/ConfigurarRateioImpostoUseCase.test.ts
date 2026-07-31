@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 import { ConfigurarRateioImpostoUseCase } from './ConfigurarRateioImpostoUseCase';
 import {
+  ConflitoConcorrenciaError,
   ImpostoNaoDisponivelParaTipoPropostaError,
   ValorOrcadoInvalidoError,
   VersaoOficializadaCongeladaError,
@@ -16,6 +17,7 @@ type VersaoMock = {
 };
 type AliquotaMock = { id: string; tenantId: string; nome: string; aliquotaPct: Prisma.Decimal; tipoIncidencia: string };
 type RateioMock = {
+  id: string;
   tenantId: string;
   versaoId: string;
   aliquotaParametroId: string;
@@ -23,12 +25,25 @@ type RateioMock = {
   valorDeclarado: Prisma.Decimal;
   aliquotaAplicadaSnapshot: Prisma.Decimal;
   ativo: boolean;
+  updatedAt: Date;
 };
 
-function criarPrismaMock(versoes: VersaoMock[], aliquotas: AliquotaMock[], rateiosIniciais: RateioMock[] = []) {
+let idSeq = 1;
+
+function criarPrismaMock(versoes: VersaoMock[], aliquotas: AliquotaMock[], rateiosIniciais: Partial<RateioMock>[] = []) {
   const versoesPorId = new Map(versoes.map((v) => [v.id, v]));
   const aliquotasPorId = new Map(aliquotas.map((a) => [a.id, a]));
-  const rateios = [...rateiosIniciais];
+  const rateios: RateioMock[] = rateiosIniciais.map((r) => ({
+    id: r.id ?? `rat-${idSeq++}`,
+    tenantId: r.tenantId!,
+    versaoId: r.versaoId!,
+    aliquotaParametroId: r.aliquotaParametroId!,
+    competencia: r.competencia!,
+    valorDeclarado: r.valorDeclarado!,
+    aliquotaAplicadaSnapshot: r.aliquotaAplicadaSnapshot ?? new Prisma.Decimal(0),
+    ativo: r.ativo ?? true,
+    updatedAt: r.updatedAt ?? new Date('2026-01-01T00:00:00Z'),
+  }));
 
   const chave = (r: Pick<RateioMock, 'tenantId' | 'versaoId' | 'aliquotaParametroId' | 'competencia'>) =>
     `${r.tenantId}|${r.versaoId}|${r.aliquotaParametroId}|${r.competencia.getTime()}`;
@@ -52,14 +67,19 @@ function criarPrismaMock(versoes: VersaoMock[], aliquotas: AliquotaMock[], ratei
         const k = chave(where.tenantId_versaoId_aliquotaParametroId_competencia);
         return Promise.resolve(rateios.find((r) => chave(r) === k) ?? null);
       }),
-      upsert: vi.fn(({ create, update }: { create: RateioMock; update: Partial<RateioMock> }) => {
-        const existente = rateios.find((r) => chave(r) === chave(create));
-        if (existente) {
-          Object.assign(existente, update);
-          return Promise.resolve({ ...existente });
+      create: vi.fn(({ data }: { data: Omit<RateioMock, 'id' | 'updatedAt'> }) => {
+        const novo: RateioMock = { id: `rat-${idSeq++}`, updatedAt: new Date(), ...data };
+        rateios.push(novo);
+        return Promise.resolve(novo);
+      }),
+      updateMany: vi.fn(({ where, data }: { where: { id: string; updatedAt: Date }; data: Partial<RateioMock> }) => {
+        const existente = rateios.find((r) => r.id === where.id);
+        if (!existente || existente.updatedAt.getTime() !== where.updatedAt.getTime()) {
+          return Promise.resolve({ count: 0 });
         }
-        rateios.push({ ...create });
-        return Promise.resolve({ ...create });
+        Object.assign(existente, data);
+        existente.updatedAt = new Date(existente.updatedAt.getTime() + 1);
+        return Promise.resolve({ count: 1 });
       }),
     },
     historicoOperacao: { create: vi.fn().mockResolvedValue({}) },
@@ -164,5 +184,67 @@ describe('ConfigurarRateioImpostoUseCase [US-101]', () => {
     });
 
     expect(resultado.valorDeclarado.toString()).toBe('50');
+  });
+
+  it('bloqueia conflito de concorrência quando o token informado diverge do estado atual [Cenário 3, US-105]', async () => {
+    const tokenAntigo = new Date('2026-01-01T00:00:00Z');
+    const prisma = criarPrismaMock(
+      [versaoContratoRascunho],
+      [pis],
+      [
+        {
+          tenantId: 't1',
+          versaoId: 'v1',
+          aliquotaParametroId: 'a-pis',
+          competencia: new Date('2026-01-01'),
+          valorDeclarado: new Prisma.Decimal(100),
+          updatedAt: new Date('2026-02-01T00:00:00Z'),
+        },
+      ],
+    );
+    const useCase = new ConfigurarRateioImpostoUseCase(prisma as never);
+
+    await expect(
+      useCase.execute({
+        tenantId: 't1',
+        usuarioId: 'u1',
+        versaoId: 'v1',
+        aliquotaParametroId: 'a-pis',
+        competencia: new Date('2026-01-01'),
+        valorDeclarado: '200',
+        tokenConcorrencia: tokenAntigo,
+      }),
+    ).rejects.toThrow(ConflitoConcorrenciaError);
+    expect(prisma.historicoOperacao.create).not.toHaveBeenCalled();
+  });
+
+  it('bloqueia conflito detectado só no updateMany (corrida real) [US-105]', async () => {
+    const prisma = criarPrismaMock(
+      [versaoContratoRascunho],
+      [pis],
+      [
+        {
+          tenantId: 't1',
+          versaoId: 'v1',
+          aliquotaParametroId: 'a-pis',
+          competencia: new Date('2026-01-01'),
+          valorDeclarado: new Prisma.Decimal(100),
+        },
+      ],
+    );
+    prisma.rateioImpostoGrade.updateMany = vi.fn().mockResolvedValue({ count: 0 });
+    const useCase = new ConfigurarRateioImpostoUseCase(prisma as never);
+
+    await expect(
+      useCase.execute({
+        tenantId: 't1',
+        usuarioId: 'u1',
+        versaoId: 'v1',
+        aliquotaParametroId: 'a-pis',
+        competencia: new Date('2026-01-01'),
+        valorDeclarado: '200',
+      }),
+    ).rejects.toThrow(ConflitoConcorrenciaError);
+    expect(prisma.historicoOperacao.create).not.toHaveBeenCalled();
   });
 });

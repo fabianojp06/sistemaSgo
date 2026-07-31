@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 import { ConfigurarValorOrcadoContaUseCase } from './ConfigurarValorOrcadoContaUseCase';
 import {
+  ConflitoConcorrenciaError,
   ValorOrcadoContaSinteticaError,
   ValorOrcadoInvalidoError,
   VersaoPropostaInvalidaError,
@@ -9,12 +10,30 @@ import {
 
 type ContaMock = { id: string; tenantId: string; codigoErp: string; nomeConta: string; idPai: string | null; isAnalitica: boolean };
 type VersaoMock = { id: string; tenantId: string; propostaId: string; status: string; ativa: boolean; vigente: boolean; numeroVersao: number };
-type ValorMock = { tenantId: string; versaoId: string; contaId: string; exercicio: number; valor: Prisma.Decimal };
+type ValorMock = {
+  id: string;
+  tenantId: string;
+  versaoId: string;
+  contaId: string;
+  exercicio: number;
+  valor: Prisma.Decimal;
+  updatedAt: Date;
+};
 
-function criarPrismaMock(contas: ContaMock[], versoes: VersaoMock[], valoresIniciais: ValorMock[] = []) {
+let idSeq = 1;
+
+function criarPrismaMock(contas: ContaMock[], versoes: VersaoMock[], valoresIniciais: Partial<ValorMock>[] = []) {
   const contasPorId = new Map(contas.map((c) => [c.id, c]));
   const versoesPorId = new Map(versoes.map((v) => [v.id, v]));
-  const valores = [...valoresIniciais];
+  const valores: ValorMock[] = valoresIniciais.map((v) => ({
+    id: v.id ?? `val-${idSeq++}`,
+    tenantId: v.tenantId!,
+    versaoId: v.versaoId!,
+    contaId: v.contaId!,
+    exercicio: v.exercicio!,
+    valor: v.valor!,
+    updatedAt: v.updatedAt ?? new Date('2026-01-01T00:00:00Z'),
+  }));
 
   const chave = (v: Pick<ValorMock, 'tenantId' | 'versaoId' | 'contaId' | 'exercicio'>) =>
     `${v.tenantId}|${v.versaoId}|${v.contaId}|${v.exercicio}`;
@@ -37,21 +56,26 @@ function criarPrismaMock(contas: ContaMock[], versoes: VersaoMock[], valoresInic
       }),
     },
     valorOrcadoConta: {
-      findUnique: vi.fn(({ where }: { where: { tenantId_versaoId_contaId_exercicio: ValorMock } }) => {
+      findUnique: vi.fn(({ where }: { where: { tenantId_versaoId_contaId_exercicio: Pick<ValorMock, 'tenantId' | 'versaoId' | 'contaId' | 'exercicio'> } }) => {
         const k = chave(where.tenantId_versaoId_contaId_exercicio);
         return Promise.resolve(valores.find((v) => chave(v) === k) ?? null);
       }),
       findMany: vi.fn(({ where }: { where: { tenantId: string; versaoId: string; exercicio: number } }) =>
         Promise.resolve(valores.filter((v) => v.tenantId === where.tenantId && v.versaoId === where.versaoId && v.exercicio === where.exercicio)),
       ),
-      upsert: vi.fn(({ create, update }: { create: ValorMock; update: { valor: Prisma.Decimal } }) => {
-        const existente = valores.find((v) => chave(v) === chave(create));
-        if (existente) {
-          existente.valor = update.valor;
-          return Promise.resolve({ ...existente });
+      create: vi.fn(({ data }: { data: Omit<ValorMock, 'id' | 'updatedAt'> }) => {
+        const novo: ValorMock = { id: `val-${idSeq++}`, updatedAt: new Date(), ...data };
+        valores.push(novo);
+        return Promise.resolve(novo);
+      }),
+      updateMany: vi.fn(({ where, data }: { where: { id: string; updatedAt: Date }; data: { valor: Prisma.Decimal } }) => {
+        const existente = valores.find((v) => v.id === where.id);
+        if (!existente || existente.updatedAt.getTime() !== where.updatedAt.getTime()) {
+          return Promise.resolve({ count: 0 });
         }
-        valores.push({ ...create });
-        return Promise.resolve({ ...create });
+        existente.valor = data.valor;
+        existente.updatedAt = new Date(existente.updatedAt.getTime() + 1);
+        return Promise.resolve({ count: 1 });
       }),
     },
     historicoOperacao: { create: vi.fn().mockResolvedValue({}) },
@@ -149,7 +173,6 @@ describe('ConfigurarValorOrcadoContaUseCase [US-007]', () => {
           versaoId: 'v1',
           contaId: 'c7',
           exercicio: 2025,
-          valor: new Prisma.Decimal(0),
         },
       },
     });
@@ -163,5 +186,66 @@ describe('ConfigurarValorOrcadoContaUseCase [US-007]', () => {
     await expect(
       useCase.execute({ tenantId: 't1', usuarioId: 'u1', versaoId: 'v2', contaId: 'c7', exercicio: 2026, valor: '100' }),
     ).rejects.toThrow(VersaoPropostaInvalidaError);
+  });
+
+  it('bloqueia conflito de concorrência quando o token informado diverge do estado atual [Cenário 2, US-105]', async () => {
+    const tokenAntigo = new Date('2026-01-01T00:00:00Z');
+    const prisma = criarPrismaMock(
+      [contaAnalitica, contaN6, contaN5],
+      [versaoRascunho],
+      [{ tenantId: 't1', versaoId: 'v1', contaId: 'c7', exercicio: 2026, valor: new Prisma.Decimal(1000), updatedAt: new Date('2026-01-02T00:00:00Z') }],
+    );
+    const useCase = new ConfigurarValorOrcadoContaUseCase(prisma as never);
+
+    await expect(
+      useCase.execute({
+        tenantId: 't1',
+        usuarioId: 'u1',
+        versaoId: 'v1',
+        contaId: 'c7',
+        exercicio: 2026,
+        valor: '2000',
+        tokenConcorrencia: tokenAntigo,
+      }),
+    ).rejects.toThrow(ConflitoConcorrenciaError);
+    expect(prisma.historicoOperacao.create).not.toHaveBeenCalled();
+  });
+
+  it('bloqueia conflito detectado só no updateMany (corrida real entre leitura e escrita) [US-105]', async () => {
+    const updatedAtLido = new Date('2026-01-01T00:00:00Z');
+    const prisma = criarPrismaMock(
+      [contaAnalitica, contaN6, contaN5],
+      [versaoRascunho],
+      [{ tenantId: 't1', versaoId: 'v1', contaId: 'c7', exercicio: 2026, valor: new Prisma.Decimal(1000), updatedAt: updatedAtLido }],
+    );
+    // Simula outra escrita acontecendo entre o findUnique e o updateMany deste use-case.
+    prisma.valorOrcadoConta.updateMany = vi.fn().mockResolvedValue({ count: 0 });
+    const useCase = new ConfigurarValorOrcadoContaUseCase(prisma as never);
+
+    await expect(
+      useCase.execute({ tenantId: 't1', usuarioId: 'u1', versaoId: 'v1', contaId: 'c7', exercicio: 2026, valor: '2000' }),
+    ).rejects.toThrow(ConflitoConcorrenciaError);
+    expect(prisma.historicoOperacao.create).not.toHaveBeenCalled();
+  });
+
+  it('permite salvar sem token informado (retrocompatível) quando não há conflito real', async () => {
+    const prisma = criarPrismaMock(
+      [contaAnalitica, contaN6, contaN5],
+      [versaoRascunho],
+      [{ tenantId: 't1', versaoId: 'v1', contaId: 'c7', exercicio: 2026, valor: new Prisma.Decimal(1000) }],
+    );
+    const useCase = new ConfigurarValorOrcadoContaUseCase(prisma as never);
+
+    const resultado = await useCase.execute({
+      tenantId: 't1',
+      usuarioId: 'u1',
+      versaoId: 'v1',
+      contaId: 'c7',
+      exercicio: 2026,
+      valor: '2000',
+    });
+
+    expect(resultado.valor.toString()).toBe('2000');
+    expect(prisma.historicoOperacao.create).toHaveBeenCalled();
   });
 });

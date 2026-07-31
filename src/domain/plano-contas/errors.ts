@@ -106,6 +106,16 @@ export class SemaforoPercentualForaDaFaixaError extends Error {
   }
 }
 
+// US-105, Cenários 2/3 — outro usuário alterou o registro entre a leitura e este commit.
+export class ConflitoConcorrenciaError extends Error {
+  constructor() {
+    super(
+      'Conflito de Concorrência: Este registro foi alterado por outro usuário desde a última leitura. Recarregue os dados antes de salvar novamente.',
+    );
+    this.name = 'ConflitoConcorrenciaError';
+  }
+}
+
 // US-103, Cenário 3 [TRAVA O ERRO] — versão Oficializada/Encerrada é imutável.
 export class ExclusaoCicloVidaInvalidoError extends Error {
   constructor() {
