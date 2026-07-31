@@ -13,6 +13,7 @@ import { CriarVersaoPropostaUseCase } from './CriarVersaoPropostaUseCase';
 import { ConfigurarSemaforoContaUseCase } from './ConfigurarSemaforoContaUseCase';
 import { ConfigurarRateioImpostoUseCase } from './ConfigurarRateioImpostoUseCase';
 import { DesativarTributoRateioUseCase } from './DesativarTributoRateioUseCase';
+import { CadastrarPropostaUseCase } from './CadastrarPropostaUseCase';
 
 export function getSincronizarPlanoContasUseCase(): SincronizarPlanoContasUseCase {
   return new SincronizarPlanoContasUseCase(
@@ -61,4 +62,8 @@ export function getConfigurarRateioImpostoUseCase(): ConfigurarRateioImpostoUseC
 
 export function getDesativarTributoRateioUseCase(): DesativarTributoRateioUseCase {
   return new DesativarTributoRateioUseCase(prisma);
+}
+
+export function getCadastrarPropostaUseCase(): CadastrarPropostaUseCase {
+  return new CadastrarPropostaUseCase(prisma);
 }

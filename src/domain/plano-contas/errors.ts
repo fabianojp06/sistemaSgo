@@ -106,6 +106,34 @@ export class SemaforoPercentualForaDaFaixaError extends Error {
   }
 }
 
+// US-102, Cenário 2 [TRAVA O ERRO] — campo obrigatório em branco.
+export class CamposObrigatoriosPropostaError extends Error {
+  constructor() {
+    super(
+      'Operação Rejeitada [TRAVA O ERRO]: Os campos Tipo, Nome/Objeto, Data de Início, Data de Término e Categoria são obrigatórios e não podem ser nulos.',
+    );
+    this.name = 'CamposObrigatoriosPropostaError';
+  }
+}
+
+// US-102, Cenário 3 [TRAVA O ERRO] — Data de Término <= Data de Início.
+export class DatasPropostaInvalidasError extends Error {
+  constructor() {
+    super(
+      'Erro de Validação [TRAVA O ERRO]: A Data de Término não pode ser inferior ou igual à Data de Início configurada para o Termo de Parceria.',
+    );
+    this.name = 'DatasPropostaInvalidasError';
+  }
+}
+
+// US-102 — geração automática do código da Proposta esgotou as tentativas de retry.
+export class CodigoPropostaGeracaoFalhouError extends Error {
+  constructor() {
+    super('Não foi possível gerar um código único para a Proposta. Tente novamente.');
+    this.name = 'CodigoPropostaGeracaoFalhouError';
+  }
+}
+
 // US-101, Cenário 5, RN_PRO_010 — Termo de Parceria tem imunidade tributária:
 // tributos com tipoIncidencia=CONTRATO não podem ser aplicados.
 export class ImpostoNaoDisponivelParaTipoPropostaError extends Error {
