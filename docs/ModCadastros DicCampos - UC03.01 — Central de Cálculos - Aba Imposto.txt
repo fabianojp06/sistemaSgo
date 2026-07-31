@@ -1,0 +1,1361 @@
+ 
+
+DICIONÁRIO DE CAMPOS E TIPOS DE CAMPO 
+
+UC03.01 — Central de Cálculos: Aba Imposto 
+
+Módulo de Cadastros  |  EP118/24  |  SGO 2.0 — CTCEA 
+
+ 
+
+Documento: 
+
+Dicionário de Campos — UC03.01 
+
+Data de Emissão: 
+
+21/07/2025 
+
+Módulo: 
+
+Central de Cálculos: Gestão de Alíquotas e Projeção Financeira 
+
+Versão Fonte: 
+
+V5 — Rev. 01 (22/06/2024) 
+
+Épico: 
+
+EP118/24 
+
+Elaboração: 
+
+GIA / SGO 2.0 
+
+Destinatário: 
+
+Time de Desenvolvimento 
+
+Referência: 
+
+EP118/24 — Especificação do Módulo de Cadastros V5 
+
+ 
+
+1. Objetivo do Documento 
+
+Este documento especifica todos os campos de interface e atributos de banco de dados necessários para a implementação do UC03.01 — Central de Cálculos: Aba Imposto no SGO 2.0. Para cada campo são informados: tipo de componente, obrigatoriedade, editabilidade, comportamento diferenciado por tipo de Proposta (Contrato vs. Termo de Parceria), origem dos dados e regras de negócio aplicáveis. 
+
+O UC03.01 é uma aba da Central de Cálculos, acessada a partir do detalhamento de uma Proposta ou TP. Sua função central é a governança fiscal e distribuição de custos indiretos por competência mensal. Opera em dois modos comportamentais distintos com base no Tipo da Proposta: 
+
+Modo Contrato:  Todos os tributos (PIS, COFINS, ISS) habilitados. Grade mensal editável com cálculo automático. 
+
+Modo Termo de Parceria (TP):  PIS e COFINS automaticamente zerados e bloqueados (imunidade tributária). ISS permanece configurável. 
+
+ 
+
+2. Legenda e Convenções 
+
+[TRAVA O ERRO] 
+
+Mecanismo interceptor que bloqueia o payload e aplica rollback. Sistema não permite prosseguimento. Formulário mantido aberto com dados intactos para correção (RNF_TAX_007). 
+
+Contrato = ativo / TP = bloqueado 
+
+Campo cujo comportamento muda conforme o Tipo da Proposta. Para Contrato: habilitado/editável. Para Termo de Parceria: zerado automaticamente e bloqueado para edição (RN_PRO_010 — imunidade tributária). 
+
+Grade Mensal / Matriz de Competências 
+
+Interface em grade estilo Excel gerada dinamicamente com colunas = meses da vigência da Proposta e linhas = tributos selecionados. Todas as células devem ser preenchidas (0,00 se sem incidência). Nenhum mês pode ficar em branco. 
+
+Editável = Condicional 
+
+Campo editável somente sob condições específicas documentadas (ex: tipo de Proposta, perfil do usuário, status da Proposta). 
+
+Autofill / Estabilização 
+
+Mecanismo automático (Fluxo Alt. B): ao omitir meses futuros, o sistema replica o último valor preenchido para os meses seguintes. Comportamento antes do salvamento. O salvamento final exige 100% das células preenchidas (RN_TAX_04). 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+3. Dicionário de Campos — Painel Principal da Aba Imposto 
+
+Contexto: aba acessada a partir do detalhamento de uma Proposta ou TP em estado "Rascunho" ou "Em Elaboração". Proposta deve estar previamente criada. Alíquotas de PIS, COFINS e ISS devem estar cadastradas no Módulo de Administração (AliquotaImpostoParametro). 
+
+ 
+
+3.1 Cabeçalho e Identificação do Contexto (Read-only) 
+
+# 
+
+Campo / Atributo 
+
+Tipo de Campo 
+
+Obrig. 
+
+Editável 
+
+Contrato vs. TP 
+
+Origem dos Dados 
+
+Observações / Regras 
+
+Dados de Contexto da Proposta / TP — Herdados da Capa (Read-only) 
+
+1 
+
+Código da Proposta / TP 
+
+Label (código — Read-only) 
+
+N/A 
+
+Não 
+
+Igual em ambos 
+
+tb_proposta.codigo 
+
+Exibido no cabeçalho da aba. Identificador único da Proposta ou TP vigente. varchar(30). [ORIGEM BLINDADA]. 
+
+2 
+
+Nome / Título da Proposta 
+
+Label (texto — Read-only) 
+
+N/A 
+
+Não 
+
+Igual em ambos 
+
+tb_proposta.nome 
+
+Exibido no cabeçalho da aba. Gerado na criação da Proposta. Read-only aqui. varchar(255). 
+
+3 
+
+Tipo da Proposta 
+
+Label (badge — Read-only) 
+
+N/A 
+
+Não 
+
+Determina comportamento fiscal 
+
+tb_proposta.tipo 
+
+CAMPO-CHAVE: determina o comportamento de toda a aba. Domínio: "Contrato" | "Termo de Parceria". Lido reativamente ao carregar a tela (RNF_TAX_008). varchar(30). [ORIGEM BLINDADA]. 
+
+4 
+
+Vigência (Data Início — Data Fim) 
+
+Label (período — Read-only) 
+
+N/A 
+
+Não 
+
+Igual em ambos 
+
+tb_proposta.data_inicio / data_fim 
+
+Define as colunas de competência mensal da grade. Calculado: (data_fim - data_inicio) em meses = número de colunas da grade. [ORIGEM BLINDADA]. 
+
+5 
+
+Status da Proposta 
+
+Badge (status — Read-only) 
+
+N/A 
+
+Não 
+
+Igual em ambos 
+
+tb_proposta.status 
+
+Domínio: Rascunho | Em Elaboração | Oficial | Encerrado | Cancelado. Aba editável somente nos dois primeiros estados. Se status = "Oficial": tela travada em Read-only (RN_TAX_03). varchar(30). 
+
+6 
+
+Valor Global da Proposta (Camada Macro) 
+
+Label (moeda — Read-only) 
+
+N/A 
+
+Não 
+
+Igual em ambos 
+
+TotalizerService (calculado) 
+
+Exibido no cabeçalho. Atualizado sincronamente após salvar a aba (REQ_TAX_003). NUMERIC(18,2). BigDecimal. [ORIGEM BLINDADA]. 
+
+ 
+
+3.2 Seleção de Tributos — Checkboxes de Incidência 
+
+Comportamento reativo ao Tipo da Proposta (RN_PRO_010 + RNF_TAX_008). Para Contratos: todos habilitados. Para TP: PIS e COFINS zerados e bloqueados automaticamente. 
+
+ 
+
+# 
+
+Campo / Atributo 
+
+Tipo de Campo 
+
+Obrig. 
+
+Editável 
+
+Contrato vs. TP 
+
+Origem dos Dados 
+
+Observações / Regras 
+
+Checkboxes de Seleção de Tributos 
+
+7 
+
+Checkbox — PIS 
+
+Checkbox (Toggle) 
+
+Não 
+
+Condicional 
+
+Contrato: editável TP: zerado + bloqueado 
+
+AliquotaImpostoParametro (tabela de parâmetros) 
+
+Marcado = PIS incidirá sobre o projeto. Para TP: automaticamente desmarcado e desabilitado (RN_PRO_010). Para Contrato: habilitado. boolean. 
+
+8 
+
+Alíquota PIS (% — exibida inline) 
+
+Label (percentual — Read-only) 
+
+N/A 
+
+Não 
+
+Contrato: exibida TP: zerada + oculta 
+
+AliquotaImpostoParametro.aliquota (data_inicio da Proposta) 
+
+Percentual vigente na data de início do projeto. Carregado dinamicamente via consulta a parâmetros (RN_TAX_01 — Anti-Hardcode). NUMERIC(5,2). Ex: 1,65%. 
+
+9 
+
+Checkbox — COFINS 
+
+Checkbox (Toggle) 
+
+Não 
+
+Condicional 
+
+Contrato: editável TP: zerado + bloqueado 
+
+AliquotaImpostoParametro 
+
+Idem ao PIS. Para TP: automaticamente desmarcado e desabilitado (RN_PRO_010). Para Contrato: habilitado. boolean. 
+
+10 
+
+Alíquota COFINS (% — exibida inline) 
+
+Label (percentual — Read-only) 
+
+N/A 
+
+Não 
+
+Contrato: exibida TP: zerada + oculta 
+
+AliquotaImpostoParametro.aliquota 
+
+Percentual vigente na data de início. Anti-Hardcode (RN_TAX_01). NUMERIC(5,2). Ex: 7,60%. 
+
+11 
+
+Checkbox — ISS 
+
+Checkbox (Toggle) 
+
+Não 
+
+Condicional 
+
+Contrato: editável TP: configurável 
+
+AliquotaImpostoParametro 
+
+Disponível em ambos os tipos de Proposta. Para Contrato: alíquota deve estar entre 2,00% e 5,00% (RNF_TAX_007 — TRAVA O ERRO se fora do limite). boolean. 
+
+12 
+
+Alíquota ISS (% — exibida inline) 
+
+Label (percentual — Read-only) 
+
+N/A 
+
+Não 
+
+Igual em ambos (dentro do limite legal) 
+
+AliquotaImpostoParametro.aliquota 
+
+Limite legal obrigatório para Contratos: entre 2,00% e 5,00%. Sistema bloqueia valores fora do range [TRAVA O ERRO]. NUMERIC(5,2). 
+
+Botão de Ação — Atalho para Novo Tributo (REQ_TAX_005) 
+
+13 
+
+Botão [Novo Imposto] 
+
+Button (Ação) 
+
+N/A 
+
+N/A 
+
+Igual em ambos (se perfil permitir) 
+
+Interface SGO 
+
+Abre modal de cadastro rápido de tributo (Fluxo Alt. C). Visível para perfis Orçamentista/Admin com direito de escrita. Oculto para perfil Read-only (RNF_TAX_004). 
+
+ 
+
+3.3 Grade Dinâmica de Competências Mensais — Estilo Excel 
+
+REQ_TAX_002 — Interface em grade editável com linhas = tributos selecionados e colunas = meses da vigência da Proposta. Renderização virtual (RNF_TAX_002). Nenhuma célula pode ficar em branco — 0,00 é o valor mínimo declarado (RN_TAX_04 / E5). 
+
+ 
+
+# 
+
+Campo / Atributo 
+
+Tipo de Campo 
+
+Obrig. 
+
+Editável 
+
+Contrato vs. TP 
+
+Origem dos Dados 
+
+Observações / Regras 
+
+Estrutura da Grade — Linhas (Tributos) 
+
+14 
+
+Linha PIS — Valor mensal 
+
+Input numérico (célula da grade) 
+
+Sim 
+
+Condicional 
+
+Contrato: editável TP: bloqueada (valor = R$ 0,00) 
+
+RateioImpostoGrade (por competência) 
+
+Valor calculado ou informado de PIS por mês. Para TP: célula bloqueada em R$ 0,00 automaticamente. NUMERIC(18,2). Obrigatório declarar 0,00 se sem incidência. [TRAVA O ERRO] se branco. 
+
+15 
+
+Linha COFINS — Valor mensal 
+
+Input numérico (célula da grade) 
+
+Sim 
+
+Condicional 
+
+Contrato: editável TP: bloqueada (valor = R$ 0,00) 
+
+RateioImpostoGrade (por competência) 
+
+Idem ao PIS. Célula bloqueada para TP. NUMERIC(18,2). Obrigatório 0,00 se sem incidência. [TRAVA O ERRO] se branco. 
+
+16 
+
+Linha ISS — Valor mensal 
+
+Input numérico (célula da grade) 
+
+Sim 
+
+Sim 
+
+Igual em ambos (editável) 
+
+RateioImpostoGrade (por competência) 
+
+Editável em ambos os tipos. Para Contrato: alíquota validada no limite 2%-5% (RN_TAX_02). NUMERIC(18,2). Obrigatório 0,00 se sem incidência. 
+
+17 
+
+Linha Rateio Administrativo — Valor mensal 
+
+Input numérico (célula da grade) 
+
+Sim 
+
+Sim 
+
+Igual em ambos 
+
+RateioImpostoGrade (por competência) 
+
+Custo indireto distribuído mensalmente. Para Contrato: mesma base de cálculo e critério de distribuição temporal do ISS (RN_TAX_02). NUMERIC(18,2). Obrigatório 0,00 se sem incidência. 
+
+Estrutura da Grade — Colunas (Competências Mensais) 
+
+18 
+
+Cabeçalho de Mês (MM/AAAA) 
+
+Label (coluna — Read-only) 
+
+N/A 
+
+Não 
+
+Igual em ambos 
+
+Calculado: data_inicio até data_fim da Proposta 
+
+Gerado dinamicamente. Número de colunas = número de meses da vigência. Formato: "Jan/2024", "Fev/2024"... Read-only. [ORIGEM BLINDADA]. 
+
+19 
+
+Célula Mensal (interseção Tributo × Mês) 
+
+Input numérico (NUMERIC 18,2) 
+
+Sim 
+
+Condicional 
+
+Contrato: editável TP: PIS/COFINS bloqueadas 
+
+RateioImpostoGrade.valor_mes 
+
+OBRIGATORIO: nenhuma célula pode ficar em branco. Mínimo declarado: 0,00. Autofill disponível (Fluxo Alt. B) antes do salvar. [TRAVA O ERRO] se qualquer célula em branco ao salvar (RN_TAX_04 / E5). NUMERIC(18,2). 
+
+Totalizadores da Grade (Read-only / ORIGEM BLINDADA) 
+
+20 
+
+Total Mensal (rodapé de coluna) 
+
+Label (moeda — Read-only) 
+
+N/A 
+
+Não 
+
+Igual em ambos 
+
+TotalizerService (cálculo em tempo real) 
+
+Somatório de todos os tributos para o mês da coluna. Calculado reativamente. NUMERIC(18,2). Exibido no rodapé de cada coluna. [ORIGEM BLINDADA]. 
+
+21 
+
+Total por Tributo (extremidade direita da linha) 
+
+Label (moeda — Read-only) 
+
+N/A 
+
+Não 
+
+Igual em ambos 
+
+TotalizerService 
+
+Somatório anual de cada tributo (total da linha). Calculado reativamente. NUMERIC(18,2). [ORIGEM BLINDADA]. 
+
+22 
+
+Total Geral (canto inferior direito) 
+
+Label (moeda — Read-only) 
+
+N/A 
+
+Não 
+
+Igual em ambos 
+
+TotalizerService 
+
+Somatório de todos os tributos em toda a vigência. Alimenta o Valor Global da Proposta após salvar (REQ_TAX_003). NUMERIC(18,2). [ORIGEM BLINDADA]. 
+
+Indicadores Visuais de Controle 
+
+23 
+
+Indicador de Célula em Branco 
+
+Destaque visual (borda vermelha inline) 
+
+N/A 
+
+Não 
+
+Igual em ambos 
+
+Interface SGO (validação client-side) 
+
+Ao tentar salvar, células não preenchidas são marcadas com borda/fundo vermelho. [TRAVA O ERRO]: impede envio ao servidor. Formulário mantido aberto com dados intactos (RNF_TAX_007). 
+
+24 
+
+Máscara Monetária (R$) 
+
+Formatação automática 
+
+N/A 
+
+N/A 
+
+Igual em ambos 
+
+Interface SGO (front-end) 
+
+Aplicada em todas as células financeiras da grade. Precisão de 2 casas decimais. Valores negativos exibidos entre parênteses ou em vermelho (RN_TAX_05 — alíquotas negativas bloqueadas). Formato padrão: R$ 1.234,56. 
+
+ 
+
+3.4 Botões de Ação da Aba 
+
+# 
+
+Campo / Atributo 
+
+Tipo de Campo 
+
+Obrig. 
+
+Editável 
+
+Contrato vs. TP 
+
+Origem dos Dados 
+
+Observações / Regras 
+
+Ações Disponíveis na Aba Imposto 
+
+25 
+
+Botão [Salvar] 
+
+Button (Submit) 
+
+N/A 
+
+Condicional 
+
+Igual em ambos (se perfil com escrita) 
+
+Interface SGO 
+
+Acionado pelo usuário. Dispara: validação de completude da grade (RN_TAX_04), motor tributário, recálculo do Valor Global, persistência em RateioImpostoGrade + log em HistoricodeOperacoes (RNF_TAX_005). Oculto para perfil Read-only (RNF_TAX_004). 
+
+26 
+
+Botão [Cancelar / Descartar] 
+
+Button (Cancel) 
+
+N/A 
+
+N/A 
+
+Igual em ambos 
+
+Interface SGO 
+
+Descarta alterações não salvas. Restaura o estado anterior da grade sem chamada ao servidor. Não gera log. 
+
+27 
+
+Botão [Autofill — Replicar Último Valor] 
+
+Button (Ação contextual) 
+
+Não 
+
+N/A 
+
+Igual em ambos 
+
+Interface SGO (client-side) 
+
+Dispara Fluxo Alt. B: replica o último valor preenchido da linha para todos os meses seguintes em branco. Execução local no front-end sem chamada ao servidor. Facilita preenchimento massivo. 
+
+ 
+
+4. Dicionário de Campos — Modal "Novo Imposto" (Atalho Inline — Fluxo Alt. C) 
+
+REQ_TAX_005 — Modal acessado via botão [Novo Imposto] na aba. Permite cadastrar novos tributos dinamicamente sem abandonar o fluxo orçamentário. Persiste em AliquotaImpostoParametro (parâmetros globais do Módulo de Administração). Rege-se por RN_TAX_05 e RN_TAX_06. 
+
+ 
+
+# 
+
+Campo / Atributo 
+
+Tipo de Campo 
+
+Obrig. 
+
+Editável 
+
+Contrato vs. TP 
+
+Origem dos Dados 
+
+Observações / Regras 
+
+Campos do Formulário Modal — Cadastro Rápido de Imposto 
+
+28 
+
+Nome do Imposto 
+
+Input text 
+
+Sim 
+
+Sim 
+
+Igual em ambos 
+
+Usuário 
+
+Obrigatório. Máximo 20 caracteres. Validação case-insensitive de duplicidade: proibido cadastrar "iss" se já existir "ISS" (RN_TAX_05 — [TRAVA O ERRO]). Persiste em AliquotaImpostoParametro.nome. varchar(20). 
+
+29 
+
+Alíquota Padrão (%) 
+
+Input numérico (percentual) 
+
+Sim 
+
+Sim 
+
+Igual em ambos (com restrição de range) 
+
+Usuário 
+
+Obrigatório. NUMERIC(5,2). Proibido: valores negativos ou acima de 100% (RN_TAX_05 — [TRAVA O ERRO]). Para uso como ISS em Contratos: validado também entre 2,00% e 5,00% (RNF_TAX_007). 
+
+30 
+
+Data de Início da Vigência 
+
+Date picker 
+
+Sim 
+
+Sim 
+
+Igual em ambos 
+
+Usuário 
+
+Obrigatório. Proibido datas retroativas à data atual do sistema (RN_TAX_05 — [TRAVA O ERRO] se retroativa — E4). Formato: DD/MM/AAAA. date. 
+
+31 
+
+Tipo de Incidência 
+
+Select (Combo Box) 
+
+Sim 
+
+Sim 
+
+Igual em ambos 
+
+Usuário (domínio controlado) 
+
+Obrigatório. Domínio: "Contrato" | "Termo de Parceria" | "Ambos". Determina em quais tipos de Proposta o tributo estará disponível para seleção. varchar(20). 
+
+Ações da Modal 
+
+32 
+
+Botão [Confirmar Cadastro] 
+
+Button (Submit) 
+
+N/A 
+
+N/A 
+
+Igual em ambos 
+
+Interface SGO 
+
+Executa validações RN_TAX_05 (duplicidade, alíquota, vigência). Se OK: persiste em AliquotaImpostoParametro, fecha modal, renderiza reativamente novo checkbox e nova linha na grade (RN_TAX_06 — sem impacto retroativo). 
+
+33 
+
+Botão [Cancelar] 
+
+Button (Cancel) 
+
+N/A 
+
+N/A 
+
+Igual em ambos 
+
+Interface SGO 
+
+Fecha modal sem persistência. Dados digitados são descartados. Estado da grade permanece inalterado. 
+
+Campos Internos — AliquotaImpostoParametro (banco de dados) 
+
+34 
+
+id (PK) 
+
+bigint / serial 
+
+N/A 
+
+Não 
+
+N/A 
+
+BD (auto-gerado) 
+
+Chave primária. Gerado automaticamente. 
+
+35 
+
+nome 
+
+varchar(20) 
+
+N/A 
+
+Não 
+
+N/A 
+
+Usuário → BD 
+
+Nome do tributo. Único (case-insensitive). NOT NULL. 
+
+36 
+
+aliquota 
+
+NUMERIC(5,2) 
+
+N/A 
+
+Não 
+
+N/A 
+
+Usuário → BD 
+
+Percentual padrão. Entre 0,00 e 100,00. NOT NULL. 
+
+37 
+
+data_inicio_vigencia 
+
+date 
+
+N/A 
+
+Não 
+
+N/A 
+
+Usuário → BD 
+
+Data de início da vigência. NOT NULL. Não pode ser retroativa. 
+
+38 
+
+tipo_incidencia 
+
+varchar(20) 
+
+N/A 
+
+Não 
+
+N/A 
+
+Usuário → BD 
+
+Domínio: "Contrato" | "Termo de Parceria" | "Ambos". NOT NULL. 
+
+39 
+
+tenant_id (FK) 
+
+bigint 
+
+N/A 
+
+Não 
+
+N/A 
+
+Context (JWT) 
+
+Isolamento multi-tenant. OBRIGATÓRIO em toda query. NOT NULL. 
+
+40 
+
+created_at / updated_at 
+
+timestamp with time zone 
+
+N/A 
+
+Não 
+
+N/A 
+
+BD (automático) 
+
+Auditoria temporal. NOT NULL. DEFAULT now(). 
+
+41 
+
+created_by / updated_by (FK → users) 
+
+bigint 
+
+N/A 
+
+Não 
+
+N/A 
+
+Context (JWT) 
+
+ID do usuário responsável pela operação. Obrigatório para auditoria. 
+
+ 
+
+5. Estrutura da Tabela de Persistência — RateioImpostoGrade 
+
+Tabela que persiste os valores declarados por competência mensal para cada tributo/rateio de uma versão de Proposta. Um registro por célula (tributo × mês × versão). 
+
+ 
+
+# 
+
+Campo / Atributo 
+
+Tipo de Campo 
+
+Obrig. 
+
+Editável 
+
+Contrato vs. TP 
+
+Origem dos Dados 
+
+Observações / Regras 
+
+Campos da Tabela RateioImpostoGrade (tb_rateio_imposto_grade) 
+
+42 
+
+id (PK) 
+
+bigint / serial 
+
+N/A 
+
+Não 
+
+N/A 
+
+BD (auto-gerado) 
+
+Chave primária. Gerado automaticamente. 
+
+43 
+
+id_versao_proposta (FK) 
+
+bigint 
+
+N/A 
+
+Não 
+
+N/A 
+
+tb_versao_proposta.id 
+
+FK para a versão/snapshot da Proposta. NOT NULL. Garante que alterações tributárias não impactem versões já oficializadas. 
+
+44 
+
+id_aliquota_parametro (FK) 
+
+bigint 
+
+N/A 
+
+Não 
+
+N/A 
+
+AliquotaImpostoParametro.id 
+
+FK para o tributo/parâmetro fiscal aplicado. NOT NULL. 
+
+45 
+
+competencia (MM/AAAA) 
+
+date (primeiro dia do mês) 
+
+N/A 
+
+Não 
+
+N/A 
+
+Calculado da vigência da Proposta 
+
+Competência mensal representada pelo primeiro dia do mês. Ex: 2024-01-01 = Janeiro/2024. NOT NULL. 
+
+46 
+
+valor_declarado 
+
+NUMERIC(18,2) 
+
+N/A 
+
+Não 
+
+N/A 
+
+Usuário → BD 
+
+Valor monetário declarado para o tributo nesta competência. Mínimo: 0,00. NOT NULL (nenhum mês em branco). Congelado após status "Oficial" (RN_TAX_03). 
+
+47 
+
+aliquota_aplicada_snapshot 
+
+NUMERIC(5,2) 
+
+N/A 
+
+Não 
+
+N/A 
+
+AliquotaImpostoParametro (snapshot) 
+
+Alíquota vigente NO MOMENTO do salvamento. Congelada para não ser afetada por alterações legislativas futuras (RN_TAX_03). NUMERIC(5,2). 
+
+48 
+
+tenant_id (FK) 
+
+bigint 
+
+N/A 
+
+Não 
+
+N/A 
+
+Context (JWT) 
+
+Isolamento multi-tenant. OBRIGATÓRIO. NOT NULL. 
+
+49 
+
+created_at / updated_at 
+
+timestamp with time zone 
+
+N/A 
+
+Não 
+
+N/A 
+
+BD 
+
+Auditoria temporal. NOT NULL. 
+
+50 
+
+created_by / updated_by 
+
+bigint 
+
+N/A 
+
+Não 
+
+N/A 
+
+Context (JWT) 
+
+ID do usuário. Auditoria (RNF_TAX_005). 
+
+ 
+
+6. Requisitos Funcionais (RF) e Não Funcionais (RNF) 
+
+ 
+
+6.1 Requisitos Funcionais 
+
+Código 
+
+Requisito Funcional 
+
+Descrição 
+
+REQ_TAX_001 
+
+Gestão de Alíquotas de Parâmetros 
+
+O Módulo de Administração deve fornecer interface para cadastrar e listar as alíquotas históricas de PIS, COFINS e ISS por período de vigência. Consumidas pela aba Imposto via consulta síncrona a AliquotaImpostoParametro na data de início da Proposta. 
+
+REQ_TAX_002 
+
+Grade Dinâmica Computada 
+
+Disponibilizar uma interface em grade editável estilo folha de cálculo para inserção e revisão mensal de valores e percentuais de Rateios e ISS. Colunas = meses da vigência. Linhas = tributos selecionados. 
+
+REQ_TAX_003 
+
+Sincronismo Transacional com Valor Global 
+
+O sistema deve recalcular e atualizar o campo Valor Global acumulado da capa da Proposta em tempo real ao salvar as definições da aba de impostos. Atualização feita pelo TotalizerService. 
+
+REQ_TAX_004 
+
+Interface Reativa por Natureza 
+
+O sistema rejeita o commit transacional até que 100% das células possuam valores declarados pelo orçamentista. Célula em branco ≠ célula com 0,00 — o valor zero deve ser explicitamente declarado. 
+
+REQ_TAX_005 
+
+Atalho para Criação de Impostos Inline 
+
+O sistema deve fornecer botão de ação rápida [Novo Imposto] diretamente na aba, permitindo ao usuário cadastrar novos tributos em modal sem abandonar o fluxo orçamentário corrente. Novo tributo persiste em AliquotaImpostoParametro. 
+
+ 
+
+6.2 Requisitos Não Funcionais 
+
+Código 
+
+Requisito Não Funcional 
+
+Descrição 
+
+RNF_TAX_001 
+
+Tempo de Resposta do Motor Tributário 
+
+O processamento do motor tributário e a atualização síncrona do Valor Global na capa da Proposta não devem exceder 2,0 segundos para grades com até 1.000 linhas. 
+
+RNF_TAX_002 
+
+Renderização de Carga Contínua (Bypass de Paginação) 
+
+A grade dinâmica mensal deve carregar todas as competências em lote único contínuo usando renderização virtual, garantindo rolagem fluida sem travamentos de interface durante edição em massa. 
+
+RNF_TAX_003 
+
+Blindagem de Barramento Contra Injeção Contábil 
+
+A interface gráfica não deve executar comandos diretos de banco de dados (INSERT ou UPDATE). Toda mutação deve trafegar por chamadas síncronas de APIs protegidas pelo barramento do SGO. 
+
+RNF_TAX_004 
+
+Governança Dinâmica de Componentes (RBAC) 
+
+Sistema deve validar o token JWT no carregamento da tela. Perfil somente leitura: checkboxes, células da grade e botão [Salvar] ocultados reativamente — tela em modo Read-only. 
+
+RNF_TAX_005 
+
+Transação Atômica do Log Delta (Tudo ou Nada) 
+
+A persistência em RateioImpostoGrade e o commit em HistoricodeOperacoes (credenciais + timestamp em ms + payload JSON comparativo) devem rodar na mesma transação lógica. Falha no log = rollback total. 
+
+RNF_TAX_006 
+
+Controle de Concorrência Otimista (Optimistic Locking) 
+
+Duas edições simultâneas da mesma versão de Proposta: o segundo commit é rejeitado com alerta visual inline sobre o conflito. Implementar via @Version (JPA) ou campo updated_at com verificação de version clash. 
+
+RNF_TAX_007 
+
+Retenção de Estado no Front-end [TRAVA O ERRO] 
+
+Quando [TRAVA O ERRO] interceptar inconsistência (células em branco, ISS fora de 2%-5%, imposto retroativo): abortar envio ao servidor MAS manter formulário/grade 100% aberto com dados intactos para evitar retrabalho. 
+
+RNF_TAX_008 
+
+Reatividade Baseada em Contexto de Capa 
+
+UI deve reagir imediatamente (sem F5) à mudança do campo "Tipo" na capa da Proposta. Identificado "Termo de Parceria": PIS e COFINS zerados e congelados instantaneamente na tela. 
+
+ 
+
+7. Regras de Negócio 
+
+Código 
+
+Regra de Negócio 
+
+Descrição 
+
+RN_PRO_010 
+
+Automação Fiscal por Tipo de Proposta 
+
+Se o campo "Tipo" da capa da Proposta for igual a "Termo de Parceria", o sistema zera e bloqueia automaticamente os campos de PIS e COFINS na aba de Impostos, garantindo a imunidade tributária de fomento de forma nativa. ISS permanece configurável. 
+
+RN_TAX_01 
+
+Parametrização Dinâmica (Anti-Hardcode) 
+
+Proibida a inclusão de alíquotas fixas no código-fonte do SGO. O motor financeiro deve consultar sincronamente a tabela de parâmetros administrativos (AliquotaImpostoParametro) para resgatar o percentual fiscal ativo na data de início da Proposta. 
+
+RN_TAX_02 
+
+Alinhamento de Critério de Rateio 
+
+Quando a Proposta for do tipo "Contrato", o sistema deve processar a alíquota dos impostos aplicando exatamente a mesma base de cálculo e o mesmo critério de distribuição temporal definidos para o Rateio Administrativo. 
+
+RN_TAX_03 
+
+Imutabilidade Orçamentária (Congelamento ao Oficializar) 
+
+No momento em que a Proposta transicionar para o status "Oficial", a tabela de BD deve armazenar o valor monetário calculado e congelar a alíquota aplicada (campo aliquota_aplicada_snapshot). Alterações legislativas futuras NÃO afetam projetos já oficializados. 
+
+RN_TAX_04 
+
+Estabilização por Omissão — Bloqueio de Células em Branco 
+
+Na grade editável, o sistema rejeita o commit transacional até que 100% das células da vigência possuam valores declarados pelo orçamentista. Valor zero é válido (0,00), mas célula em branco bloqueia o salvamento [TRAVA O ERRO]. 
+
+RN_TAX_05 
+
+Validação Rígida de Cadastro Inline [NOVO — TRAVA O ERRO] 
+
+Ao criar imposto via modal [Novo Imposto], o sistema aplica trava impeditiva contra: (a) Nomes duplicados — validação case-insensitive; (b) Alíquotas negativas ou acima de 100%; (c) Datas de vigência retroativas à data atual do sistema. 
+
+RN_TAX_06 
+
+Isolamento de Impacto Histórico e Retroativo [NOVO — TRAVA O ERRO] 
+
+A criação de novo imposto via atalho inline só surte efeito para a Proposta atual em edição e para novos projetos futuros. O sistema bloqueia qualquer recálculo automático em Snapshots passados ou TPs com status "Oficial", preservando a imutabilidade histórica. 
+
+ 
+
+8. Fluxos de Exceção e Mensagens de Erro 
+
+Código 
+
+Situação de Exceção 
+
+Comportamento do Sistema / Mensagem Exata 
+
+E1 
+
+Proposta em status "Oficial" — tentativa de edição 
+
+A aba inteira é renderizada em modo Read-only. Botão [Salvar], checkboxes e células da grade são ocultados/desabilitados. Exibir banner informativo: "Esta proposta está Oficializada. Os valores fiscais estão congelados e não podem ser alterados (RN_TAX_03)." 
+
+E2 
+
+Proposta tipo "Termo de Parceria" — tentativa de ativar PIS ou COFINS 
+
+[TRAVA O ERRO] checkboxes de PIS e COFINS desabilitados. Tooltip: "Termos de Parceria possuem imunidade tributária — PIS e COFINS não podem ser aplicados (RN_PRO_010)." Campos zerados e bloqueados automaticamente (RNF_TAX_008). 
+
+E3 
+
+Nome de imposto duplicado no modal [Novo Imposto] 
+
+[TRAVA O ERRO] Sistema barra a gravação. Alerta inline no campo Nome: "Operação Rejeitada: Já existe um imposto cadastrado com o nome [Nome_Digitado]. Utilize um nome diferente." Modal permanece aberto com dados intactos (RN_TAX_05 / RNF_TAX_007). 
+
+E4 
+
+Data de vigência retroativa no modal [Novo Imposto] 
+
+[TRAVA O ERRO] Sistema impede o salvamento. Alerta inline no campo Data: "Erro: A data de vigência de um novo imposto não pode ser retroativa à data atual do sistema." Modal mantido aberto (RN_TAX_05 / RNF_TAX_007). 
+
+E5 
+
+Tentativa de salvar a grade com células mensais em branco 
+
+[TRAVA O ERRO] Gravação sofre rollback. Alerta inline: "Operação Rejeitada [TRAVA O ERRO]: Não é permitido salvar o planejamento com competências em branco. Por favor, declare explicitamente os valores para todos os meses (insira 0,00 caso não haja incidência no período)." Células em branco marcadas com borda vermelha. Grade permanece aberta (RN_TAX_04 / RNF_TAX_007). 
+
+E6 
+
+Alíquota de ISS fora do limite legal (Contrato: 2%-5%) 
+
+[TRAVA O ERRO] Sistema intercepta antes do envio ao servidor. Alerta inline na célula/campo: "Erro: A alíquota de ISS para Contratos deve estar entre 2,00% e 5,00% conforme limite legal. Valor informado: [X]%." Campo em foco mantido com valor digitado para correção (RNF_TAX_007). 
+
+E7 
+
+Conflito de concorrência (Optimistic Locking — dois salvamentos simultâneos) 
+
+O segundo commit é rejeitado. Alerta visual inline: "Atenção: As alíquotas desta proposta foram alteradas por outro usuário enquanto você editava. Recarregue a aba para visualizar os dados atualizados antes de salvar novamente." Nenhum dado é perdido (RNF_TAX_006). 
+
+E8 
+
+Falha no log de auditoria durante salvamento (RNF_TAX_005) 
+
+Rollback total da transação (tudo ou nada). Nenhum valor é persistido em RateioImpostoGrade. Alerta ao usuário: "Erro interno ao registrar a operação. Nenhum dado foi salvo. Tente novamente. Se o erro persistir, contate o administrador." Log de erro gerado no sistema. 
+
+ 
+
+9. Classes e Tabelas Envolvidas 
+
+Classe / Tabela 
+
+Tipo 
+
+Papel no UC03.01 
+
+Proposta (tb_proposta) 
+
+Entidade de Domínio / Tabela BD 
+
+Entidade pai. Fornece: Código, Tipo ("Contrato"/"TP"), Vigência (data_inicio/data_fim), Status. Determina comportamento fiscal de toda a aba via campo "tipo". 
+
+CentralCalculosController 
+
+Controller (Backend) 
+
+Controlador responsável pelos endpoints da Central de Cálculos. Recebe os payloads da aba Imposto, aciona validações e orquestra a persistência e o recálculo do Valor Global. 
+
+AliquotaImpostoParametro 
+
+Entidade / Tabela BD (Parâmetros) 
+
+Tabela de parâmetros globais do Módulo de Administração. Armazena tributos, alíquotas e vigências. Consumida pelo motor tributário. Destino da criação via modal [Novo Imposto]. 
+
+RateioImpostoGrade 
+
+Entidade / Tabela BD (Persistência) 
+
+Tabela de persistência dos valores declarados por competência mensal (célula × tributo × versão de Proposta). Congelada após status "Oficial" (RN_TAX_03). 
+
+SnapshotOrcamento (VersaoProposta) 
+
+Entidade / Tabela BD 
+
+Versão/snapshot da Proposta. FK em RateioImpostoGrade. Garante isolamento histórico — alterações em nova versão não afetam snapshots anteriores oficializados. 
+
+TotalizerService 
+
+Serviço Backend (Motor de Cálculo) 
+
+Calcula totalizadores da grade (por coluna, por linha, total geral) e atualiza o campo Valor Global da capa da Proposta após salvar. BigDecimal / NUMERIC(18,2). 
+
+HistoricodeOperacoes (tb_historico_operacoes) 
+
+Tabela BD (Auditoria) 
+
+Auditoria imutável. Registra: ID usuário, IP, timestamp em ms, payload JSON com estado anterior e posterior (Log Delta) a cada salvamento da grade. Transação atômica com RateioImpostoGrade (RNF_TAX_005). 
+
+ 
+
+10. Pontos de Atenção para o Time de Desenvolvimento 
+
+⚠️ 
+
+O campo "Tipo" da Proposta é a chave mestre da aba. A leitura reativa deste campo (RNF_TAX_008) deve ser implementada via estado global/contexto — sem necessidade de recarregar a página. Erro nesta detecção leva à tributação indevida de TPs. 
+
+⚠️ 
+
+O salvamento de RateioImpostoGrade e o log em HistoricodeOperacoes devem estar na MESMA transação (@Transactional com rollback em qualquer falha). Falha no log = rollback completo do salvamento fiscal (RNF_TAX_005). 
+
+⚠️ 
+
+Congelar aliquota_aplicada_snapshot ao momento do salvamento — não referenciar a alíquota atual do parâmetro em tempo de exibição para propostas Oficiais (RN_TAX_03). A leitura do snapshot histórico deve vir sempre de RateioImpostoGrade, não de AliquotaImpostoParametro. 
+
+⚠️ 
+
+Grade mensal com virtualização obrigatória (RNF_TAX_002). Projetos de longa duração podem ter 36, 48 ou 60+ colunas. Renderizar todas de uma vez sem virtualização causa travamento do navegador. 
+
+ℹ️ 
+
+Autofill (Fluxo Alt. B) é uma operação CLIENTE — sem chamada ao servidor. O sistema replica o último valor preenchido apenas na memória do front-end. O salvamento final ainda exige 100% das células preenchidas com qualquer valor >= 0,00 (RN_TAX_04). 
+
+ℹ️ 
+
+A criação via modal [Novo Imposto] (Fluxo Alt. C) persiste em AliquotaImpostoParametro (tabela global do Módulo de Administração), não em tabelas da Proposta. O novo tributo aparece reativamente na grade da Proposta atual, mas só surte efeito em novos projetos futuros (RN_TAX_06). 
+
+✅ 
+
+Implementar Optimistic Locking (RNF_TAX_006) via campo @Version (JPA) em RateioImpostoGrade ou verificação de updated_at no momento do UPDATE. Conflitos devem ser tratados com mensagem amigável sem perda de dados do usuário. 
+
+✅ 
+
+NUNCA usar FLOAT ou DOUBLE para valores fiscais. NUMERIC(18,2) no PostgreSQL e BigDecimal no backend Java. Alíquotas com até 4 casas decimais devem usar NUMERIC(8,4) na tabela de parâmetros para suportar índices como IPCA acumulado (ex: 4,5125%). 
+
+ 
+
+SGO 2.0 — CTCEA  |  EP118/24 — Módulo de Cadastros  |  UC03.01 — Central de Cálculos: Aba Imposto  |  Dicionário de Campos e Tipos  |  GIA 
+
+ 

@@ -8,6 +8,8 @@ import { EditarAgrupadorUseCase } from './EditarAgrupadorUseCase';
 import { ExcluirAgrupadorUseCase } from './ExcluirAgrupadorUseCase';
 import { ListarAgrupadoresUseCase } from './ListarAgrupadoresUseCase';
 import { AtribuirNaturezaContaUseCase } from './AtribuirNaturezaContaUseCase';
+import { ConfigurarValorOrcadoContaUseCase } from './ConfigurarValorOrcadoContaUseCase';
+import { CriarVersaoPropostaUseCase } from './CriarVersaoPropostaUseCase';
 
 export function getSincronizarPlanoContasUseCase(): SincronizarPlanoContasUseCase {
   return new SincronizarPlanoContasUseCase(
@@ -36,4 +38,12 @@ export function getListarAgrupadoresUseCase(): ListarAgrupadoresUseCase {
 
 export function getAtribuirNaturezaContaUseCase(): AtribuirNaturezaContaUseCase {
   return new AtribuirNaturezaContaUseCase(prisma);
+}
+
+export function getConfigurarValorOrcadoContaUseCase(): ConfigurarValorOrcadoContaUseCase {
+  return new ConfigurarValorOrcadoContaUseCase(prisma);
+}
+
+export function getCriarVersaoPropostaUseCase(): CriarVersaoPropostaUseCase {
+  return new CriarVersaoPropostaUseCase(prisma);
 }

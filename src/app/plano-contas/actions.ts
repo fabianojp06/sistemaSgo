@@ -1,5 +1,6 @@
 'use server';
 
+import { z } from 'zod';
 import { auth } from '@clerk/nextjs/server';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/infrastructure/db/prisma';
@@ -11,9 +12,13 @@ import {
   getEditarAgrupadorUseCase,
   getExcluirAgrupadorUseCase,
   getAtribuirNaturezaContaUseCase,
+  getConfigurarValorOrcadoContaUseCase,
+  getCriarVersaoPropostaUseCase,
 } from '@/application/use-cases/plano-contas/container';
 
 type ActionResult = { sucesso: true } | { sucesso: false; mensagem: string };
+
+type ActionResultComDados<T> = { sucesso: true; dados: T } | { sucesso: false; mensagem: string };
 
 async function usuarioAtual() {
   const { userId } = await auth();
@@ -101,6 +106,89 @@ export async function excluirAgrupador(agrupadorId: string): Promise<ActionResul
     await getExcluirAgrupadorUseCase().execute({ ...contexto, agrupadorId });
     revalidatePath('/plano-contas');
     return { sucesso: true };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+const ConfigurarValorOrcadoContaSchema = z.object({
+  versaoId: z.string().min(1),
+  contaId: z.string().min(1),
+  exercicio: z.number().int().min(2000).max(2100),
+  valor: z.string().min(1),
+});
+
+export type ValorOrcadoContaResultado = {
+  contaId: string;
+  exercicio: number;
+  valor: string;
+  totaisAncestrais: { contaId: string; total: string }[];
+};
+
+/** US-007 — Configurar Valor Orçado por Conta Analítica e Exercício. */
+export async function configurarValorOrcadoConta(
+  versaoId: string,
+  contaId: string,
+  exercicio: number,
+  valor: string,
+): Promise<ActionResultComDados<ValorOrcadoContaResultado>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const entrada = ConfigurarValorOrcadoContaSchema.safeParse({ versaoId, contaId, exercicio, valor });
+  if (!entrada.success) {
+    return { sucesso: false, mensagem: 'Valor Inválido: informe um valor monetário maior ou igual a zero.' };
+  }
+
+  const temPermissao = await usuarioTemFuncionalidade(
+    prisma,
+    contexto.tenantId,
+    contexto.usuarioId,
+    'plano-contas.configurar-valor-orcado',
+  );
+  if (!temPermissao) return { sucesso: false, mensagem: 'Você não tem permissão para configurar valores orçados.' };
+
+  try {
+    const resultado = await getConfigurarValorOrcadoContaUseCase().execute({ ...contexto, ...entrada.data });
+    revalidatePath('/plano-contas');
+    return {
+      sucesso: true,
+      dados: {
+        contaId: resultado.contaId,
+        exercicio: resultado.exercicio,
+        valor: resultado.valor.toString(),
+        totaisAncestrais: resultado.totaisAncestrais.map((t) => ({ contaId: t.contaId, total: t.total.toString() })),
+      },
+    };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+const CriarVersaoPropostaSchema = z.object({
+  propostaId: z.string().min(1),
+  descricao: z.string().trim().max(500).optional(),
+});
+
+export type VersaoPropostaResultado = { id: string; numeroVersao: number };
+
+/** US-007, Cenário 4 — cria nova versão de Proposta copiando os valores orçados da vigente. */
+export async function criarVersaoProposta(
+  propostaId: string,
+  descricao?: string,
+): Promise<ActionResultComDados<VersaoPropostaResultado>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const entrada = CriarVersaoPropostaSchema.safeParse({ propostaId, descricao });
+  if (!entrada.success) {
+    return { sucesso: false, mensagem: 'Dados inválidos para criação de nova versão.' };
+  }
+
+  try {
+    const novaVersao = await getCriarVersaoPropostaUseCase().execute({ ...contexto, ...entrada.data });
+    revalidatePath('/plano-contas');
+    return { sucesso: true, dados: { id: novaVersao.id, numeroVersao: novaVersao.numeroVersao } };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
   }

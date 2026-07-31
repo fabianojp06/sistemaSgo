@@ -1,0 +1,1091 @@
+ 
+
+DICIONARIO DE CAMPOS E TIPOS DE CAMPO 
+
+UC03.04 - Manter Proposta 
+
+Modulo de Cadastros  |  EP118/24  |  SGO 2.0 - CTCEA 
+
+ 
+
+Documento: 
+
+Dicionario de Campos - UC03.04 
+
+Data de Emissao: 
+
+21/07/2025 
+
+Modulo: 
+
+Modulo de Cadastros Gerais (EP118/24) 
+
+Versao Fonte: 
+
+V5 - Rev. 01 (22/06/2024) 
+
+Epico: 
+
+EP118/24 
+
+Elaboracao: 
+
+GIA / SGO 2.0 
+
+Destinatario: 
+
+Time de Desenvolvimento 
+
+Referencia: 
+
+EP118/24 - Especificacao do Modulo de Cadastros V5 
+
+ 
+
+1. Objetivo do Documento 
+
+Este documento especifica todos os campos de interface e elementos de tela necessarios para a implementacao do UC03.04 - Manter Proposta no SGO 2.0. Para cada campo sao informados: tipo de componente, obrigatoriedade, editabilidade, condicao de visibilidade, origem dos dados e regras de negocio aplicaveis. 
+
+O UC03.04 e a tela de listagem e painel de controle central do modulo orcamentario. Ela nao persiste dados diretamente - funciona como ponto de partida (gateway) para todas as acoes especializadas sobre Propostas e Termos de Parceria. Suas responsabilidades: 
+
+Consulta e Filtragem:  Painel de filtros combinados (Tipo, Proposta, Categoria, Data Inicio, Data Termino, Status) para localizacao de registros. 
+
+Grid Tree-View Hierarquica:  Grid aninhada que exibe Capa do Contrato > Historico de Versoes (Snapshots) > Termos Aditivos em estrutura expandivel. 
+
+Matriz de Acoes Reativas:  Botoes [Editar], [Excluir], [Duplicar] e [Aditivo] habilitados ou ocultos reativamente conforme o status de cada linha (RN_MAN_002 / RN_MAN_003). 
+
+ 
+
+2. Legenda e Convencoes 
+
+[TRAVA O ERRO] - Origem Blindada 
+
+Tentativas de escrita em versoes Oficializadas ou Encerradas sao bloqueadas em nivel de endpoint. O sistema executa rollback atomico e plota aviso na tela. Nenhuma alteracao fisica ocorre no banco. 
+
+Condicao de Visibilidade 
+
+Coluna que indica sob qual condicao (status do registro, perfil do usuario, etc.) cada campo ou botao fica visivel/habilitado. Esta coluna e critica para implementar corretamente o comportamento reativo da grid. 
+
+Soft Delete (Inativacao Logica) 
+
+A exclusao via botao [Excluir] NUNCA executa DELETE fisico. Atualiza o campo status para Inativo/Excluido. O registro some das grids de busca mas persiste no historico de auditoria (RN_MAN_006). 
+
+Tree-View (Grid Aninhada) 
+
+A grid e hierarquica: linha principal = Capa da Proposta/TP; sublinhas (expansiveis) = Versoes/Snapshots; sub-sublinhas = Termos Aditivos. Cada nivel tem seus proprios botoes de acao condicionados ao status (RF_MAN_REQ_002). 
+
+ 
+
+3. Dicionario de Campos - Painel de Filtros (Topo da Tela) 
+
+RF_MAN_REQ_001: filtros operam de forma combinada ou isolada. Suportam buscas por termos completos ou fragmentos de texto (LIKE). Nenhum filtro e obrigatorio para renderizar a tela, mas a busca so e ativada apos clicar em [Pesquisar]. 
+
+ 
+
+# 
+
+Campo / Elemento 
+
+Tipo 
+
+Obrig. 
+
+Editavel 
+
+Condicao de Visibilidade 
+
+Origem 
+
+Observacoes / Regras 
+
+Campos de Filtro - Painel Superior da Tela de Listagem 
+
+1 
+
+Filtro: Tipo 
+
+Select (Dropdown) 
+
+Nao 
+
+Sim 
+
+Sempre visivel 
+
+Dominio controlado (tb_proposta.tipo) 
+
+Dominio: Contrato | Termo de Parceria. Opcao padrao: Todos. Combinavel com os demais filtros. varchar(30). 
+
+2 
+
+Filtro: Proposta 
+
+Input text (busca parcial) 
+
+Nao 
+
+Sim 
+
+Sempre visivel 
+
+tb_proposta.codigo e tb_proposta.nome 
+
+Suporta busca por codigo ou por nome (fragmento de texto). Filtro LIKE no backend. varchar livre. 
+
+3 
+
+Filtro: Categoria 
+
+Select (Dropdown) 
+
+Nao 
+
+Sim 
+
+Sempre visivel 
+
+tb_proposta.categoria 
+
+Dominio: Consolidada | Por Meta. Opcao padrao: Todas. Determina se o campo Meta e exibido nos detalhes. varchar(20). 
+
+4 
+
+Filtro: Data de Inicio 
+
+Date picker (data inicial) 
+
+Nao 
+
+Sim 
+
+Sempre visivel 
+
+tb_proposta.data_inicio 
+
+Filtra propostas cuja data_inicio seja >= ao valor informado. Formato: DD/MM/AAAA. date. 
+
+5 
+
+Filtro: Data de Termino 
+
+Date picker (data final) 
+
+Nao 
+
+Sim 
+
+Sempre visivel 
+
+tb_proposta.data_fim 
+
+Filtra propostas cuja data_fim seja <= ao valor informado. Formato: DD/MM/AAAA. date. 
+
+6 
+
+Filtro: Status 
+
+Select (Dropdown) 
+
+Nao 
+
+Sim 
+
+Sempre visivel 
+
+tb_proposta.status 
+
+Dominio: Rascunho | Em Elaboracao | Oficializado | Encerrado | Todos. Opcao padrao: Todos. varchar(30). 
+
+Botoes de Acao do Painel de Filtros 
+
+7 
+
+Botao [Pesquisar] 
+
+Button (Submit) 
+
+N/A 
+
+N/A 
+
+Sempre visivel 
+
+Interface SGO 
+
+Dispara a consulta combinada ao backend com os filtros preenchidos. Renderiza a grid Tree-View com os resultados. Performance: max 1,5s para bases com ate 2.000 contratos (RNF_MAN_REQ_001). 
+
+8 
+
+Botao [Limpar Filtros] 
+
+Button (Reset) 
+
+N/A 
+
+N/A 
+
+Sempre visivel 
+
+Interface SGO (client-side) 
+
+Limpa todos os campos de filtro e retorna ao estado inicial. Operacao local sem chamada ao servidor. 
+
+9 
+
+Botao [Nova Proposta] 
+
+Button (Acao - navegacao) 
+
+N/A 
+
+N/A 
+
+Perfil com direito de criacao 
+
+Interface SGO 
+
+Redireciona para UC03.05 - Cadastrar Proposta. Oculto para perfis somente leitura (RBAC). 
+
+ 
+
+4. Dicionario de Campos - Grid Tree-View Hierarquica 
+
+RF_MAN_REQ_002: grid aninhada em tres niveis. Nivel 1 = Capa da Proposta/TP. Nivel 2 = Versoes/Snapshots (expandiveis sob a capa). Nivel 3 = Termos Aditivos (expandiveis sob cada versao). RNF_MAN_REQ_002: renderizacao virtual obrigatoria para rolagem fluida sem paginacao fisica. 
+
+ 
+
+4.1 Nivel 1 - Capa da Proposta / Termo de Parceria (Linha Principal) 
+
+# 
+
+Campo / Elemento 
+
+Tipo 
+
+Obrig. 
+
+Editavel 
+
+Condicao de Visibilidade 
+
+Origem 
+
+Observacoes / Regras 
+
+Colunas Exibidas na Linha Principal da Grid (Capa da Proposta) 
+
+10 
+
+Icone de Expansao 
+
+Toggle (Tree-View) 
+
+N/A 
+
+N/A 
+
+Sempre (se houver versoes) 
+
+Interface SGO 
+
+Icone triangular que expande/recolhe as sublinhas de versoes. Operacao local client-side sem chamada ao servidor. 
+
+11 
+
+Codigo da Proposta / TP 
+
+Label (codigo) 
+
+N/A 
+
+Nao 
+
+Sempre 
+
+tb_proposta.codigo 
+
+Identificador unico da Proposta ou TP. Exibido na primeira coluna da grid. varchar(30). [ORIGEM BLINDADA] - somente alteravel via fluxo de edicao dedicado. 
+
+12 
+
+Nome / Titulo da Proposta 
+
+Label (texto clicavel) 
+
+N/A 
+
+Nao 
+
+Sempre 
+
+tb_proposta.nome 
+
+Nome completo da Proposta. Clicavel: redireciona para UC03.06 - Alterar Proposta (se status permitir). varchar(255). 
+
+13 
+
+Tipo 
+
+Badge (leitura) 
+
+N/A 
+
+Nao 
+
+Sempre 
+
+tb_proposta.tipo 
+
+Dominio: Contrato | Termo de Parceria. Exibido como badge de cor diferenciada. varchar(30). 
+
+14 
+
+Categoria 
+
+Label (leitura) 
+
+N/A 
+
+Nao 
+
+Sempre 
+
+tb_proposta.categoria 
+
+Dominio: Consolidada | Por Meta. Determina exibicao de campo Meta nas telas de detalhe. varchar(20). 
+
+15 
+
+Data de Inicio 
+
+Label (data) 
+
+N/A 
+
+Nao 
+
+Sempre 
+
+tb_proposta.data_inicio 
+
+Data de inicio da vigencia. Formato: DD/MM/AAAA. date. [ORIGEM BLINDADA]. 
+
+16 
+
+Data de Termino 
+
+Label (data) 
+
+N/A 
+
+Nao 
+
+Sempre 
+
+tb_proposta.data_fim 
+
+Data de termino da vigencia. Formato: DD/MM/AAAA. date. [ORIGEM BLINDADA]. Ao ultrapassar: status muda automaticamente para Encerrado (RN_MAN_005). 
+
+17 
+
+Status (Badge Cromatico) 
+
+Badge (status - RF_MAN_REQ_004) 
+
+N/A 
+
+Nao 
+
+Sempre 
+
+tb_proposta.status 
+
+CAMPO CRITICO: determina visibilidade de todos os botoes de acao da linha. Dominio e cores: ver Secao 5. varchar(30). Atualizado automaticamente pelo sistema (RN_MAN_005). 
+
+18 
+
+Valor Global 
+
+Label (moeda - Read-only) 
+
+N/A 
+
+Nao 
+
+Sempre 
+
+TotalizerService (calculado) 
+
+Valor global da Proposta calculado pelo TotalizerService. [ORIGEM BLINDADA] - nunca editavel diretamente na grid. NUMERIC(18,2). BigDecimal. 
+
+Botoes de Acao Inline - Nivel 1 (Capa da Proposta) - RF_MAN_REQ_003 
+
+19 
+
+Botao [Editar] 
+
+Button (Acao - inline) 
+
+N/A 
+
+N/A 
+
+Visivel SOMENTE se status = Rascunho ou Em Elaboracao (RN_MAN_002) 
+
+Interface SGO 
+
+Redireciona para UC03.06 - Alterar Proposta. Oculto para status Oficializado ou Encerrado. Oculto para perfil sem direito de edicao. 
+
+20 
+
+Botao [Excluir] 
+
+Button (Acao - inline) 
+
+N/A 
+
+N/A 
+
+Visivel SOMENTE se status = Rascunho (RN_MAN_002 + RN_MAN_006) 
+
+Interface SGO 
+
+Executa Soft Delete (RN_MAN_006): atualiza status para Inativo. NUNCA DELETE fisico. Requer confirmacao modal antes de executar. Oculto para demais status. 
+
+21 
+
+Botao [Duplicar] 
+
+Button (Acao - inline) 
+
+N/A 
+
+N/A 
+
+Sempre visivel (quando perfil permitir) 
+
+Interface SGO 
+
+NAO processa dados localmente. Redireciona para UC03.24 - Duplicar/Criar Versao, transferindo ID e numero de versao (RN_MAN_001). Disponivel em qualquer status. 
+
+22 
+
+Botao [Aditivo] 
+
+Button (Acao - inline) 
+
+N/A 
+
+N/A 
+
+Visivel SOMENTE se status = Oficializado E sem aditivos em andamento (RN_MAN_003) 
+
+Interface SGO 
+
+Redireciona para UC03.12 - Criar Termo Aditivo. Bloqueado se ja existir aditivo em Rascunho/Elaboracao para o contrato. 
+
+ 
+
+4.2 Nivel 2 - Sublinhas de Versoes / Snapshots Orcamentarios 
+
+RN_MAN_004: versoes exibidas em ordem crescente por numero sequencial de snapshot. Cada versao e uma sublinha expandivel sob a capa da Proposta (Nivel 1). Ordenadas cronologicamente. 
+
+ 
+
+# 
+
+Campo / Elemento 
+
+Tipo 
+
+Obrig. 
+
+Editavel 
+
+Condicao de Visibilidade 
+
+Origem 
+
+Observacoes / Regras 
+
+Colunas das Sublinhas de Versao/Snapshot (Nivel 2 da Tree-View) 
+
+23 
+
+Numero da Versao / Snapshot 
+
+Label (numero sequencial) 
+
+N/A 
+
+Nao 
+
+Ao expandir a Capa (N1) 
+
+tb_versao_proposta.numero_versao 
+
+Numero sequencial da versao (1, 2, 3...). Exibido com prefixo visual: V1, V2, V3. integer. [ORIGEM BLINDADA]. 
+
+24 
+
+Descricao da Versao 
+
+Label (texto) 
+
+N/A 
+
+Nao 
+
+Ao expandir a Capa (N1) 
+
+tb_versao_proposta.descricao 
+
+Descricao/comentario da versao. Ex: Versao inicial, Revisao apos aditivo. varchar(500). 
+
+25 
+
+Data de Criacao da Versao 
+
+Label (datetime) 
+
+N/A 
+
+Nao 
+
+Ao expandir a Capa (N1) 
+
+tb_versao_proposta.created_at 
+
+Data/hora em que o snapshot foi criado. Formato: DD/MM/AAAA HH:mm. timestamp with time zone. [ORIGEM BLINDADA]. 
+
+26 
+
+Status da Versao 
+
+Badge (status) 
+
+N/A 
+
+Nao 
+
+Ao expandir a Capa (N1) 
+
+tb_versao_proposta.status 
+
+Status especifico desta versao. Pode diferir do status da Capa em cenarios de versionamento. varchar(30). 
+
+27 
+
+Criado por 
+
+Label (usuario) 
+
+N/A 
+
+Nao 
+
+Ao expandir a Capa (N1) 
+
+tb_versao_proposta.created_by -> users.nome 
+
+Nome do usuario que criou a versao. Auditoria. varchar. 
+
+Botoes de Acao Inline - Nivel 2 (Versao/Snapshot) 
+
+28 
+
+Botao [Editar Versao] 
+
+Button (Acao - inline) 
+
+N/A 
+
+N/A 
+
+Visivel SOMENTE se status da versao = Rascunho ou Em Elaboracao 
+
+Interface SGO 
+
+Redireciona para UC03.10 - Editar Versao da Proposta. Oculto para versoes Oficializadas ou Encerradas. 
+
+29 
+
+Botao [Excluir Versao] 
+
+Button (Acao - inline) 
+
+N/A 
+
+N/A 
+
+Visivel SOMENTE se status = Rascunho E nao for a unica versao 
+
+Interface SGO 
+
+Redireciona para UC03.11 - Excluir Versao. Soft Delete. Proibido excluir a unica versao existente. 
+
+ 
+
+4.3 Nivel 3 - Sublinhas de Termos Aditivos 
+
+RN_MAN_004: aditivos exibidos em ordem crescente por numero sequencial. Sublinhas expandiveis sob a versao correspondente (Nivel 2). Visivel apenas quando existirem aditivos associados. 
+
+ 
+
+# 
+
+Campo / Elemento 
+
+Tipo 
+
+Obrig. 
+
+Editavel 
+
+Condicao de Visibilidade 
+
+Origem 
+
+Observacoes / Regras 
+
+Colunas das Sublinhas de Termos Aditivos (Nivel 3 da Tree-View) 
+
+30 
+
+Numero do Aditivo 
+
+Label (numero sequencial) 
+
+N/A 
+
+Nao 
+
+Ao expandir Versao (N2) 
+
+tb_aditivo.numero_aditivo 
+
+Numero sequencial do aditivo (1, 2, 3...). Prefixo: Aditivo n. 1. integer. [ORIGEM BLINDADA]. 
+
+31 
+
+Objeto do Aditivo 
+
+Label (texto resumido) 
+
+N/A 
+
+Nao 
+
+Ao expandir Versao (N2) 
+
+tb_aditivo.objeto 
+
+Descricao resumida do objeto/motivo do aditivo. Truncado na grid (max 80 chars). varchar(500). 
+
+32 
+
+Data de Assinatura 
+
+Label (data) 
+
+N/A 
+
+Nao 
+
+Ao expandir Versao (N2) 
+
+tb_aditivo.data_assinatura 
+
+Data de assinatura do termo aditivo. Formato: DD/MM/AAAA. date. 
+
+33 
+
+Status do Aditivo 
+
+Badge (status) 
+
+N/A 
+
+Nao 
+
+Ao expandir Versao (N2) 
+
+tb_aditivo.status 
+
+Dominio: Rascunho | Em Elaboracao | Aprovado | Cancelado. Determina visibilidade dos botoes de acao desta linha. varchar(30). 
+
+34 
+
+Valor do Aditivo 
+
+Label (moeda) 
+
+N/A 
+
+Nao 
+
+Ao expandir Versao (N2) 
+
+tb_aditivo.valor 
+
+Valor monetario do aditivo (positivo = acrescimo, negativo = reducao). NUMERIC(18,2). [ORIGEM BLINDADA]. 
+
+Botoes de Acao Inline - Nivel 3 (Aditivo) 
+
+35 
+
+Botao [Ver / Editar Aditivo] 
+
+Button (Acao - inline) 
+
+N/A 
+
+N/A 
+
+Visivel conforme status do Aditivo 
+
+Interface SGO 
+
+Redireciona para UC03.12 - Criar/Editar Termo Aditivo. Modo edicao se Rascunho/Em Elaboracao. Modo leitura se Aprovado. 
+
+ 
+
+5. Especificacao dos Badges Cromaticos de Status (RF_MAN_REQ_004) 
+
+Os badges de status sao o mecanismo central de controle de acoes da grid. Cada status define quais botoes de acao ficam visiveis e habilitados para cada linha. Ver tambem Secao 6 (Matriz de Acoes por Status). 
+
+ 
+
+Status 
+
+Cor do Badge 
+
+Significado e Restricoes Operacionais 
+
+Rascunho 
+
+Cinza (#808080 ou similar) 
+
+Proposta recém criada. Permite edicao e exclusao. Nao visivel para terceiros. Status inicial de toda nova Proposta ou Versao. 
+
+Em Elaboracao 
+
+Azul (#2E75B6) 
+
+Proposta em processo ativo de elaboracao orçamentaria. Permite edicao mas nao exclusao. Visivel para colaboradores do projeto. 
+
+Oficializado 
+
+Verde (#375623) 
+
+Proposta homologada e congelada. Permite apenas abertura de novo Termo Aditivo. Edicao e exclusao bloqueadas [ORIGEM BLINDADA]. 
+
+Encerrado 
+
+Vermelho (#C00000) 
+
+Vigencia encerrada automaticamente pelo sistema (RN_MAN_005) ou manualmente. Sem acoes de escrita disponiveis. Apenas consulta. 
+
+ 
+
+6. Matriz de Acoes por Status - Grid Nivel 1 (Capa da Proposta) 
+
+Esta matriz define exatamente quais botoes de acao ficam ativos, ocultos ou N/A para cada status da linha da grid. Implementar esta logica de forma reativa: a visibilidade dos botoes deve ser atualizada automaticamente ao mudar o status. 
+
+ 
+
+Status da Proposta 
+
+[Editar] 
+
+[Excluir] 
+
+[Duplicar] 
+
+[Aditivo] 
+
+Observacao 
+
+Rascunho 
+
+Ativo 
+
+Ativo 
+
+Ativo 
+
+Oculto 
+
+Edicao e exclusao disponiveis. Sem aditivo pois nao esta Oficializado. 
+
+Em Elaboracao 
+
+Ativo 
+
+Oculto 
+
+Ativo 
+
+Oculto 
+
+Permite edicao mas nao exclusao. Duplicar sempre disponivel. Sem aditivo. 
+
+Oficializado 
+
+Oculto 
+
+Oculto 
+
+Ativo 
+
+Ativo 
+
+Edicao/exclusao bloqueadas [ORIGEM BLINDADA]. Aditivo disponivel SE nao houver outro em andamento (RN_MAN_003). 
+
+Encerrado 
+
+Oculto 
+
+Oculto 
+
+Ativo 
+
+Oculto 
+
+Apenas consulta e duplicacao. Sem edicao, exclusao ou novos aditivos. 
+
+Nota sobre Aditivo: O botao Aditivo so fica Ativo se status = Oficializado E nao existir nenhum aditivo com status Rascunho ou Em Elaboracao vinculado ao contrato (RN_MAN_003). Se houver aditivo em andamento, o botao fica oculto mesmo com status Oficializado. 
+
+ 
+
+7. Requisitos Funcionais (RF) e Nao Funcionais (RNF) 
+
+ 
+
+7.1 Requisitos Funcionais 
+
+Codigo 
+
+Requisito Funcional 
+
+Descricao 
+
+RF_MAN_REQ_001 
+
+Painel de Filtros Independentes 
+
+A tela superior deve disponibilizar os seletores de pesquisa operando de forma combinada ou isolada (Tipo, Proposta, Categoria, Data Inicio, Data Termino, Status), suportando buscas por termos completos ou fragmentos de textos literais (LIKE). 
+
+RF_MAN_REQ_002 
+
+Grid Unificada Tree-View 
+
+Desenvolver componente de grid continua expandivel capaz de aninhar hierarquicamente as versoes de snapshots e os aditivos logo abaixo da linha mestre da capa do Termo de Parceria. Tres niveis: Capa > Versoes > Aditivos. 
+
+RF_MAN_REQ_003 
+
+Matriz de Acoes Inline por Registro 
+
+Cada linha de versao renderizada na grid deve disponibilizar de forma reativa os botoes [Editar], [Excluir], [Duplicar] e [Aditivo] condicionados as regras de status de cada linha. 
+
+RF_MAN_REQ_004 
+
+Badges Cromaticos de Identificacao 
+
+Exibir marcadores visuais coloridos para rapida identificacao do ciclo de vida: Cinza (Rascunho), Azul (Em Elaboracao), Verde (Oficializado), Vermelho (Encerrado). Ver Secao 5. 
+
+ 
+
+7.2 Requisitos Nao Funcionais 
+
+Codigo 
+
+Requisito Nao Funcional 
+
+Descricao 
+
+RNF_MAN_REQ_001 
+
+Limite de Tempo de Resposta da Pesquisa 
+
+A execucao das consultas combinadas de filtros e a renderizacao completa da grid Tree-View multinivel nao deve ultrapassar 1,5 segundos para bases com ate 2.000 contratos cadastrados. 
+
+RNF_MAN_REQ_002 
+
+Resiliencia com Bypass de Paginacao 
+
+A interface deve utilizar renderizacao virtual de linhas para suportar rolagem fluida e continua da grid sem paginacao fisica, mantendo consumo de memoria do navegador estavel (TanStack Virtual ou equivalente). 
+
+RNF_MAN_REQ_003 
+
+Retencao de Estado de Filtros em Navegacao 
+
+Ao aplicar filtros, entrar no detalhe de edicao de um registro e retornar, a tela deve garantir a preservacao exata dos filtros preenchidos e da posicao de rolagem anterior do usuario. 
+
+ 
+
+8. Regras de Negocio 
+
+Codigo 
+
+Regra de Negocio 
+
+Descricao 
+
+RN_MAN_001 
+
+Redirecionamento Mandatorio do Botao Duplicar (Saneamento V2) 
+
+O botao [Duplicar] na grid NAO processa dados localmente nem realiza nenhuma persistencia. Sua unica funcao e transferir o contexto operacional (ID + numero da versao) e redirecionar para UC03.24 - Duplicar/Criar Versao, onde ocorrera a modelagem profunda e clonagem de tabelas. 
+
+RN_MAN_002 
+
+Blindagem de Alteracoes por Ciclo de Vida (Origem Blindada) 
+
+Os botoes [Editar] e [Excluir] so ficam visiveis e ativos para linhas com status Rascunho ou Em Elaboracao. Para versoes Oficializadas ou Encerradas, esses comandos ficam completamente ocultos na tela. Validacao reforcada no backend: qualquer tentativa de escrita em status invalido retorna HTTP 403 + rollback. 
+
+RN_MAN_003 
+
+Restricao para Disparo de Termo Aditivo 
+
+O botao [Aditivo] fica ativo apenas para propostas com status = Oficializado E que nao possuam outro termo aditivo concomitante com status Rascunho ou Em Elaboracao. Previne concorrencia orcamentaria e conflito de versoes. 
+
+RN_MAN_004 
+
+Ordenacao Cronologica de Versoes e Aditivos 
+
+A grid exibe versoes em ordem crescente por numero sequencial de snapshot. Aditivos exibidos em ordem crescente por numero de aditivo. Ordenacao automatica aplicada pelo backend na query, nao no frontend. 
+
+RN_MAN_005 
+
+Encerramento Automatizado por Limite de Vigencia 
+
+No momento em que a data do servidor ultrapassar o campo data_fim da capa da Proposta, o sistema altera automaticamente o status para Encerrado, bloqueando novos lancamentos. Implementado via job agendado (CronJob) ou validacao lazy no primeiro acesso pos-vencimento. 
+
+RN_MAN_006 
+
+Aplicacao de Inativacao Logica Padrao (Soft Delete) 
+
+O botao [Excluir] nunca executa DELETE fisico no banco de dados. O sistema realiza UPDATE do campo status para Inativo/Excluido. O registro some das grids de busca ativa mas permanece no historico de auditoria na HistoricodeOperacoes. 
+
+ 
+
+9. Fluxos de Excecao e Mensagens de Erro 
+
+Cod. 
+
+Situacao de Excecao 
+
+Comportamento do Sistema / Mensagem Exata 
+
+E1 
+
+Tentativa de escrita em versao Oficializada ou Encerrada [TRAVA O ERRO - Origem Blindada] 
+
+[TRAVA O ERRO] Tentativa de forcada de edicao ou exclusao via chamada direta de backend em versao com status Oficializado ou Encerrado. O SGO identifica a violacao da diretriz Origem Blindada, bloqueia a transacao, executa rollback atomico. Mensagem na tela: Acao Negada [TRAVA O ERRO]: Versoes oficializadas ou encerradas sao imutaveis. Alteracoes so sao permitidas via abertura de novo Termo Aditivo ou criacao de nova versao em rascunho. 
+
+E2 
+
+Tentativa de criar aditivo com outro aditivo em andamento (RN_MAN_003) 
+
+O sistema detecta que ja existe um Termo Aditivo com status Rascunho ou Em Elaboracao vinculado ao contrato. Botao [Aditivo] fica oculto/desabilitado na grid. Se a tentativa ocorrer via API direta: HTTP 422. Mensagem: Operacao Bloqueada: Ja existe um Termo Aditivo em andamento para este contrato. Conclua ou cancele o aditivo atual antes de criar um novo. 
+
+E3 
+
+Encerramento automatico por vencimento de vigencia (RN_MAN_005) 
+
+O sistema detecta que a data_fim da Proposta foi ultrapassada. Status alterado automaticamente para Encerrado. Todos os botoes de edicao e exclusao ficam ocultos. Banner informativo na linha: Este contrato foi encerrado automaticamente em [data_fim] por termino de vigencia. Nenhum novo lancamento orcamentario e aceito. 
+
+E4 
+
+Resultado de pesquisa vazio 
+
+A combinacao de filtros nao retorna registros. A grid e renderizada vazia. Mensagem informativa no centro da grid: Nenhuma proposta encontrada com os criterios informados. Ajuste os filtros e pesquise novamente. Nenhum erro - estado normal de busca sem resultados. 
+
+E5 
+
+Timeout na consulta (base com muitos registros) 
+
+A consulta ao backend excede o limite de 1,5 segundos (RNF_MAN_REQ_001). O frontend exibe loader de carregamento. Apos 5 segundos sem resposta: mensagem de timeout inline: Tempo limite excedido na busca. Verifique sua conexao ou refine os filtros para reduzir o escopo da consulta. 
+
+ 
+
+10. Classes e Tabelas Envolvidas 
+
+Classe / Tabela 
+
+Tipo 
+
+Papel no UC03.04 
+
+Proposta (tb_proposta) 
+
+Entidade / Tabela BD 
+
+Entidade principal desta tela. Fornece todos os dados da Capa (Nivel 1): Codigo, Nome, Tipo, Categoria, Datas, Status, Valor Global. O campo status e o gatilho de toda a logica de visibilidade de acoes. 
+
+VersaoProposta / SnapshotOrcamento (tb_versao_proposta) 
+
+Entidade / Tabela BD 
+
+Sublinhas do Nivel 2 da Tree-View. Cada versao e um snapshot orcamentario independente. Ordenadas por numero_versao crescente (RN_MAN_004). Status proprio que pode diferir do status da Capa. 
+
+Aditivo / VersaoAditivo (tb_aditivo) 
+
+Entidade / Tabela BD 
+
+Sublinhas do Nivel 3 da Tree-View. Termos aditivos vinculados a versoes Oficializadas. Ordenados por numero_aditivo crescente. Status proprio (Rascunho, Em Elaboracao, Aprovado, Cancelado). 
+
+HistoricodeOperacoes (tb_historico_operacoes) 
+
+Tabela BD (Auditoria) 
+
+Log imutavel de toda operacao de escrita disparada a partir desta tela (Soft Delete, navegacao, acoes inline). Registra: ID usuario, IP, timestamp, payload JSON com estado anterior e posterior. 
+
+TotalizerService 
+
+Servico Backend 
+
+Fornece o campo Valor Global exibido na grid para cada Proposta. Calculado dinamicamente via somatório dos lancamentos N7. [ORIGEM BLINDADA] - nao editavel a partir desta tela. 
+
+ 
+
+11. Pontos de Atencao para o Time de Desenvolvimento 
+
+!!! 
+
+A protecao contra escrita em versoes Oficializadas/Encerradas DEVE ser implementada no BACKEND (endpoint HTTP 403 + rollback), nao apenas na UI. Um usuario mal-intencionado pode chamar o endpoint diretamente. A UI e uma segunda camada de protecao, nao a unica (RN_MAN_002 - Origem Blindada). 
+
+!!! 
+
+TODA query nas tabelas tb_proposta, tb_versao_proposta e tb_aditivo DEVE incluir filtro por tenant_id no WHERE. Ausencia deste filtro e bloqueador P1 e vazamento de dados entre tenants. 
+
+!! 
+
+O botao [Duplicar] NAO processa dados (RN_MAN_001). Ele apenas redireciona para UC03.24. NUNCA implementar logica de clonagem de dados diretamente no handler de clique deste botao. A clonagem ocorre exclusivamente no fluxo especializado UC03.24. 
+
+!! 
+
+Virtualizacao da grid e OBRIGATORIA (RNF_MAN_REQ_002). Bases com 2.000+ contratos e multiplas versoes/aditivos cada podem gerar dezenas de milhares de linhas DOM. Usar TanStack Virtual com janelamento vertical para a Tree-View. 
+
+i 
+
+O encerramento automatico por vencimento (RN_MAN_005) pode ser implementado como CronJob agendado (meia-noite) ou como validacao lazy: verificar se data_fim < now() ao carregar a tela e atualizar o status se necessario. A segunda abordagem e mais simples mas o status no banco pode ficar defasado entre consultas. 
+
+i 
+
+A retencao de estado dos filtros (RNF_MAN_REQ_003) deve ser implementada via URL query params ou state management do front-end. Ao navegar de volta via [Voltar] ou History API, os filtros e posicao de scroll devem ser restaurados. 
+
+OK 
+
+Soft Delete (RN_MAN_006): implementar via UPDATE tb_proposta SET status = Inativo WHERE id = ? AND tenant_id = ?. Registrar em HistoricodeOperacoes com payload JSON do estado anterior completo. Transacao atomica: se o log falhar, o soft delete e revertido. 
+
+OK 
+
+A checagem de aditivo em andamento (RN_MAN_003) deve ser feita no momento do clique em [Aditivo]: SELECT COUNT(*) FROM tb_aditivo WHERE id_proposta = ? AND status IN (Rascunho, Em Elaboracao) AND tenant_id = ?. Se COUNT > 0, bloquear a navegacao. 
+
+ 
+
+SGO 2.0 - CTCEA  |  EP118/24 - Modulo de Cadastros  |  UC03.04 - Manter Proposta  |  Dicionario de Campos e Tipos  |  GIA 
+
+ 

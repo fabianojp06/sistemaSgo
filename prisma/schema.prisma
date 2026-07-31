@@ -25,6 +25,8 @@ enum TipoOperacao {
   AGRUPADOR_EDITADO
   AGRUPADOR_EXCLUIDO
   NATUREZA_ALTERADA
+  VALOR_ORCADO_CONFIGURADO
+  VERSAO_PROPOSTA_CRIADA
 }
 
 model Usuario {
@@ -161,7 +163,8 @@ model ContaContabil {
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
 
-  agrupadorItens ContaAgrupadoraItem[]
+  agrupadorItens   ContaAgrupadoraItem[]
+  valoresOrcados   ValorOrcadoConta[]
 
   @@unique([tenantId, codigoErp])
   @@index([tenantId, nivel])
@@ -198,4 +201,87 @@ model SincronismoPlanoContasLock {
   emAndamento Boolean   @default(false)
   iniciadoEm  DateTime?
   iniciadoPor String?
+}
+
+// ADR-012 — modelagem mínima de Proposta/Versão, suficiente para destravar US-007.
+// O escopo completo de UC03.04 (Manter Proposta: listagem, filtros, Aditivo) não é
+// implementado aqui — apenas o necessário para Proposta e VersaoProposta existirem
+// como entidades reais e servirem de FK para ValorOrcadoConta.
+enum TipoProposta {
+  CONTRATO
+  TERMO_DE_PARCERIA
+}
+
+enum CategoriaProposta {
+  CONSOLIDADA
+  POR_META
+}
+
+enum StatusProposta {
+  RASCUNHO
+  EM_ELABORACAO
+  OFICIALIZADO
+  ENCERRADO
+}
+
+model Proposta {
+  id         String            @id @default(uuid())
+  tenantId   String
+  codigo     String
+  nome       String
+  tipo       TipoProposta
+  categoria  CategoriaProposta
+  dataInicio DateTime
+  dataFim    DateTime
+  status     StatusProposta    @default(RASCUNHO)
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  versoes VersaoProposta[]
+
+  @@unique([tenantId, codigo])
+  @@index([tenantId, status])
+}
+
+// vigente=true identifica a versão corrente da Proposta (sempre a de maior
+// numeroVersao entre as não excluídas). Unicidade de "um vigente por proposta"
+// é garantida por índice único parcial em SQL puro na migration — Prisma não
+// suporta unique parcial nativamente [ADR-012].
+model VersaoProposta {
+  id           String         @id @default(uuid())
+  tenantId     String
+  propostaId   String
+  proposta     Proposta       @relation(fields: [propostaId], references: [id])
+  numeroVersao Int
+  descricao    String?
+  status       StatusProposta @default(RASCUNHO)
+  vigente      Boolean        @default(false)
+  ativa        Boolean        @default(true) // soft delete — nunca DELETE físico [UC03.11]
+  createdAt    DateTime       @default(now())
+  createdBy    String
+
+  valoresOrcados ValorOrcadoConta[]
+
+  @@unique([tenantId, propostaId, numeroVersao])
+  @@index([tenantId, propostaId, vigente])
+}
+
+// US-007 — valor orçado de uma conta analítica (isAnalitica=true), escopado por
+// Proposta/Versão e exercício. Contas sintéticas nunca têm linha aqui: seu total
+// é calculado sob demanda por soma recursiva das folhas descendentes na mesma
+// versão+exercício (ValorOrcadoTotalizerService), decisão registrada em ADR-011/012.
+model ValorOrcadoConta {
+  id        String         @id @default(uuid())
+  tenantId  String
+  versaoId  String
+  versao    VersaoProposta @relation(fields: [versaoId], references: [id])
+  contaId   String
+  conta     ContaContabil  @relation(fields: [contaId], references: [id])
+  exercicio Int
+  valor     Decimal        @db.Decimal(15, 2)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@unique([tenantId, versaoId, contaId, exercicio])
+  @@index([tenantId, versaoId])
 }

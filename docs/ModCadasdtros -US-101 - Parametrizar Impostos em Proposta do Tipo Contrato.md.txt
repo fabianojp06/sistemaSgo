@@ -1,0 +1,171 @@
+US-101 
+
+Parametrizar Impostos em Proposta do Tipo Contrato 
+
+ 
+
+Módulo: 
+
+Central de Cálculos — Aba Imposto 
+
+Épico: 
+
+EP118/24 
+
+Perfil: 
+
+Orçamentista / GFIN 
+
+Prioridade: 
+
+🔴 Alta 
+
+Estimativa: 
+
+G 
+
+Depende de: 
+
+Proposta em status Rascunho ou Em Elaboração; alíquotas cadastradas no Módulo de Administração 
+
+ 
+
+Como Orçamentista ou Gestor Financeiro (GFIN), 
+
+Quero selecionar os tributos que incidem sobre o Contrato (PIS, COFINS, ISS e outros) e preencher a grade mensal de rateios e valores, acionando o cálculo automático do Valor Global, 
+
+Para registrar a memória de cálculo fiscal completa por competência, garantindo precisão na projeção orçamentária do contrato e rastreabilidade para fins de auditoria. [RF_TAX_001, RF_TAX_002, RF_TAX_003] 
+
+ 
+
+Contexto e Regra de Negócio 
+
+A Aba Imposto é a interface de governança fiscal da Central de Cálculos do SGO. Para Propostas do tipo "Contrato", a aba exibe checkboxes para cada tributo vigente (PIS, COFINS, ISS), injeta as alíquotas parametrizadas no Módulo de Administração com base na data de início do projeto e abre a grade mensal para preenchimento de valores por competência. O motor tributário (CentralCalculosController) processa os dados e atualiza síncronamente o Valor Global da proposta. Toda a operação é atômica: save + atualização do Valor Global + log delta em uma única transação. [RN_TAX_01, RN_TAX_02, RNF_TAX_001, RNF_TAX_005] 
+
+ 
+
+Cenários de Aceite — US-101 
+
+ 
+
+✅  Cenário 1 — Parametrização completa de impostos e salvamento bem-sucedido em Contrato 
+
+Dado que o usuário está autenticado com perfil de escrita no módulo orçamentário 
+
+E que a Proposta é do tipo "Contrato" e está com status "Rascunho" ou "Em Elaboração" 
+
+E que as alíquotas de PIS (9,25%), COFINS (x%) e ISS (3%) estão cadastradas e vigentes no Módulo de Administração 
+
+Quando o usuário acessa a seção Central de Cálculos > Aba Impostos da Proposta 
+
+Então o sistema renderiza os checkboxes de PIS, COFINS e ISS com as alíquotas vigentes injetadas automaticamente [RN_TAX_01] 
+
+E a grade mensal é exibida cobrindo todos os meses do período de vigência da Proposta 
+
+Quando o usuário marca os checkboxes de PIS e ISS, preenche todos os meses com valores (nenhum em branco) e clica em [Salvar] 
+
+Então o sistema executa as validações síncronas (RN_TAX_01 a RN_TAX_04) sem identificar inconsistências 
+
+E persiste as linhas em tb_rateio_imposto_grade com aliquota_aplicada_pct = snapshot da alíquota vigente [RN_TAX_03] 
+
+E o TotalizerService recalcula e atualiza o campo valor_global na capa da Proposta em modo Read-only [ORIGEM BLINDADA] 
+
+E o tempo total da operação não excede 2,0 segundos para até 1.000 linhas na grade [RNF_TAX_001] 
+
+E um log delta é gravado em tb_historico_operacoes com estado anterior e posterior, usuario_id, ip_acesso e timestamp [RNF_TAX_005] 
+
+E o sistema exibe a mensagem de sucesso e mantém a tela aberta para continuidade 
+
+ 
+
+ 
+
+✅  Cenário 2 — Abertura da aba consulta alíquota vigente na data de início da Proposta 
+
+Dado que a Proposta tem data de início em 01/03/2025 
+
+E que a alíquota de ISS vigente em 01/03/2025 é de 3,00% e uma nova alíquota de 4,00% vigorará a partir de 01/01/2026 
+
+Quando o usuário abre a Aba Impostos desta Proposta 
+
+Então o sistema injeta a alíquota de ISS = 3,00% (vigente na data de início) [RN_TAX_01] 
+
+E a alíquota de 4,00% não é exibida nem aplicada a este projeto 
+
+ 
+
+ 
+
+✅  Cenário 3 — Desmarcação de um imposto remove seus valores da grade e do Valor Global 
+
+Dado que os impostos PIS e ISS estão marcados e salvos na grade fiscal da Proposta 
+
+Quando o usuário desmarca o checkbox do PIS e clica em [Salvar] 
+
+Então o sistema atualiza imposto_selecionado = FALSE para todas as linhas do PIS em tb_rateio_imposto_grade 
+
+E o TotalizerService recalcula o Valor Global excluindo os valores do PIS 
+
+E o log delta registra a mudança 
+
+ 
+
+ 
+
+❌  Cenário 4 — Tentativa de salvar proposta com status "Oficializado" [TRAVA O ERRO] 
+
+Dado que a Proposta está com status "Oficializado" (is_congelado = TRUE na grade fiscal) 
+
+Quando o usuário tenta modificar qualquer célula ou salvar a grade de impostos 
+
+Então o backend rejeita o commit com rollback imediato [RN_TAX_03] 
+
+E o trigger fn_proteger_grade_congelada lança exceção no banco 
+
+E o sistema exibe: "Ação Negada [TRAVA O ERRO]: Esta Proposta está oficializada e seus dados fiscais estão congelados. Nenhuma alteração é permitida." 
+
+E nenhum dado é alterado na base 
+
+ 
+
+ 
+
+Aspecto 
+
+Detalhe 
+
+Tabelas afetadas 
+
+tb_rateio_imposto_grade (INSERT/UPDATE via ON CONFLICT DO UPDATE em batch), tb_proposta (UPDATE valor_global via TotalizerService), tb_historico_operacoes (INSERT) 
+
+Transação? 
+
+Sim — batch upsert + UPDATE valor_global + log delta em única transação ACID. Rollback total em falha 
+
+Campos alterados 
+
+valor_rateio, imposto_selecionado, aliquota_aplicada_pct (snapshot), base_calculo, valor_imposto, updated_at, version 
+
+Optimistic Locking 
+
+Batch upsert inclui WHERE version = :expected_version. Conflito → HTTP 409 + alerta inline 
+
+Auditoria 
+
+tipo_operacao: UPDATE | payload: estado antes e depois por competência e tributo 
+
+ 
+
+Definition of Done — US-101 
+
+☐  Cenários 1 a 4 implementados e aprovados em homologação com André (SCOR) 
+
+☐  Alíquota injetada corretamente com base na data de início da Proposta (não na data atual) 
+
+☐  TotalizerService atualiza Valor Global na capa após cada save (validado com inspeção de banco) 
+
+☐  Operação ≤ 2,0s validada em staging com grade de 1.000 linhas 
+
+☐  Log delta gravado com todos os campos obrigatórios 
+
+☐  Trigger fn_proteger_grade_congelada testado com Proposta Oficializada 

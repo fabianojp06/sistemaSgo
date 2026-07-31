@@ -56,6 +56,33 @@ export class ContaNaoAnaliticaError extends Error {
   }
 }
 
+// US-007, Cenário 3 — valor orçado só é aceito em conta analítica (isAnalitica=true).
+export class ValorOrcadoContaSinteticaError extends Error {
+  constructor() {
+    super(
+      'Valor não pode ser inserido diretamente em conta sintética. O valor é calculado automaticamente pela soma das contas analíticas filhas.',
+    );
+    this.name = 'ValorOrcadoContaSinteticaError';
+  }
+}
+
+// US-007, Cenário 4 — valor negativo ou não numérico bloqueia o salvamento.
+export class ValorOrcadoInvalidoError extends Error {
+  constructor() {
+    super('Valor Inválido: informe um valor monetário maior ou igual a zero.');
+    this.name = 'ValorOrcadoInvalidoError';
+  }
+}
+
+// US-007 — operação em versão de proposta que não pertence ao tenant, não existe,
+// ou não está em estado editável (RASCUNHO/EM_ELABORACAO).
+export class VersaoPropostaInvalidaError extends Error {
+  constructor(motivo: string) {
+    super(motivo);
+    this.name = 'VersaoPropostaInvalidaError';
+  }
+}
+
 // US-003, Cenário 2, RN_PLA_005 — natureza da conta filha deve ser consistente com a
 // hierarquia; regra simétrica (bloqueia OPEX sob ancestral CAPEX e vice-versa).
 export class NaturezaHierarquiaInvalidaError extends Error {
