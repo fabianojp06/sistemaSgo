@@ -4,18 +4,9 @@ import {
   CodigoPropostaGeracaoFalhouError,
   DatasPropostaInvalidasError,
 } from '@/domain/plano-contas/errors';
+import { gerarProximoCodigoProposta, isUniqueConstraintError } from '@/domain/plano-contas/gerarCodigoProposta';
 
-const UNIQUE_CONSTRAINT_ERROR_CODE = 'P2002';
 const MAX_TENTATIVAS_CODIGO = 5;
-
-function isUniqueConstraintError(erro: unknown): boolean {
-  return (
-    typeof erro === 'object' &&
-    erro !== null &&
-    'code' in erro &&
-    (erro as { code?: string }).code === UNIQUE_CONSTRAINT_ERROR_CODE
-  );
-}
 
 type CadastrarPropostaInput = {
   tenantId: string;
@@ -51,7 +42,7 @@ export class CadastrarPropostaUseCase {
     const ano = new Date().getFullYear();
 
     for (let tentativa = 0; tentativa < MAX_TENTATIVAS_CODIGO; tentativa++) {
-      const codigo = await this.gerarProximoCodigo(input.tenantId, ano);
+      const codigo = await gerarProximoCodigoProposta(this.prisma, input.tenantId, ano);
 
       try {
         return await this.prisma.$transaction(async (tx) => {
@@ -98,22 +89,5 @@ export class CadastrarPropostaUseCase {
     }
 
     throw new CodigoPropostaGeracaoFalhouError();
-  }
-
-  // Sequencial de 4 dígitos por (tenantId, ano) — sem lock explícito; colisões
-  // de concorrência são resolvidas pelo retry em execute() via @@unique.
-  private async gerarProximoCodigo(tenantId: string, ano: number): Promise<string> {
-    const prefixo = `PROP-${ano}-`;
-
-    const ultimaProposta = await this.prisma.proposta.findFirst({
-      where: { tenantId, codigo: { startsWith: prefixo } },
-      orderBy: { codigo: 'desc' },
-      select: { codigo: true },
-    });
-
-    const ultimoSequencial = ultimaProposta ? Number(ultimaProposta.codigo.slice(prefixo.length)) : 0;
-    const proximoSequencial = (Number.isNaN(ultimoSequencial) ? 0 : ultimoSequencial) + 1;
-
-    return `${prefixo}${String(proximoSequencial).padStart(4, '0')}`;
   }
 }

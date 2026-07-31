@@ -106,6 +106,42 @@ export class SemaforoPercentualForaDaFaixaError extends Error {
   }
 }
 
+// US-103, Cenário 3 [TRAVA O ERRO] — versão Oficializada/Encerrada é imutável.
+export class ExclusaoCicloVidaInvalidoError extends Error {
+  constructor() {
+    super(
+      'Ação Negada [TRAVA O ERRO]: O ciclo de vida atual do projeto não permite exclusão. Documentos oficializados ou encerrados são estritamente imutáveis.',
+    );
+    this.name = 'ExclusaoCicloVidaInvalidoError';
+  }
+}
+
+// US-103, Cenário 4 [TRAVA O ERRO] — não pode ser a única versão ativa da Proposta.
+export class VersaoUnicaNaoPodeSerExcluidaError extends Error {
+  constructor() {
+    super('Exclusão Rejeitada [TRAVA O ERRO]: Não é possível excluir a única versão existente desta Proposta.');
+    this.name = 'VersaoUnicaNaoPodeSerExcluidaError';
+  }
+}
+
+// US-103, Cenário 2 [TRAVA O ERRO] — vínculos operacionais ativos (ValorOrcadoConta/RateioImpostoGrade).
+export class VinculosAtivosImpedemExclusaoError extends Error {
+  constructor() {
+    super(
+      'Exclusão Rejeitada [TRAVA O ERRO]: Operação bloqueada. A versão da proposta possui registros operacionais ou memórias de cálculo analíticas ativas vinculadas.',
+    );
+    this.name = 'VinculosAtivosImpedemExclusaoError';
+  }
+}
+
+// US-104 — Proposta de origem para duplicação não encontrada.
+export class PropostaNaoEncontradaError extends Error {
+  constructor() {
+    super('Proposta não encontrada.');
+    this.name = 'PropostaNaoEncontradaError';
+  }
+}
+
 // US-102, Cenário 2 [TRAVA O ERRO] — campo obrigatório em branco.
 export class CamposObrigatoriosPropostaError extends Error {
   constructor() {
