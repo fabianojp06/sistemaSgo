@@ -46,6 +46,42 @@ async function seedModuloPlanoContas() {
     update: {},
     create: { moduloId: modulo.id, chave: 'plano-contas.configurar-semaforo', nome: 'Configurar Semáforo Orçamentário por Conta' },
   });
+
+  // US-101 — Parametrizar Impostos em Proposta.
+  await prisma.funcionalidade.upsert({
+    where: { moduloId_chave: { moduloId: modulo.id, chave: 'plano-contas.configurar-rateio-imposto' } },
+    update: {},
+    create: { moduloId: modulo.id, chave: 'plano-contas.configurar-rateio-imposto', nome: 'Parametrizar Impostos em Proposta' },
+  });
+}
+
+// US-101 (ADR-014) — parâmetros fiscais globais por tenant. PIS e COFINS ficam
+// disponíveis só para Contrato (imunidade tributária de TP, RN_PRO_010); ISS
+// vale para ambos os tipos de Proposta.
+async function seedAliquotasImposto(tenantId) {
+  const dataInicioVigencia = new Date('2024-01-01');
+
+  const aliquotas = [
+    { nome: 'PIS', aliquotaPct: 9.25, tipoIncidencia: 'CONTRATO' },
+    { nome: 'COFINS', aliquotaPct: 7.6, tipoIncidencia: 'CONTRATO' },
+    { nome: 'ISS', aliquotaPct: 3.0, tipoIncidencia: 'AMBOS' },
+  ];
+
+  for (const aliquota of aliquotas) {
+    const nomeNormalizado = aliquota.nome.trim().toLowerCase();
+    await prisma.aliquotaImpostoParametro.upsert({
+      where: { tenantId_nomeNormalizado: { tenantId, nomeNormalizado } },
+      update: {},
+      create: {
+        tenantId,
+        nome: aliquota.nome,
+        nomeNormalizado,
+        aliquotaPct: aliquota.aliquotaPct,
+        dataInicioVigencia,
+        tipoIncidencia: aliquota.tipoIncidencia,
+      },
+    });
+  }
 }
 
 async function main() {
@@ -67,6 +103,8 @@ async function main() {
   const tenants = [...new Set(usuarios.map((u) => u.tenantId))];
 
   for (const tenantId of tenants) {
+    await seedAliquotasImposto(tenantId);
+
     const perfilAdministrador = await prisma.perfil.upsert({
       where: { tenantId_nome: { tenantId, nome: 'Administrador' } },
       update: {},

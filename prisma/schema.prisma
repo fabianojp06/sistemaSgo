@@ -28,6 +28,8 @@ enum TipoOperacao {
   VALOR_ORCADO_CONFIGURADO
   VERSAO_PROPOSTA_CRIADA
   SEMAFORO_CONFIGURADO
+  RATEIO_IMPOSTO_CONFIGURADO
+  RATEIO_IMPOSTO_DESATIVADO
 }
 
 model Usuario {
@@ -267,6 +269,7 @@ model VersaoProposta {
   createdBy    String
 
   valoresOrcados ValorOrcadoConta[]
+  rateiosImposto RateioImpostoGrade[]
 
   @@unique([tenantId, propostaId, numeroVersao])
   @@index([tenantId, propostaId, vigente])
@@ -289,5 +292,53 @@ model ValorOrcadoConta {
   updatedAt DateTime       @updatedAt
 
   @@unique([tenantId, versaoId, contaId, exercicio])
+  @@index([tenantId, versaoId])
+}
+
+// ADR-014 — US-101. Parâmetro fiscal GLOBAL por tenant (não por Proposta), com
+// vigência temporal. `nomeNormalizado` (lowercase) existe só para viabilizar a
+// unicidade case-insensitive (RN_TAX_05) dentro do Prisma, sem depender de
+// citext (indisponível/arriscado no plano gratuito do Supabase).
+enum TipoIncidenciaImposto {
+  CONTRATO
+  TERMO_DE_PARCERIA
+  AMBOS
+}
+
+model AliquotaImpostoParametro {
+  id                 String                @id @default(uuid())
+  tenantId           String
+  nome               String
+  nomeNormalizado    String
+  aliquotaPct        Decimal               @db.Decimal(5, 2)
+  dataInicioVigencia DateTime
+  tipoIncidencia     TipoIncidenciaImposto
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  rateios RateioImpostoGrade[]
+
+  @@unique([tenantId, nomeNormalizado])
+  @@index([tenantId, tipoIncidencia])
+}
+
+// US-101 — grão: (versão da Proposta × tributo × competência/mês). `ativo`
+// implementa soft delete (ADR-014 item 4): desmarcar um tributo não apaga o
+// histórico de valores já declarados, só o exclui do cálculo do Valor Global.
+model RateioImpostoGrade {
+  id                       String                   @id @default(uuid())
+  tenantId                 String
+  versaoId                 String
+  versao                   VersaoProposta           @relation(fields: [versaoId], references: [id])
+  aliquotaParametroId      String
+  aliquotaParametro        AliquotaImpostoParametro @relation(fields: [aliquotaParametroId], references: [id])
+  competencia              DateTime
+  valorDeclarado           Decimal                  @db.Decimal(15, 2)
+  aliquotaAplicadaSnapshot Decimal                  @db.Decimal(5, 2)
+  ativo                    Boolean                  @default(true)
+  createdAt                DateTime                 @default(now())
+  updatedAt                DateTime                 @updatedAt
+
+  @@unique([tenantId, versaoId, aliquotaParametroId, competencia])
   @@index([tenantId, versaoId])
 }

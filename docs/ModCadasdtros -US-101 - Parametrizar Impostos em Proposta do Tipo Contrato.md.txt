@@ -1,171 +1,196 @@
-US-101 
+US-101
 
-Parametrizar Impostos em Proposta do Tipo Contrato 
+Parametrizar Impostos em Proposta
 
- 
 
-Módulo: 
 
-Central de Cálculos — Aba Imposto 
+Módulo:
 
-Épico: 
+Central de Cálculos — Aba Imposto
 
-EP118/24 
+Épico:
 
-Perfil: 
+EP118/24
 
-Orçamentista / GFIN 
+Perfil:
 
-Prioridade: 
+Orçamentista / GFIN
 
-🔴 Alta 
+Prioridade:
 
-Estimativa: 
+🔴 Alta
 
-G 
+Estimativa:
 
-Depende de: 
+G
 
-Proposta em status Rascunho ou Em Elaboração; alíquotas cadastradas no Módulo de Administração 
+Depende de:
 
- 
+Proposta com Versão vigente em status RASCUNHO ou EM_ELABORACAO (ADR-012); alíquotas cadastradas em AliquotaImpostoParametro (Módulo de Administração)
 
-Como Orçamentista ou Gestor Financeiro (GFIN), 
 
-Quero selecionar os tributos que incidem sobre o Contrato (PIS, COFINS, ISS e outros) e preencher a grade mensal de rateios e valores, acionando o cálculo automático do Valor Global, 
 
-Para registrar a memória de cálculo fiscal completa por competência, garantindo precisão na projeção orçamentária do contrato e rastreabilidade para fins de auditoria. [RF_TAX_001, RF_TAX_002, RF_TAX_003] 
+Nota de origem (Debate do Time, 2026-07-30; revisado em 2026-07-31)
 
- 
+Título original desta US era "Parametrizar Impostos em Proposta do Tipo Contrato" — ajustado para "Parametrizar Impostos em Proposta" porque a US agora cobre explicitamente também o comportamento de Termo de Parceria (Cenário 5), não só Contrato.
 
-Contexto e Regra de Negócio 
+Revisão de escopo (2026-07-31): a primeira versão desta US usava nomenclatura de outro contexto (tabelas `tb_proposta`, `tb_rateio_imposto_grade`, `tb_historico_operacoes`, padrões Java/JPA como `@Version` e `BigDecimal`) copiada do dicionário de campos UC03.01 sem adaptar à stack real do projeto (Next.js/Prisma/TypeScript). Corrigido para usar as entidades reais já implementadas: `Proposta` e `VersaoProposta` (ADR-012, US-007/US-008), com enum de status `RASCUNHO | EM_ELABORACAO | OFICIALIZADO | ENCERRADO` (sem "Cancelado" — confirmado pelo usuário/PO na revisão da US-007).
 
-A Aba Imposto é a interface de governança fiscal da Central de Cálculos do SGO. Para Propostas do tipo "Contrato", a aba exibe checkboxes para cada tributo vigente (PIS, COFINS, ISS), injeta as alíquotas parametrizadas no Módulo de Administração com base na data de início do projeto e abre a grade mensal para preenchimento de valores por competência. O motor tributário (CentralCalculosController) processa os dados e atualiza síncronamente o Valor Global da proposta. Toda a operação é atômica: save + atualização do Valor Global + log delta em uma única transação. [RN_TAX_01, RN_TAX_02, RNF_TAX_001, RNF_TAX_005] 
+Grão de dados esclarecido: `RateioImpostoGrade` é uma linha por **(versão da Proposta × tributo × competência/mês)** — não por (versão × mês) como a redação original sugeria vagamente. Cada tributo selecionado (PIS, COFINS, ISS, ou outro cadastrado via UC03.01) tem sua própria linha por mês, permitindo desmarcar/remarcar tributos independentemente (ver Cenário 3).
 
- 
+`AliquotaImpostoParametro` entra como pré-requisito de dados explícito: é uma tabela de parâmetros fiscais **global por tenant** (não por Proposta), com vigência temporal — nunca hardcoded no código-fonte (RN_TAX_01, Anti-Hardcode). Cadastrada previamente pelo Módulo de Administração ou via atalho inline [Novo Imposto] (UC03.01, Fluxo Alt. C — fora do escopo desta US).
 
-Cenários de Aceite — US-101 
 
- 
 
-✅  Cenário 1 — Parametrização completa de impostos e salvamento bem-sucedido em Contrato 
+Como Orçamentista ou Gestor Financeiro (GFIN),
 
-Dado que o usuário está autenticado com perfil de escrita no módulo orçamentário 
+Quero selecionar os tributos que incidem sobre a Proposta (PIS, COFINS, ISS e outros cadastrados) e preencher a grade mensal de valores por competência, acionando o cálculo automático do Valor Global,
 
-E que a Proposta é do tipo "Contrato" e está com status "Rascunho" ou "Em Elaboração" 
+Para registrar a memória de cálculo fiscal completa por competência, garantindo precisão na projeção orçamentária da Proposta e rastreabilidade para fins de auditoria — respeitando a imunidade tributária de Termos de Parceria. [RF_TAX_001, RF_TAX_002, RF_TAX_003, RN_PRO_010]
 
-E que as alíquotas de PIS (9,25%), COFINS (x%) e ISS (3%) estão cadastradas e vigentes no Módulo de Administração 
 
-Quando o usuário acessa a seção Central de Cálculos > Aba Impostos da Proposta 
 
-Então o sistema renderiza os checkboxes de PIS, COFINS e ISS com as alíquotas vigentes injetadas automaticamente [RN_TAX_01] 
+Contexto e Regras de Negócio
 
-E a grade mensal é exibida cobrindo todos os meses do período de vigência da Proposta 
+A Aba Imposto é a interface de governança fiscal da Central de Cálculos do SGO. Seu comportamento depende do campo `Proposta.tipo`:
 
-Quando o usuário marca os checkboxes de PIS e ISS, preenche todos os meses com valores (nenhum em branco) e clica em [Salvar] 
+- **Contrato**: todos os tributos cadastrados (PIS, COFINS, ISS, outros) ficam disponíveis para seleção. A aba injeta as alíquotas vigentes de `AliquotaImpostoParametro` na data de início da Proposta (`Proposta.dataInicio`) e abre a grade mensal para preenchimento de valores por competência, cobrindo todos os meses entre `dataInicio` e `dataFim`.
+- **Termo de Parceria** (`TipoProposta.TERMO_DE_PARCERIA`): PIS e COFINS são zerados e bloqueados automaticamente por imunidade tributária de fomento (RN_PRO_010) — não aparecem como opção editável. Apenas ISS permanece configurável.
 
-Então o sistema executa as validações síncronas (RN_TAX_01 a RN_TAX_04) sem identificar inconsistências 
+O motor tributário processa os dados e atualiza sincronamente o Valor Global da Proposta. Toda a operação é atômica: upsert da grade + atualização do Valor Global + log de auditoria em uma única transação. [RN_TAX_01, RN_TAX_02, RNF_TAX_001, RNF_TAX_005]
 
-E persiste as linhas em tb_rateio_imposto_grade com aliquota_aplicada_pct = snapshot da alíquota vigente [RN_TAX_03] 
+A grade só é editável quando a Versão vigente da Proposta está em status `RASCUNHO` ou `EM_ELABORACAO`; ao ser `OFICIALIZADO`, os dados fiscais congelam (RN_TAX_03), consistente com o mesmo padrão de imutabilidade já aplicado a `ValorOrcadoConta` (US-007) e aos limiares do Semáforo (US-008).
 
-E o TotalizerService recalcula e atualiza o campo valor_global na capa da Proposta em modo Read-only [ORIGEM BLINDADA] 
 
-E o tempo total da operação não excede 2,0 segundos para até 1.000 linhas na grade [RNF_TAX_001] 
 
-E um log delta é gravado em tb_historico_operacoes com estado anterior e posterior, usuario_id, ip_acesso e timestamp [RNF_TAX_005] 
+Critérios de Aceite — US-101
 
-E o sistema exibe a mensagem de sucesso e mantém a tela aberta para continuidade 
+✅  Cenário 1 — Parametrização completa de impostos e salvamento bem-sucedido em Contrato
 
- 
+Dado que o usuário está autenticado com perfil de escrita no módulo orçamentário
 
- 
+E que a Proposta é do tipo CONTRATO e sua Versão vigente está em status RASCUNHO ou EM_ELABORACAO
 
-✅  Cenário 2 — Abertura da aba consulta alíquota vigente na data de início da Proposta 
+E que as alíquotas de PIS (9,25%), COFINS (7,60%) e ISS (3,00%) estão cadastradas e vigentes em AliquotaImpostoParametro para este tenant
 
-Dado que a Proposta tem data de início em 01/03/2025 
+Quando o usuário acessa a Central de Cálculos > Aba Impostos da Proposta
 
-E que a alíquota de ISS vigente em 01/03/2025 é de 3,00% e uma nova alíquota de 4,00% vigorará a partir de 01/01/2026 
+Então o sistema renderiza os checkboxes de PIS, COFINS e ISS com as alíquotas vigentes injetadas automaticamente [RN_TAX_01]
 
-Quando o usuário abre a Aba Impostos desta Proposta 
+E a grade mensal é exibida cobrindo todos os meses entre `dataInicio` e `dataFim` da Proposta
 
-Então o sistema injeta a alíquota de ISS = 3,00% (vigente na data de início) [RN_TAX_01] 
+Quando o usuário marca os checkboxes de PIS e ISS, preenche todos os meses com valores (nenhum em branco) e clica em [Salvar]
 
-E a alíquota de 4,00% não é exibida nem aplicada a este projeto 
+Então o sistema executa as validações síncronas (RN_TAX_01 a RN_TAX_04) sem identificar inconsistências
 
- 
+E persiste uma linha em RateioImpostoGrade por (versaoId, tributo, competência) com `aliquotaAplicadaSnapshot` = alíquota vigente no momento do salvamento [RN_TAX_03]
 
- 
+E o serviço de totalização recalcula e atualiza o Valor Global da Proposta (campo Read-only, [ORIGEM BLINDADA])
 
-✅  Cenário 3 — Desmarcação de um imposto remove seus valores da grade e do Valor Global 
+E o tempo total da operação não excede 2,0 segundos para até 1.000 linhas na grade [RNF_TAX_001]
 
-Dado que os impostos PIS e ISS estão marcados e salvos na grade fiscal da Proposta 
+E um log de auditoria é gravado em HistoricoOperacao com estado anterior e posterior, usuarioId e timestamp [RNF_TAX_005]
 
-Quando o usuário desmarca o checkbox do PIS e clica em [Salvar] 
+E o sistema exibe a mensagem de sucesso e mantém a tela aberta para continuidade
 
-Então o sistema atualiza imposto_selecionado = FALSE para todas as linhas do PIS em tb_rateio_imposto_grade 
 
-E o TotalizerService recalcula o Valor Global excluindo os valores do PIS 
 
-E o log delta registra a mudança 
+✅  Cenário 2 — Abertura da aba consulta alíquota vigente na data de início da Proposta
 
- 
+Dado que a Proposta tem `dataInicio` em 01/03/2025
 
- 
+E que a alíquota de ISS vigente em 01/03/2025 é de 3,00% e uma nova alíquota de 4,00% vigorará a partir de 01/01/2026
 
-❌  Cenário 4 — Tentativa de salvar proposta com status "Oficializado" [TRAVA O ERRO] 
+Quando o usuário abre a Aba Impostos desta Proposta
 
-Dado que a Proposta está com status "Oficializado" (is_congelado = TRUE na grade fiscal) 
+Então o sistema injeta a alíquota de ISS = 3,00% (vigente na data de início) [RN_TAX_01]
 
-Quando o usuário tenta modificar qualquer célula ou salvar a grade de impostos 
+E a alíquota de 4,00% não é exibida nem aplicada a esta Proposta
 
-Então o backend rejeita o commit com rollback imediato [RN_TAX_03] 
 
-E o trigger fn_proteger_grade_congelada lança exceção no banco 
 
-E o sistema exibe: "Ação Negada [TRAVA O ERRO]: Esta Proposta está oficializada e seus dados fiscais estão congelados. Nenhuma alteração é permitida." 
+✅  Cenário 3 — Desmarcação de um imposto remove seus valores da grade e do Valor Global
 
-E nenhum dado é alterado na base 
+Dado que os impostos PIS e ISS estão marcados e salvos na grade fiscal da Versão vigente da Proposta
 
- 
+Quando o usuário desmarca o checkbox do PIS e clica em [Salvar]
 
- 
+Então o sistema remove (ou marca como inativas) todas as linhas de RateioImpostoGrade do tributo PIS para esta versaoId
 
-Aspecto 
+E o serviço de totalização recalcula o Valor Global excluindo os valores do PIS
 
-Detalhe 
+E o log de auditoria registra a mudança, incluindo o tributo removido
 
-Tabelas afetadas 
 
-tb_rateio_imposto_grade (INSERT/UPDATE via ON CONFLICT DO UPDATE em batch), tb_proposta (UPDATE valor_global via TotalizerService), tb_historico_operacoes (INSERT) 
 
-Transação? 
+❌  Cenário 4 — Tentativa de salvar Proposta com Versão Oficializada [TRAVA O ERRO]
 
-Sim — batch upsert + UPDATE valor_global + log delta em única transação ACID. Rollback total em falha 
+Dado que a Versão vigente da Proposta está com status OFICIALIZADO
 
-Campos alterados 
+Quando o usuário tenta modificar qualquer célula ou salvar a grade de impostos
 
-valor_rateio, imposto_selecionado, aliquota_aplicada_pct (snapshot), base_calculo, valor_imposto, updated_at, version 
+Então o backend rejeita o commit com rollback imediato [RN_TAX_03]
 
-Optimistic Locking 
+E o sistema exibe: "Ação Negada [TRAVA O ERRO]: Esta Proposta está oficializada e seus dados fiscais estão congelados. Nenhuma alteração é permitida."
 
-Batch upsert inclui WHERE version = :expected_version. Conflito → HTTP 409 + alerta inline 
+E nenhum dado é alterado na base
 
-Auditoria 
 
-tipo_operacao: UPDATE | payload: estado antes e depois por competência e tributo 
 
- 
+✅  Cenário 5 — Termo de Parceria zera e bloqueia PIS e COFINS automaticamente [RN_PRO_010]
 
-Definition of Done — US-101 
+Dado que a Proposta é do tipo TERMO_DE_PARCERIA
 
-☐  Cenários 1 a 4 implementados e aprovados em homologação com André (SCOR) 
+Quando o usuário acessa a Aba Impostos desta Proposta
 
-☐  Alíquota injetada corretamente com base na data de início da Proposta (não na data atual) 
+Então os checkboxes de PIS e COFINS aparecem desmarcados e desabilitados, sem alíquota exibida
 
-☐  TotalizerService atualiza Valor Global na capa após cada save (validado com inspeção de banco) 
+E o checkbox de ISS aparece normalmente, disponível para seleção e configuração
 
-☐  Operação ≤ 2,0s validada em staging com grade de 1.000 linhas 
+Quando o usuário tenta, por qualquer via (inclusive chamada direta ao backend), habilitar PIS ou COFINS para esta Proposta
 
-☐  Log delta gravado com todos os campos obrigatórios 
+Então o sistema bloqueia a operação e exibe: "Termos de Parceria possuem imunidade tributária — PIS e COFINS não podem ser aplicados (RN_PRO_010)."
 
-☐  Trigger fn_proteger_grade_congelada testado com Proposta Oficializada 
+E nenhuma linha de RateioImpostoGrade é criada para PIS/COFINS nesta versaoId
+
+
+
+Impacto Técnico (orientação para dev)
+
+| Aspecto           | Detalhe                                                  |
+|-------------------|------------------------------------------------------------|
+| Tabelas afetadas  | Novas: `AliquotaImpostoParametro` (parâmetro global por tenant, com vigência), `RateioImpostoGrade` (grão: versaoId × tributo × competência). Leitura/atualização: `Proposta` (tipo, status via VersaoProposta), `HistoricoOperacao` (INSERT) |
+| Modelo sugerido — AliquotaImpostoParametro | `{ id, tenantId, nome, aliquotaPct Decimal, dataInicioVigencia DateTime, tipoIncidencia enum(CONTRATO\|TERMO_DE_PARCERIA\|AMBOS), createdAt, updatedAt }` — `@@unique([tenantId, nome])` case-insensitive (RN_TAX_05, ver UC03.01) |
+| Modelo sugerido — RateioImpostoGrade | `{ id, tenantId, versaoId (FK VersaoProposta), aliquotaParametroId (FK AliquotaImpostoParametro), competencia DateTime (primeiro dia do mês), valorDeclarado Decimal, aliquotaAplicadaSnapshot Decimal, createdAt, updatedAt }` — `@@unique([tenantId, versaoId, aliquotaParametroId, competencia])` |
+| Transação?        | Sim — upsert em lote da grade + atualização do Valor Global + log de auditoria em transação única. Rollback total em falha |
+| Requer lock?      | Sim — mesmo padrão de transação por `versaoId` já adotado em US-007 (`ConfigurarValorOrcadoContaUseCase`), para evitar condição de corrida entre duas edições concorrentes da mesma Versão |
+| Regra de negócio  | PIS/COFINS bloqueados para TERMO_DE_PARCERIA (RN_PRO_010); alíquota sempre snapshot no momento do salvamento (RN_TAX_03); grade só editável em versão RASCUNHO/EM_ELABORACAO; nenhuma célula em branco ao salvar (RN_TAX_04) |
+| Auditoria         | Registrar em `HistoricoOperacao`: tenantId, usuarioId, versaoId, tributo(s) alterado(s), competência, valor anterior e novo |
+
+Nota Técnica (para o Tech Lead decidir): confirmar se `RateioImpostoGrade` deve ter índice de performance para consultas por `(tenantId, versaoId)` (mesma leitura em lote de toda a grade), e revisar a estratégia de lock (a US-007 usou transação por `versaoId`, sem `SELECT FOR UPDATE` explícito — avaliar se esta US precisa de algo mais forte dado o volume potencial de 1.000 linhas por grade).
+
+
+
+Dependências
+
+- Proposta/VersaoProposta (ADR-012) — já implementado (US-007, US-008)
+- AliquotaImpostoParametro precisa ser modelada como pré-requisito desta própria US (não é uma US separada — é dado de parametrização, análogo aos limiares padrão do Semáforo, ADR-013)
+- Desbloqueia parcialmente US-008a (Semáforo Orçamentário): RateioImpostoGrade é uma das fontes de `valorRealizado` (ver nota de bloqueio revisada da US-008a)
+
+
+
+Definition of Done — US-101
+
+☐  Cenários 1 a 5 implementados e aprovados em homologação
+
+☐  Alíquota injetada corretamente com base na `dataInicio` da Proposta (não na data atual)
+
+☐  Serviço de totalização atualiza Valor Global da Proposta após cada save (validado com inspeção de banco)
+
+☐  Operação ≤ 2,0s validada com grade de 1.000 linhas
+
+☐  Log de auditoria gravado com todos os campos obrigatórios
+
+☐  Termo de Parceria bloqueia PIS/COFINS nativamente, sem depender de validação apenas no frontend
+
+☐  Tentativa de edição em Versão Oficializada bloqueada no backend (não só na UI)

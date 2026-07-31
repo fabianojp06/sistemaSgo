@@ -106,6 +106,33 @@ export class SemaforoPercentualForaDaFaixaError extends Error {
   }
 }
 
+// US-101, Cenário 5, RN_PRO_010 — Termo de Parceria tem imunidade tributária:
+// tributos com tipoIncidencia=CONTRATO não podem ser aplicados.
+export class ImpostoNaoDisponivelParaTipoPropostaError extends Error {
+  constructor() {
+    super('Termos de Parceria possuem imunidade tributária — PIS e COFINS não podem ser aplicados (RN_PRO_010).');
+    this.name = 'ImpostoNaoDisponivelParaTipoPropostaError';
+  }
+}
+
+// US-101 — parâmetro fiscal referenciado não existe para o tenant.
+export class AliquotaImpostoNaoEncontradaError extends Error {
+  constructor() {
+    super('Imposto/tributo não encontrado. Verifique se ele está cadastrado nos parâmetros fiscais.');
+    this.name = 'AliquotaImpostoNaoEncontradaError';
+  }
+}
+
+// US-101, Cenário 4 [TRAVA O ERRO] — Versão Oficializada tem dados fiscais congelados.
+export class VersaoOficializadaCongeladaError extends Error {
+  constructor() {
+    super(
+      'Ação Negada [TRAVA O ERRO]: Esta Proposta está oficializada e seus dados fiscais estão congelados. Nenhuma alteração é permitida.',
+    );
+    this.name = 'VersaoOficializadaCongeladaError';
+  }
+}
+
 // US-007 — operação em versão de proposta que não pertence ao tenant, não existe,
 // ou não está em estado editável (RASCUNHO/EM_ELABORACAO).
 export class VersaoPropostaInvalidaError extends Error {

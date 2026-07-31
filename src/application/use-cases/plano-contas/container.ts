@@ -11,6 +11,8 @@ import { AtribuirNaturezaContaUseCase } from './AtribuirNaturezaContaUseCase';
 import { ConfigurarValorOrcadoContaUseCase } from './ConfigurarValorOrcadoContaUseCase';
 import { CriarVersaoPropostaUseCase } from './CriarVersaoPropostaUseCase';
 import { ConfigurarSemaforoContaUseCase } from './ConfigurarSemaforoContaUseCase';
+import { ConfigurarRateioImpostoUseCase } from './ConfigurarRateioImpostoUseCase';
+import { DesativarTributoRateioUseCase } from './DesativarTributoRateioUseCase';
 
 export function getSincronizarPlanoContasUseCase(): SincronizarPlanoContasUseCase {
   return new SincronizarPlanoContasUseCase(
@@ -51,4 +53,12 @@ export function getCriarVersaoPropostaUseCase(): CriarVersaoPropostaUseCase {
 
 export function getConfigurarSemaforoContaUseCase(): ConfigurarSemaforoContaUseCase {
   return new ConfigurarSemaforoContaUseCase(prisma);
+}
+
+export function getConfigurarRateioImpostoUseCase(): ConfigurarRateioImpostoUseCase {
+  return new ConfigurarRateioImpostoUseCase(prisma);
+}
+
+export function getDesativarTributoRateioUseCase(): DesativarTributoRateioUseCase {
+  return new DesativarTributoRateioUseCase(prisma);
 }
