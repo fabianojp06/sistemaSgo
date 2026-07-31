@@ -74,6 +74,38 @@ export class ValorOrcadoInvalidoError extends Error {
   }
 }
 
+// US-008 — Semáforo Orçamentário só é configurável em conta analítica.
+export class SemaforoContaSinteticaError extends Error {
+  constructor() {
+    super('Limiares do Semáforo Orçamentário só podem ser configurados em contas analíticas.');
+    this.name = 'SemaforoContaSinteticaError';
+  }
+}
+
+// US-008, Cenário 2 — Amarelo <= Verde.
+export class SemaforoLimiarAmareloInvalidoError extends Error {
+  constructor() {
+    super('Configuração Inválida: O limiar Amarelo deve ser maior que o limiar Verde. Verifique os percentuais informados.');
+    this.name = 'SemaforoLimiarAmareloInvalidoError';
+  }
+}
+
+// US-008, Cenário 2a — Laranja <= Amarelo.
+export class SemaforoLimiarLaranjaInvalidoError extends Error {
+  constructor() {
+    super('Configuração Inválida: O limiar Laranja deve ser maior que o limiar Amarelo. Verifique os percentuais informados.');
+    this.name = 'SemaforoLimiarLaranjaInvalidoError';
+  }
+}
+
+// US-008, Cenário 2b — percentual fora de 1-100.
+export class SemaforoPercentualForaDaFaixaError extends Error {
+  constructor() {
+    super('Configuração Inválida: os percentuais devem estar entre 1 e 100.');
+    this.name = 'SemaforoPercentualForaDaFaixaError';
+  }
+}
+
 // US-007 — operação em versão de proposta que não pertence ao tenant, não existe,
 // ou não está em estado editável (RASCUNHO/EM_ELABORACAO).
 export class VersaoPropostaInvalidaError extends Error {

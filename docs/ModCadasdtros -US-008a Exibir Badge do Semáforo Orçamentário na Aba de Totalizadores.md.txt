@@ -18,23 +18,29 @@ Orçamentista / GFIN
 
 Prioridade:
 
-🟢 Baixa — BLOQUEADA (ver Nota de Bloqueio)
+🟡 Média — depende de módulos de custo do mesmo épico (ver Nota de Bloqueio revisada)
 
 Estimativa:
 
-Não estimável até o bloqueio ser resolvido
+Não estimável até que ao menos um módulo de custo (Empregados, Viagens, Bens/Serviços ou Rateios) esteja implementado
 
 Depende de:
 
-US-008 (limiares configurados) e de um módulo de execução orçamentária (empenho/liquidação) ainda inexistente no SGO
+US-007 (concluída — fornece valorOrcado), US-008 (limiares configurados), e de ao menos um dos módulos de lançamento de custo do EP118/24 (UC03.18-27 Empregados, UC03.29-33 Viagens, UC03.34-36 Bens/Serviços/Equipamentos, ou US-101 Rateio/Imposto) para fornecer valorRealizado
 
 
 
-Nota de Bloqueio (Debate do Time, 2026-07-30)
+Nota de Bloqueio (Debate do Time, 2026-07-30 — revisada em 2026-07-31)
 
-Esta US foi extraída do Cenário 3 original da US-008 ("Configurar Semáforo Orçamentário"). Ela depende de "Valor Realizado / Valor Orçado" por conta analítica, calculado pelo TotalizerService — mas o TotalizerService hoje (src/domain/plano-contas/TotalizerService.ts) é um stub que sempre retorna saldo zero, porque não existe nenhum módulo de execução orçamentária (empenho/liquidação) implementado no SGO ainda. Não há, em nenhuma tabela do sistema, dado de valor orçado nem valor realizado por conta.
+Esta US foi extraída do Cenário 3 original da US-008 ("Configurar Semáforo Orçamentário"). Ela depende de "Valor Realizado / Valor Orçado" por conta analítica.
 
-Esta US não deve entrar em sprint enquanto o módulo de execução orçamentária não estiver ao menos planejado no backlog. Reavaliar quando esse módulo existir ou tiver data prevista.
+Revisão de escopo (2026-07-31): a nota original presumia que `valorRealizado` viria de um módulo de execução orçamentária pública (empenho/liquidação, Lei 4.320/64) — essa premissa estava errada para o contexto do CTCEA (OSCIP com Termo de Parceria/Proposta Comercial, não execução orçamentária pública federal). Conforme a Minuta da Especificação do Módulo de Cadastros V5 (UC 3.02 — Aba Totalizadores, RN_TOT_03): "O motor de busca consolida os valores orçados e realizados extraídos exclusivamente do último nível configurado (Nível 7 / Nó Folha)... dispara uma varredura síncrona nas tabelas de despesas (Cargos, Viagens, Rateios)." Ou seja, `valorRealizado` é a soma dos lançamentos operacionais de custo já especificados neste mesmo épico (EP118/24) — Empregados/Cargos, Viagens, Bens/Serviços/Equipamentos e Rateios/Impostos (US-101) — não uma dependência de um módulo externo inexistente.
+
+`valorOrcado` já está disponível desde a conclusão da US-007 (`ValorOrcadoConta`, escopado por Proposta/Versão/exercício).
+
+**Decisão de produto pendente (PO)**: um semáforo com `valorRealizado` parcial (ex: só contribuição de Rateios/US-101, sem Empregados) pode dar falso senso de segurança — conta parecer "Verde" só porque a maior parte do custo (folha de pessoal) ainda não foi lançada no sistema. Recomendação: **não liberar US-008a até que ao menos o módulo de Empregados/Cargos esteja no ar**, por ser tipicamente a maior massa de custo em Termos de Parceria. Revisar esta recomendação quando os módulos de custo estiverem sequenciados no backlog.
+
+Sequência de backlog recomendada até aqui: US-007 (✅ concluída) → US-008 (limiares) → US-101 (Rateio/Imposto) → Empregados/Cargos (UC03.18-27) → Viagens (UC03.29-33) → Bens/Serviços/Equipamentos (UC03.34-36) → US-008a.
 
 
 
@@ -94,7 +100,7 @@ Nenhuma (somente leitura — ContaContabil para limiares, módulo de execução 
 
 Dependência de módulo
 
-Módulo de Execução Orçamentária (empenho/liquidação) — TotalizerService precisa de uma implementação real de ObtemSaldoContaAnalitica (hoje é semSaldoDisponivel, stub)
+Ao menos um módulo de lançamento de custo (Empregados, Viagens, Bens/Serviços ou Rateios) — TotalizerService (ObtemSaldoContaAnalitica, hoje semSaldoDisponivel/stub) precisa passar a agregar os lançamentos reais desses módulos, não de execução orçamentária pública
 
 Cálculo
 
@@ -108,7 +114,7 @@ Não aplicável — é leitura/exibição, sem alteração de dado
 
 Definition of Done — US-008a
 
-☐  Módulo de Execução Orçamentária disponível com valorRealizado e valorOrcado por conta
+☐  Ao menos o módulo de Empregados/Cargos (maior massa de custo) disponível, fornecendo valorRealizado real por conta; valorOrcado já disponível via US-007
 
 ☐  TotalizerService (ou serviço equivalente) calcula percentual de consumo real
 

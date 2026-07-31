@@ -27,6 +27,7 @@ enum TipoOperacao {
   NATUREZA_ALTERADA
   VALOR_ORCADO_CONFIGURADO
   VERSAO_PROPOSTA_CRIADA
+  SEMAFORO_CONFIGURADO
 }
 
 model Usuario {
@@ -157,6 +158,11 @@ model ContaContabil {
   filhas        ContaContabil[]   @relation("Hierarquia")
   isAnalitica   Boolean // true somente no último nível (nó folha) [RN_PLA_003]
   natureza      NaturezaConta? // parametrização local (RF_PLA_REQ_003), não vem da fonte externa
+  // Semáforo Orçamentário (US-008, RN_PLA_006) — parametrização local, "todos ou nenhum".
+  // Coerência (0<verde<amarelo<laranja<=100) garantida por CHECK constraint na migration [ADR-013].
+  semaforoVerdePct   Int?
+  semaforoAmareloPct Int?
+  semaforoLaranjaPct Int?
   statusSync    StatusSincronismo @default(PENDENTE)
   syncedAt      DateTime?
   erpUpdatedAt  DateTime?

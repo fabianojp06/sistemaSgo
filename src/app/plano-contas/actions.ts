@@ -14,6 +14,7 @@ import {
   getAtribuirNaturezaContaUseCase,
   getConfigurarValorOrcadoContaUseCase,
   getCriarVersaoPropostaUseCase,
+  getConfigurarSemaforoContaUseCase,
 } from '@/application/use-cases/plano-contas/container';
 
 type ActionResult = { sucesso: true } | { sucesso: false; mensagem: string };
@@ -160,6 +161,47 @@ export async function configurarValorOrcadoConta(
         totaisAncestrais: resultado.totaisAncestrais.map((t) => ({ contaId: t.contaId, total: t.total.toString() })),
       },
     };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+const ConfigurarSemaforoContaSchema = z.object({
+  contaId: z.string().min(1),
+  limiares: z
+    .object({
+      verde: z.number().int().min(1).max(100),
+      amarelo: z.number().int().min(1).max(100),
+      laranja: z.number().int().min(1).max(100),
+    })
+    .nullable(),
+});
+
+/** US-008 — Configurar Semáforo Orçamentário por Conta Analítica. */
+export async function configurarSemaforoConta(
+  contaId: string,
+  limiares: { verde: number; amarelo: number; laranja: number } | null,
+): Promise<ActionResult> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const entrada = ConfigurarSemaforoContaSchema.safeParse({ contaId, limiares });
+  if (!entrada.success) {
+    return { sucesso: false, mensagem: 'Configuração Inválida: os percentuais devem estar entre 1 e 100.' };
+  }
+
+  const temPermissao = await usuarioTemFuncionalidade(
+    prisma,
+    contexto.tenantId,
+    contexto.usuarioId,
+    'plano-contas.configurar-semaforo',
+  );
+  if (!temPermissao) return { sucesso: false, mensagem: 'Perfil sem permissão para configurar semáforo orçamentário.' };
+
+  try {
+    await getConfigurarSemaforoContaUseCase().execute({ ...contexto, ...entrada.data });
+    revalidatePath('/plano-contas');
+    return { sucesso: true };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
   }

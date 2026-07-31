@@ -39,6 +39,13 @@ async function seedModuloPlanoContas() {
     update: {},
     create: { moduloId: modulo.id, chave: 'plano-contas.configurar-valor-orcado', nome: 'Configurar Valor Orçado por Conta' },
   });
+
+  // US-008 — Configurar Semáforo Orçamentário por Conta Analítica.
+  await prisma.funcionalidade.upsert({
+    where: { moduloId_chave: { moduloId: modulo.id, chave: 'plano-contas.configurar-semaforo' } },
+    update: {},
+    create: { moduloId: modulo.id, chave: 'plano-contas.configurar-semaforo', nome: 'Configurar Semáforo Orçamentário por Conta' },
+  });
 }
 
 async function main() {

@@ -38,7 +38,9 @@ Para personalizar os limiares que futuramente definirão os alertas visuais de c
 
 
 
-Nota de escopo (fatiamento — Debate do Time, 2026-07-30): esta US cobre apenas a configuração e validação dos 3 percentuais (Cenários 1 e 2). A exibição real do badge colorido com base em consumo (antigo Cenário 3) foi movida para US-008a, pois depende de um módulo de execução orçamentária (empenho/liquidação) que ainda não existe no sistema — ver US-008a para detalhes e bloqueio. Ver também [[modulo-execucao-orcamentaria-status]] se disponível.
+Nota de escopo (fatiamento — Debate do Time, 2026-07-30; revisada em 2026-07-31): esta US cobre apenas a configuração e validação dos 3 percentuais (Cenários 1 e 2). A exibição real do badge colorido com base em consumo (antigo Cenário 3) foi movida para US-008a, que depende de `valorRealizado` — dado que virá dos módulos de lançamento de custo do próprio EP118/24 (Empregados, Viagens, Bens/Serviços, Rateios/US-101), não de um módulo de execução orçamentária pública como se supunha originalmente. Ver US-008a para a sequência de backlog até lá.
+
+Esta US-008 não tem esse bloqueio: US-001 já entrega a conta N7 sincronizada, e não depende de nenhum módulo de custo. Está livre para implementação imediata.
 
 
 
