@@ -33,6 +33,8 @@ enum TipoOperacao {
   PROPOSTA_CRIADA
   VERSAO_PROPOSTA_EXCLUIDA
   PROPOSTA_DUPLICADA
+  UNIDADE_FUNCIONAL_CRIADA
+  UNIDADE_FUNCIONAL_INATIVADA
 }
 
 model Usuario {
@@ -248,7 +250,8 @@ model Proposta {
   createdAt  DateTime          @default(now())
   updatedAt  DateTime          @updatedAt
 
-  versoes VersaoProposta[]
+  versoes           VersaoProposta[]
+  unidadesFuncionais UnidadeFuncional[]
 
   @@unique([tenantId, codigo])
   @@index([tenantId, status])
@@ -344,4 +347,36 @@ model RateioImpostoGrade {
 
   @@unique([tenantId, versaoId, aliquotaParametroId, competencia])
   @@index([tenantId, versaoId])
+}
+
+// ADR-015 — US-106. Escopada por Proposta, não por VersaoProposta: organograma
+// é dado cadastral estável (reestruturação de RH é evento raro e deliberado),
+// diferente de ValorOrcadoConta/RateioImpostoGrade, que mudam a cada revisão
+// orçamentária por design. Árvore de 2 níveis fixos: Sintético (Diretoria ou
+// Gerência, só consolida) → Analítico (Assessor só sob Diretoria; Coordenadoria
+// ou Setor só sob Gerência).
+enum TipoNivelUnidadeFuncional {
+  SINTETICO_DIRETORIA
+  SINTETICO_GERENCIA
+  ANALITICO_ASSESSOR
+  ANALITICO_COORDENADORIA
+  ANALITICO_SETOR
+}
+
+model UnidadeFuncional {
+  id         String                    @id @default(uuid())
+  tenantId   String
+  propostaId String
+  proposta   Proposta                  @relation(fields: [propostaId], references: [id])
+  nome       String
+  tipoNivel  TipoNivelUnidadeFuncional
+  idPai      String?
+  pai        UnidadeFuncional?         @relation("HierarquiaFuncional", fields: [idPai], references: [id])
+  filhas     UnidadeFuncional[]        @relation("HierarquiaFuncional")
+  ativa      Boolean                   @default(true)
+  createdAt  DateTime                  @default(now())
+  updatedAt  DateTime                  @updatedAt
+
+  @@index([tenantId, propostaId])
+  @@index([tenantId, propostaId, idPai])
 }

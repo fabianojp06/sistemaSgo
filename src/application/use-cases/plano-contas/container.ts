@@ -16,6 +16,8 @@ import { DesativarTributoRateioUseCase } from './DesativarTributoRateioUseCase';
 import { CadastrarPropostaUseCase } from './CadastrarPropostaUseCase';
 import { ExcluirVersaoPropostaUseCase } from './ExcluirVersaoPropostaUseCase';
 import { DuplicarPropostaUseCase } from './DuplicarPropostaUseCase';
+import { CriarUnidadeFuncionalUseCase } from './CriarUnidadeFuncionalUseCase';
+import { InativarUnidadeFuncionalUseCase } from './InativarUnidadeFuncionalUseCase';
 
 export function getSincronizarPlanoContasUseCase(): SincronizarPlanoContasUseCase {
   return new SincronizarPlanoContasUseCase(
@@ -76,4 +78,12 @@ export function getExcluirVersaoPropostaUseCase(): ExcluirVersaoPropostaUseCase 
 
 export function getDuplicarPropostaUseCase(): DuplicarPropostaUseCase {
   return new DuplicarPropostaUseCase(prisma);
+}
+
+export function getCriarUnidadeFuncionalUseCase(): CriarUnidadeFuncionalUseCase {
+  return new CriarUnidadeFuncionalUseCase(prisma);
+}
+
+export function getInativarUnidadeFuncionalUseCase(): InativarUnidadeFuncionalUseCase {
+  return new InativarUnidadeFuncionalUseCase(prisma);
 }

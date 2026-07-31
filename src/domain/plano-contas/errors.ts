@@ -106,6 +106,36 @@ export class SemaforoPercentualForaDaFaixaError extends Error {
   }
 }
 
+// US-106, Cenário 3 [TRAVA O ERRO] — vínculo pai-filho por tipo inválido.
+export class VinculoHierarquicoInvalidoError extends Error {
+  constructor() {
+    super(
+      'Vínculo Hierárquico Inválido [TRAVA O ERRO]: Coordenadoria/Setor só pode ser subordinado a uma unidade do tipo Gerência. Assessoria só pode ser subordinado a uma unidade do tipo Diretoria.',
+    );
+    this.name = 'VinculoHierarquicoInvalidoError';
+  }
+}
+
+// US-106, Cenário 5 [TRAVA O ERRO] — unidade com cargo vinculado não pode ser inativada.
+export class InativacaoUnidadeFuncionalBloqueadaError extends Error {
+  constructor() {
+    super(
+      'Inativação Bloqueada [TRAVA O ERRO]: Esta unidade possui cargos vinculados. Remova ou realoque os cargos antes de inativá-la.',
+    );
+    this.name = 'InativacaoUnidadeFuncionalBloqueadaError';
+  }
+}
+
+// US-106, Cenário 7 — Proposta fora de RASCUNHO/EM_ELABORACAO é imutável para escrita de Estrutura Funcional.
+export class PropostaImutavelError extends Error {
+  constructor() {
+    super(
+      'Ação Negada [TRAVA O ERRO]: Esta Proposta não está em Rascunho ou Em Elaboração. Nenhuma alteração é permitida.',
+    );
+    this.name = 'PropostaImutavelError';
+  }
+}
+
 // US-105, Cenários 2/3 — outro usuário alterou o registro entre a leitura e este commit.
 export class ConflitoConcorrenciaError extends Error {
   constructor() {

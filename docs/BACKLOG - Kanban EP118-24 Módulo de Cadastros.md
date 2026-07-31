@@ -18,6 +18,7 @@
 | US-103 (UC03.07 = UC03.11) | Excluir Versão da Proposta | Soft delete; UC03.07 e UC03.11 são a mesma especificação duplicada na Minuta |
 | US-104 (UC03.08) | Duplicar Proposta | Sempre nasce RASCUNHO/Versão 1, mesmo duplicando origem Oficializada |
 | US-105 (UC03.10, parcial) | Controle de Concorrência (Optimistic Locking) | Cobre `ValorOrcadoConta`/`RateioImpostoGrade`; resto do UC03.10 seguirá quando novas guias existirem |
+| US-106 (UC03.18, parcial) | Estrutura Funcional (Organograma) | `UnidadeFuncional` escopada por Proposta (ADR-015); RN_EST_01/03/05 pendentes até `Cargo` existir |
 
 ---
 
@@ -25,13 +26,14 @@
 
 | Ordem | Item | Por que é o próximo | Esforço estimado |
 |---|---|---|---|
-| 1 | **US-106 — Empregados/Cargos (UC03.18-19, 24-27)** | Maior massa de custo real em qualquer Termo de Parceria; desbloqueia parcialmente US-008a (fonte de `valorRealizado`) e dá conteúdo genuíno a "Alterar Proposta"/"Editar Versão" (UC03.06/03.10) | G — é um módulo novo inteiro |
-| 2 | **US-107 — Viagens (UC03.29-33)** | Segunda maior fonte de custo; mesmo padrão de lançamento por conta analítica já validado em US-007/101 | M |
-| 3 | **US-108 — Bens, Serviços e Equipamentos (UC03.34-36)** | Completa as fontes de `valorRealizado`; menor volume que Empregados/Viagens | M |
-| 4 | **US-008a — Badge do Semáforo (MVP)** | Reavaliar assim que ao menos Empregados estiver no ar — decisão de produto já registrada: não liberar com dado parcial que passe falso senso de segurança | P (depois que a dependência existir) |
-| 5 | **Metas (UC03.13-17)** | Estrutura de metas físicas vinculada a Proposta por Categoria=Por Meta; relevante mas não bloqueia nada além de si mesma | M |
-| 6 | **Qtde. Empregado (UC03.20-23)** | Consolidação quantitativa — depende conceitualmente de Empregados (item 1) existir primeiro | P |
-| 7 | **Benefícios (UC03.28)** | Sub-módulo de Empregados — depende de Empregados (item 1) | P |
+| 1 | **US-107 — Cargos e Salários (UC03.19)** | Sequência natural de US-106: cargos precisam vincular a uma `UnidadeFuncional` Analítica | G |
+| 2 | **US-108 — Empregados (UC03.24-27)** | Maior massa de custo real; desbloqueia parcialmente US-008a (fonte de `valorRealizado`) e completa RN_EST_01/03/05 da US-106 | G |
+| 3 | **US-109 — Viagens (UC03.29-33)** | Segunda maior fonte de custo; mesmo padrão de lançamento por conta analítica já validado em US-007/101 | M |
+| 4 | **US-110 — Bens, Serviços e Equipamentos (UC03.34-36)** | Completa as fontes de `valorRealizado`; menor volume que Empregados/Viagens | M |
+| 5 | **US-008a — Badge do Semáforo (MVP)** | Reavaliar assim que ao menos Empregados estiver no ar — decisão de produto já registrada: não liberar com dado parcial que passe falso senso de segurança | P (depois que a dependência existir) |
+| 6 | **Metas (UC03.13-17)** | Estrutura de metas físicas vinculada a Proposta por Categoria=Por Meta; relevante mas não bloqueia nada além de si mesma | M |
+| 7 | **Qtde. Empregado (UC03.20-23)** | Consolidação quantitativa — depende de Empregados existir primeiro | P |
+| 8 | **Benefícios (UC03.28)** | Sub-módulo de Empregados — depende de Empregados existir | P |
 
 ---
 
