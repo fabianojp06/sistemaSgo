@@ -256,3 +256,51 @@ export class NaturezaHierarquiaInvalidaError extends Error {
     this.name = 'NaturezaHierarquiaInvalidaError';
   }
 }
+
+// US-107 — campos obrigatórios do Cargo (Cargo Mercado, faixa de mercado, fonte ativa, período).
+export class CamposObrigatoriosCargoError extends Error {
+  constructor() {
+    super('Preencha todos os campos obrigatórios do cargo antes de salvar.');
+    this.name = 'CamposObrigatoriosCargoError';
+  }
+}
+
+// US-107, Cenário 2, RN_CAR_01 [TRAVA O ERRO] — cargo não pode ser salvo sem vínculo funcional.
+export class VinculoFuncionalObrigatorioError extends Error {
+  constructor() {
+    super('Selecione um vínculo funcional (nó Analítico) antes de salvar o cargo.');
+    this.name = 'VinculoFuncionalObrigatorioError';
+  }
+}
+
+// US-107, Cenário 3 [TRAVA O ERRO] — vínculo só é aceito com nó Analítico (Assessor/Coordenadoria/Setor).
+export class VinculoCargoNaoAnaliticoError extends Error {
+  constructor() {
+    super('Cargo só pode ser vinculado a um nó Analítico (Assessor, Coordenadoria ou Setor).');
+    this.name = 'VinculoCargoNaoAnaliticoError';
+  }
+}
+
+// US-107 — UnidadeFuncional referenciada não existe (ou não pertence ao tenant/Proposta).
+export class UnidadeFuncionalNaoEncontradaError extends Error {
+  constructor() {
+    super('Unidade funcional não encontrada.');
+    this.name = 'UnidadeFuncionalNaoEncontradaError';
+  }
+}
+
+// US-107 — Cargo referenciado não existe (ou não pertence ao tenant).
+export class CargoNaoEncontradoError extends Error {
+  constructor() {
+    super('Cargo não encontrado.');
+    this.name = 'CargoNaoEncontradoError';
+  }
+}
+
+// US-107 — geração automática do código do Cargo esgotou as tentativas de retry.
+export class CodigoCargoGeracaoFalhouError extends Error {
+  constructor() {
+    super('Não foi possível gerar um código único para o Cargo. Tente novamente.');
+    this.name = 'CodigoCargoGeracaoFalhouError';
+  }
+}

@@ -18,6 +18,9 @@ import { ExcluirVersaoPropostaUseCase } from './ExcluirVersaoPropostaUseCase';
 import { DuplicarPropostaUseCase } from './DuplicarPropostaUseCase';
 import { CriarUnidadeFuncionalUseCase } from './CriarUnidadeFuncionalUseCase';
 import { InativarUnidadeFuncionalUseCase } from './InativarUnidadeFuncionalUseCase';
+import { CargoRubiFixtureProvider } from '@/infrastructure/integrations/rubi/CargoRubiFixtureProvider';
+import { CadastrarCargoUseCase } from './CadastrarCargoUseCase';
+import { EditarCargoUseCase } from './EditarCargoUseCase';
 
 export function getSincronizarPlanoContasUseCase(): SincronizarPlanoContasUseCase {
   return new SincronizarPlanoContasUseCase(
@@ -86,4 +89,12 @@ export function getCriarUnidadeFuncionalUseCase(): CriarUnidadeFuncionalUseCase 
 
 export function getInativarUnidadeFuncionalUseCase(): InativarUnidadeFuncionalUseCase {
   return new InativarUnidadeFuncionalUseCase(prisma);
+}
+
+export function getCadastrarCargoUseCase(): CadastrarCargoUseCase {
+  return new CadastrarCargoUseCase(prisma, new CargoRubiFixtureProvider());
+}
+
+export function getEditarCargoUseCase(): EditarCargoUseCase {
+  return new EditarCargoUseCase(prisma);
 }

@@ -35,6 +35,8 @@ enum TipoOperacao {
   PROPOSTA_DUPLICADA
   UNIDADE_FUNCIONAL_CRIADA
   UNIDADE_FUNCIONAL_INATIVADA
+  CARGO_CRIADO
+  CARGO_EDITADO
 }
 
 model Usuario {
@@ -252,6 +254,7 @@ model Proposta {
 
   versoes           VersaoProposta[]
   unidadesFuncionais UnidadeFuncional[]
+  cargos            Cargo[]
 
   @@unique([tenantId, codigo])
   @@index([tenantId, status])
@@ -377,6 +380,56 @@ model UnidadeFuncional {
   createdAt  DateTime                  @default(now())
   updatedAt  DateTime                  @updatedAt
 
+  cargos Cargo[]
+
   @@index([tenantId, propostaId])
   @@index([tenantId, propostaId, idPai])
+}
+
+// ADR-016 — US-107. Cargo vinculado 1:1 a um nó Analítico da Estrutura Funcional
+// (UnidadeFuncional). A validação de que a unidade vinculada é de fato Analítica
+// (ANALITICO_ASSESSOR/COORDENADORIA/SETOR, nunca SINTETICO_*) é feita no use case
+// (validarVinculoNoAnalitico), não em constraint de banco — mesmo padrão de
+// RN_PLA_003 (isAnalitica em ContaContabil).
+enum FonteAtivaSalario {
+  MERCADO_MINIMO
+  MERCADO_MAXIMO
+  RUBI
+}
+
+model Cargo {
+  id         String   @id @default(uuid())
+  tenantId   String
+  propostaId String
+  proposta   Proposta @relation(fields: [propostaId], references: [id])
+
+  unidadeFuncionalId String
+  unidadeFuncional   UnidadeFuncional @relation(fields: [unidadeFuncionalId], references: [id])
+
+  nomeCargoMercado  String
+  codigoCargo       String // gerado internamente (CARGO-{ano}-{seq}), Read-only na UI
+  funcaoGratificada Decimal? @db.Decimal(15, 2)
+  periodoInicio     DateTime
+
+  salarioMercadoMinimo Decimal           @db.Decimal(15, 2)
+  salarioMercadoMaximo Decimal           @db.Decimal(15, 2)
+  fonteAtiva           FonteAtivaSalario
+
+  // Bloco "soberano" [RN_CAR_03] — nunca escrito por use case de Cargo, só pelo
+  // CargoRubiFixtureProvider (fixture; não há integração real com Rubi ainda).
+  salarioReal       Decimal?          @db.Decimal(15, 2)
+  statusSyncSalario StatusSincronismo @default(PENDENTE)
+  syncedAt          DateTime?
+  erpUpdatedAt      DateTime?
+
+  // Calculado e persistido pelo use case a cada create/update — nunca input direto.
+  salarioTotal Decimal @db.Decimal(15, 2)
+
+  ativo     Boolean  @default(true) // soft delete
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, codigoCargo])
+  @@index([tenantId, propostaId])
+  @@index([tenantId, unidadeFuncionalId])
 }

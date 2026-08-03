@@ -15,6 +15,8 @@ import {
   getConfigurarValorOrcadoContaUseCase,
   getCriarVersaoPropostaUseCase,
   getConfigurarSemaforoContaUseCase,
+  getCadastrarCargoUseCase,
+  getEditarCargoUseCase,
 } from '@/application/use-cases/plano-contas/container';
 
 type ActionResult = { sucesso: true } | { sucesso: false; mensagem: string };
@@ -231,6 +233,118 @@ export async function criarVersaoProposta(
     const novaVersao = await getCriarVersaoPropostaUseCase().execute({ ...contexto, ...entrada.data });
     revalidatePath('/plano-contas');
     return { sucesso: true, dados: { id: novaVersao.id, numeroVersao: novaVersao.numeroVersao } };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+const FonteAtivaSalarioSchema = z.enum(['MERCADO_MINIMO', 'MERCADO_MAXIMO', 'RUBI']);
+
+const CadastrarCargoSchema = z.object({
+  propostaId: z.string().min(1),
+  unidadeFuncionalId: z.string().min(1),
+  nomeCargoMercado: z.string().trim().min(1),
+  funcaoGratificada: z.number().nonnegative().nullable().optional(),
+  periodoInicio: z.coerce.date(),
+  salarioMercadoMinimo: z.number().nonnegative(),
+  salarioMercadoMaximo: z.number().nonnegative(),
+  fonteAtiva: FonteAtivaSalarioSchema,
+});
+
+export type CargoResultado = {
+  id: string;
+  codigoCargo: string;
+  salarioReal: string | null;
+  salarioTotal: string;
+};
+
+/** US-107, Cenários 1-3/5 — Cadastrar Cargo vinculado a um nó Analítico da Estrutura Funcional. */
+export async function cadastrarCargo(input: {
+  propostaId: string;
+  unidadeFuncionalId: string;
+  nomeCargoMercado: string;
+  funcaoGratificada?: number | null;
+  periodoInicio: string;
+  salarioMercadoMinimo: number;
+  salarioMercadoMaximo: number;
+  fonteAtiva: 'MERCADO_MINIMO' | 'MERCADO_MAXIMO' | 'RUBI';
+}): Promise<ActionResultComDados<CargoResultado>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const entrada = CadastrarCargoSchema.safeParse(input);
+  if (!entrada.success) {
+    return { sucesso: false, mensagem: 'Preencha todos os campos obrigatórios do cargo antes de salvar.' };
+  }
+
+  const temPermissao = await usuarioTemFuncionalidade(prisma, contexto.tenantId, contexto.usuarioId, 'plano-contas.cargo-criar');
+  if (!temPermissao) return { sucesso: false, mensagem: 'Perfil sem permissão para cadastrar cargo.' };
+
+  try {
+    const cargo = await getCadastrarCargoUseCase().execute({ ...contexto, ...entrada.data });
+    revalidatePath('/plano-contas');
+    return {
+      sucesso: true,
+      dados: {
+        id: cargo.id,
+        codigoCargo: cargo.codigoCargo,
+        salarioReal: cargo.salarioReal?.toString() ?? null,
+        salarioTotal: cargo.salarioTotal.toString(),
+      },
+    };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+const EditarCargoSchema = z.object({
+  cargoId: z.string().min(1),
+  unidadeFuncionalId: z.string().min(1),
+  nomeCargoMercado: z.string().trim().min(1),
+  funcaoGratificada: z.number().nonnegative().nullable().optional(),
+  periodoInicio: z.coerce.date(),
+  salarioMercadoMinimo: z.number().nonnegative(),
+  salarioMercadoMaximo: z.number().nonnegative(),
+  fonteAtiva: FonteAtivaSalarioSchema,
+});
+
+/**
+ * US-107, Cenário 4 — Editar Cargo. Qualquer `salarioReal` enviado pelo
+ * client é ignorado pelo use case (campo soberano do provider Rubi).
+ */
+export async function editarCargo(input: {
+  cargoId: string;
+  unidadeFuncionalId: string;
+  nomeCargoMercado: string;
+  funcaoGratificada?: number | null;
+  periodoInicio: string;
+  salarioMercadoMinimo: number;
+  salarioMercadoMaximo: number;
+  fonteAtiva: 'MERCADO_MINIMO' | 'MERCADO_MAXIMO' | 'RUBI';
+}): Promise<ActionResultComDados<CargoResultado>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const entrada = EditarCargoSchema.safeParse(input);
+  if (!entrada.success) {
+    return { sucesso: false, mensagem: 'Preencha todos os campos obrigatórios do cargo antes de salvar.' };
+  }
+
+  const temPermissao = await usuarioTemFuncionalidade(prisma, contexto.tenantId, contexto.usuarioId, 'plano-contas.cargo-editar');
+  if (!temPermissao) return { sucesso: false, mensagem: 'Perfil sem permissão para editar cargo.' };
+
+  try {
+    const cargo = await getEditarCargoUseCase().execute({ ...contexto, ...entrada.data });
+    revalidatePath('/plano-contas');
+    return {
+      sucesso: true,
+      dados: {
+        id: cargo.id,
+        codigoCargo: cargo.codigoCargo,
+        salarioReal: cargo.salarioReal?.toString() ?? null,
+        salarioTotal: cargo.salarioTotal.toString(),
+      },
+    };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
   }

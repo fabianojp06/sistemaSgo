@@ -19,6 +19,7 @@
 | US-104 (UC03.08) | Duplicar Proposta | Sempre nasce RASCUNHO/Versão 1, mesmo duplicando origem Oficializada |
 | US-105 (UC03.10, parcial) | Controle de Concorrência (Optimistic Locking) | Cobre `ValorOrcadoConta`/`RateioImpostoGrade`; resto do UC03.10 seguirá quando novas guias existirem |
 | US-106 (UC03.18, parcial) | Estrutura Funcional (Organograma) | `UnidadeFuncional` escopada por Proposta (ADR-015); RN_EST_01/03/05 pendentes até `Cargo` existir |
+| US-107 (UC03.19, blocos A/B) | Cargos e Salários | `Cargo` (ADR-016), vínculo 1:1 com `UnidadeFuncional` Analítica, `CargoRubiFixtureProvider`; migration escrita mas não aplicada (sem acesso ao Supabase); falta Server Action/UI |
 
 ---
 
@@ -26,8 +27,8 @@
 
 | Ordem | Item | Por que é o próximo | Esforço estimado |
 |---|---|---|---|
-| 1 | **US-107 — Cargos e Salários (UC03.19)** | Sequência natural de US-106: cargos precisam vincular a uma `UnidadeFuncional` Analítica | G |
-| 2 | **US-108 — Empregados (UC03.24-27)** | Maior massa de custo real; desbloqueia parcialmente US-008a (fonte de `valorRealizado`) e completa RN_EST_01/03/05 da US-106 | G |
+| 1a | **US-107a — Benefícios e Encargos (UC03.28)** | Extraída do bloco C do UC03.19 na refinamento de US-107 — depende de US-107 (Cargo) existir | M |
+| 2 | **US-108 — Empregados (UC03.24-27)** | Maior massa de custo real; desbloqueia parcialmente US-008a (fonte de `valorRealizado`) e completa RN_EST_01/03/05 da US-106. `Cargo` já existe (US-107), esta é a próxima da fila. | G |
 | 3 | **US-109 — Viagens (UC03.29-33)** | Segunda maior fonte de custo; mesmo padrão de lançamento por conta analítica já validado em US-007/101 | M |
 | 4 | **US-110 — Bens, Serviços e Equipamentos (UC03.34-36)** | Completa as fontes de `valorRealizado`; menor volume que Empregados/Viagens | M |
 | 5 | **US-008a — Badge do Semáforo (MVP)** | Reavaliar assim que ao menos Empregados estiver no ar — decisão de produto já registrada: não liberar com dado parcial que passe falso senso de segurança | P (depois que a dependência existir) |
@@ -41,7 +42,6 @@
 
 | UC | Título | Observação |
 |---|---|---|
-| UC03.13 | Criar Termo de Ajuste | Não lido/avaliado ainda nesta sessão — nome sugere algo distinto de Termo Aditivo (UC03.12), mas pode ter o mesmo tipo de sobreposição/duplicata já visto entre UC03.07 e UC03.11. Avaliar antes de assumir escopo. |
 | UC03.38 | Emitir Pré-Visualização | Provavelmente exportação/relatório (PDF/Excel) da árvore de Totalizadores — só faz sentido depois de UC03.02 (Totalizadores/US-008a) estar completo |
 
 ---
@@ -51,6 +51,7 @@
 | US/UC | Bloqueio | Condição de desbloqueio |
 |---|---|---|
 | **US-008a — Badge do Semáforo Orçamentário** (UC03.02) | Depende de `valorRealizado`, que vem da agregação dos módulos de custo (Empregados, Viagens, Bens, Rateio já parcialmente coberto) — não de execução orçamentária pública como se pensava inicialmente | Ao menos Empregados (item 1 da fila) implementado — decisão de produto pendente sobre liberar com dado parcial |
+| **US-111 — Criar Termo de Ajuste** (UC03.13, refinado 2026-08-02) | Não é duplicata de UC03.12 — redistribui saldo entre contas analíticas sem alterar valor global, com registro externo (Transferegov.br) e aprovação em dois níveis. Três bloqueios: (1) UC pede conta de Nível 7, schema atual só vai até nível 4 — precisa confirmação do usuário se é jargão legado ou gap real; (2) "Termo de Parceria" não existe como entidade, precisa de ADR do Tech Lead mapeando para `Proposta`/`OFICIALIZADA`; (3) perfil "Gestor Master" não existe em `Perfil` (mesmo achado do UC03.12) | ADR do Tech Lead + resposta do usuário sobre Nível 7 + decisão de RBAC do Gestor Master |
 
 ---
 
