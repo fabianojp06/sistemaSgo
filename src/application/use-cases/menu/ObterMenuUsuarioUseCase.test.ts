@@ -13,15 +13,15 @@ describe('ObterMenuUsuarioUseCase [UC01.03]', () => {
       {
         perfil: {
           permissoes: [
-            { funcionalidade: { chave: 'empenhos.criar', nome: 'Criar Empenho', modulo: { chave: 'empenhos', nome: 'Empenhos' } } },
+            { funcionalidade: { chave: 'empenhos.criar', nome: 'Criar Empenho', tipo: 'NAVEGAVEL', modulo: { chave: 'empenhos', nome: 'Empenhos' } } },
           ],
         },
       },
       {
         perfil: {
           permissoes: [
-            { funcionalidade: { chave: 'empenhos.criar', nome: 'Criar Empenho', modulo: { chave: 'empenhos', nome: 'Empenhos' } } },
-            { funcionalidade: { chave: 'dotacoes.consultar', nome: 'Consultar Dotação', modulo: { chave: 'dotacoes', nome: 'Dotações' } } },
+            { funcionalidade: { chave: 'empenhos.criar', nome: 'Criar Empenho', tipo: 'NAVEGAVEL', modulo: { chave: 'empenhos', nome: 'Empenhos' } } },
+            { funcionalidade: { chave: 'dotacoes.consultar', nome: 'Consultar Dotação', tipo: 'CONTEXTUAL', modulo: { chave: 'dotacoes', nome: 'Dotações' } } },
           ],
         },
       },
@@ -34,8 +34,8 @@ describe('ObterMenuUsuarioUseCase [UC01.03]', () => {
       expect.objectContaining({ where: { tenantId: 'tenant-1', usuarioId: 'usuario-1' } }),
     );
     expect(menu).toEqual([
-      { chave: 'empenhos', nome: 'Empenhos', funcionalidades: [{ chave: 'empenhos.criar', nome: 'Criar Empenho' }] },
-      { chave: 'dotacoes', nome: 'Dotações', funcionalidades: [{ chave: 'dotacoes.consultar', nome: 'Consultar Dotação' }] },
+      { chave: 'empenhos', nome: 'Empenhos', funcionalidades: [{ chave: 'empenhos.criar', nome: 'Criar Empenho', tipo: 'NAVEGAVEL' }] },
+      { chave: 'dotacoes', nome: 'Dotações', funcionalidades: [{ chave: 'dotacoes.consultar', nome: 'Consultar Dotação', tipo: 'CONTEXTUAL' }] },
     ]);
   });
 

@@ -8,7 +8,9 @@ import { prisma } from '@/infrastructure/db/prisma';
 import { getTenantId } from '@/infrastructure/tenant';
 
 // Funcionalidade não tem campo de rota — mapeamento local até o projeto
-// precisar de mais que essas duas entradas (aí sim vale mover pro schema).
+// precisar de mais que essas entradas (aí sim vale mover pro schema). Só
+// funcionalidades NAVEGAVEL [ADR-021] entram aqui — CONTEXTUAL nunca tem
+// link próprio no menu, a permissão é checada dentro da tela onde a ação vive.
 const ROTA_POR_FUNCIONALIDADE: Record<string, string> = {
   'plano-contas.visualizar': '/plano-contas',
   'plano-contas.sincronizar': '/plano-contas',
@@ -61,27 +63,32 @@ export default async function TelaPrincipal() {
         <div className="flex flex-1">
           <nav className="w-64 border-r p-4">
             <ul className="space-y-4">
-              {menu.map((modulo) => (
-                <li key={modulo.chave}>
-                  <p className="font-medium">{modulo.nome}</p>
-                  <ul className="mt-1 space-y-1 pl-3 text-sm text-gray-500">
-                    {modulo.funcionalidades.map((funcionalidade) => {
-                      const href = ROTA_POR_FUNCIONALIDADE[funcionalidade.chave];
-                      return (
-                        <li key={funcionalidade.chave}>
-                          {href ? (
-                            <Link href={href} className="hover:text-gray-900 hover:underline">
-                              {funcionalidade.nome}
-                            </Link>
-                          ) : (
-                            funcionalidade.nome
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </li>
-              ))}
+              {menu.map((modulo) => {
+                const navegaveis = modulo.funcionalidades.filter((f) => f.tipo === 'NAVEGAVEL');
+                if (navegaveis.length === 0) return null;
+
+                return (
+                  <li key={modulo.chave}>
+                    <p className="font-medium">{modulo.nome}</p>
+                    <ul className="mt-1 space-y-1 pl-3 text-sm text-gray-500">
+                      {navegaveis.map((funcionalidade) => {
+                        const href = ROTA_POR_FUNCIONALIDADE[funcionalidade.chave];
+                        return (
+                          <li key={funcionalidade.chave}>
+                            {href ? (
+                              <Link href={href} className="hover:text-gray-900 hover:underline">
+                                {funcionalidade.nome}
+                              </Link>
+                            ) : (
+                              funcionalidade.nome
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </li>
+                );
+              })}
             </ul>
           </nav>
           <div className="flex-1 p-6" />

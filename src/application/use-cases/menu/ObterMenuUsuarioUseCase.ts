@@ -1,6 +1,6 @@
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient, TipoFuncionalidade } from '@prisma/client';
 
-export type FuncionalidadeMenu = { chave: string; nome: string };
+export type FuncionalidadeMenu = { chave: string; nome: string; tipo: TipoFuncionalidade };
 export type ModuloMenu = { chave: string; nome: string; funcionalidades: FuncionalidadeMenu[] };
 
 /**
@@ -26,6 +26,7 @@ export class ObterMenuUsuarioUseCase {
                   select: {
                     chave: true,
                     nome: true,
+                    tipo: true,
                     modulo: { select: { chave: true, nome: true } },
                   },
                 },
@@ -40,7 +41,7 @@ export class ObterMenuUsuarioUseCase {
 
     for (const usuarioPerfil of permissoes) {
       for (const permissao of usuarioPerfil.perfil.permissoes) {
-        const { modulo, chave, nome } = permissao.funcionalidade;
+        const { modulo, chave, nome, tipo } = permissao.funcionalidade;
 
         let entrada = modulosPorChave.get(modulo.chave);
         if (!entrada) {
@@ -49,7 +50,7 @@ export class ObterMenuUsuarioUseCase {
         }
 
         if (!entrada.funcionalidades.some((f) => f.chave === chave)) {
-          entrada.funcionalidades.push({ chave, nome });
+          entrada.funcionalidades.push({ chave, nome, tipo });
         }
       }
     }

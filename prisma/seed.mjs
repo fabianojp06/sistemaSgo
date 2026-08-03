@@ -27,31 +27,32 @@ async function seedModuloPlanoContas() {
     create: { moduloId: modulo.id, chave: 'plano-contas.sincronizar', nome: 'Sincronizar Plano de Contas com ERP' },
   });
 
+  // ADR-021 — CONTEXTUAL: ação vive dentro de /plano-contas, sem rota/link próprio no menu.
   await prisma.funcionalidade.upsert({
     where: { moduloId_chave: { moduloId: modulo.id, chave: 'plano-contas.classificar-natureza' } },
     update: {},
-    create: { moduloId: modulo.id, chave: 'plano-contas.classificar-natureza', nome: 'Classificar Natureza de Conta' },
+    create: { moduloId: modulo.id, chave: 'plano-contas.classificar-natureza', nome: 'Classificar Natureza de Conta', tipo: 'CONTEXTUAL' },
   });
 
-  // US-007 — Configurar Valor Orçado por Conta Analítica e Exercício.
+  // US-007 — Configurar Valor Orçado por Conta Analítica e Exercício. [ADR-021] CONTEXTUAL.
   await prisma.funcionalidade.upsert({
     where: { moduloId_chave: { moduloId: modulo.id, chave: 'plano-contas.configurar-valor-orcado' } },
     update: {},
-    create: { moduloId: modulo.id, chave: 'plano-contas.configurar-valor-orcado', nome: 'Configurar Valor Orçado por Conta' },
+    create: { moduloId: modulo.id, chave: 'plano-contas.configurar-valor-orcado', nome: 'Configurar Valor Orçado por Conta', tipo: 'CONTEXTUAL' },
   });
 
-  // US-008 — Configurar Semáforo Orçamentário por Conta Analítica.
+  // US-008 — Configurar Semáforo Orçamentário por Conta Analítica. [ADR-021] CONTEXTUAL.
   await prisma.funcionalidade.upsert({
     where: { moduloId_chave: { moduloId: modulo.id, chave: 'plano-contas.configurar-semaforo' } },
     update: {},
-    create: { moduloId: modulo.id, chave: 'plano-contas.configurar-semaforo', nome: 'Configurar Semáforo Orçamentário por Conta' },
+    create: { moduloId: modulo.id, chave: 'plano-contas.configurar-semaforo', nome: 'Configurar Semáforo Orçamentário por Conta', tipo: 'CONTEXTUAL' },
   });
 
-  // US-101 — Parametrizar Impostos em Proposta.
+  // US-101 — Parametrizar Impostos em Proposta. [ADR-021] CONTEXTUAL.
   await prisma.funcionalidade.upsert({
     where: { moduloId_chave: { moduloId: modulo.id, chave: 'plano-contas.configurar-rateio-imposto' } },
     update: {},
-    create: { moduloId: modulo.id, chave: 'plano-contas.configurar-rateio-imposto', nome: 'Parametrizar Impostos em Proposta' },
+    create: { moduloId: modulo.id, chave: 'plano-contas.configurar-rateio-imposto', nome: 'Parametrizar Impostos em Proposta', tipo: 'CONTEXTUAL' },
   });
 }
 

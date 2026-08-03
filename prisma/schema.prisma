@@ -78,13 +78,22 @@ model Modulo {
   funcionalidades Funcionalidade[]
 }
 
+// ADR-021 — NAVEGAVEL tem tela própria e aparece como link no menu da Tela Principal;
+// CONTEXTUAL é uma permissão para uma ação dentro de outra tela (ex: configurar valor
+// orçado de uma conta analítica) e nunca deve ganhar rota/link próprio no menu.
+enum TipoFuncionalidade {
+  NAVEGAVEL
+  CONTEXTUAL
+}
+
 model Funcionalidade {
-  id       String  @id @default(uuid())
+  id       String             @id @default(uuid())
   moduloId String
-  modulo   Modulo  @relation(fields: [moduloId], references: [id])
-  chave    String  // ex: "empenhos.criar"
+  modulo   Modulo             @relation(fields: [moduloId], references: [id])
+  chave    String             // ex: "empenhos.criar"
   nome     String
-  ativo    Boolean @default(true)
+  tipo     TipoFuncionalidade @default(NAVEGAVEL)
+  ativo    Boolean            @default(true)
 
   perfis PerfilFuncionalidade[]
 
