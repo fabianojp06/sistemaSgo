@@ -23,6 +23,7 @@
 | US-112 (UC03.14-17) | Manter Meta | `Meta` 1:1 opcional por `VersaoProposta` (ADR-017, revisado); valorGlobal sempre espelhado de SUM(ValorOrcadoConta); migration aplicada |
 | US-108 (UC03.24-27, blocos CRUD) | Empregados | `EmpregadoHeadcount` (ADR-018), só Proposta CONSOLIDADA; snapshot congelado de custo/vínculo do Cargo; migration aplicada |
 | US-107a (bloco C sem numeração do UC03.19) | Tabela Mestre de Benefícios e Encargos do Cargo | `Cargo.custoTotalCargo` (ADR-019); `diasUteisPadrao` em `ParametroSistema`; `EmpregadoHeadcount` agora herda `custoTotalCargo`; migration aplicada |
+| US-108a (UC03.28) | Elegibilidade de Benefícios do Empregado | `EmpregadoBeneficioElegibilidade` (ADR-020), 1 linha por Empregado×Benefício; Vale Transporte adicionado a `Cargo`; `EmpregadoHeadcount.numeroDependentes` deprecated; migration aplicada |
 
 ---
 
@@ -30,9 +31,8 @@
 
 | Ordem | Item | Por que é o próximo | Esforço estimado |
 |---|---|---|---|
-| 1 | **US-108a — Elegibilidade de Benefícios do Empregado (UC03.28)** | Depende de US-107a (Tabela Mestre), já concluída — consome os valores como Read-only | M |
-| 2 | **US-109 — Viagens (UC03.29-33)** | Próxima fonte de custo relevante; mesmo padrão de lançamento já validado em US-007/101 | M |
-| 3 | **US-110 — Bens, Serviços e Equipamentos (UC03.34-36)** | Completa as fontes de `valorRealizado` | M |
+| 1 | **US-109 — Viagens (UC03.29-33)** | Próxima fonte de custo relevante; mesmo padrão de lançamento já validado em US-007/101 | M |
+| 2 | **US-110 — Bens, Serviços e Equipamentos (UC03.34-36)** | Completa as fontes de `valorRealizado` | M |
 | 5 | **US-110 — Bens, Serviços e Equipamentos (UC03.34-36)** | Completa as fontes de `valorRealizado`; menor volume que Empregados/Viagens | M |
 | 6 | **US-008a — Badge do Semáforo (MVP)** | Reavaliar assim que ao menos Empregados estiver no ar — decisão de produto já registrada: não liberar com dado parcial que passe falso senso de segurança | P (depois que a dependência existir) |
 | 7 | **Qtde. Empregado (UC03.20-23)** | Consolidação quantitativa — depende de Empregados existir primeiro | P |

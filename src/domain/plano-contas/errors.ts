@@ -393,3 +393,27 @@ export class ValorBeneficioNegativoError extends Error {
   }
 }
 
+// US-108a, Cenário 2 — elegibilidade só é aceita para benefício ativo no Cargo do Empregado.
+export class BeneficioIndisponivelNoCargoError extends Error {
+  constructor() {
+    super('Este benefício não está disponível no Cargo deste empregado.');
+    this.name = 'BeneficioIndisponivelNoCargoError';
+  }
+}
+
+// US-108a, Cenário 3, RN0252 — vigência do benefício fora do período da Proposta.
+export class VigenciaBeneficioForaDaPropostaError extends Error {
+  constructor() {
+    super('Período do benefício não pode extrapolar a vigência da Proposta.');
+    this.name = 'VigenciaBeneficioForaDaPropostaError';
+  }
+}
+
+// US-108a, Cenário 4, RN0253 — período/dependentes obrigatórios (exceto Vale Transporte).
+export class CamposObrigatoriosBeneficioError extends Error {
+  constructor() {
+    super('Período de vigência e Nº de Dependentes são obrigatórios para este benefício.');
+    this.name = 'CamposObrigatoriosBeneficioError';
+  }
+}
+

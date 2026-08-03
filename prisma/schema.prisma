@@ -45,6 +45,8 @@ enum TipoOperacao {
   EMPREGADO_EXCLUIDO
   CARGO_BENEFICIOS_CONFIGURADOS
   CARGO_BENEFICIOS_EDITADOS
+  BENEFICIO_ELEGIBILIDADE_CONFIGURADA
+  BENEFICIO_ELEGIBILIDADE_EDITADA
 }
 
 model Usuario {
@@ -489,6 +491,12 @@ model Cargo {
   auxilioCrecheAtivo Boolean @default(false)
   auxilioCrecheValor Decimal @default(0) @db.Decimal(15, 2)
 
+  // ADR-020 — US-108a: Vale Transporte, lacuna documental corrigida (a
+  // Minuta citava Transporte no UC03.28 mas ele nunca foi modelado em
+  // ADR-019). Mesma fórmula de VA/VR.
+  transporteAtivo         Boolean @default(false)
+  transporteValorUnitario Decimal @default(0) @db.Decimal(15, 2)
+
   // Calculado e persistido pelo use case a cada create/update — nunca input direto.
   custoTotalCargo Decimal @default(0) @db.Decimal(15, 2)
 
@@ -534,7 +542,13 @@ model EmpregadoHeadcount {
   categoria         CategoriaEmpregado
   periodoInicio     DateTime
   periodoFim        DateTime?
-  numeroDependentes Int      @default(0)
+
+  // DEPRECATED (ADR-020, US-108a) — dependentes agora são por benefício, em
+  // EmpregadoBeneficioElegibilidade.numeroDependentes. Mantido só para não
+  // quebrar dados já persistidos (US-108); os use cases de Empregado deixam
+  // de aceitá-lo como input a partir de US-108a. Não remover fisicamente sem
+  // decisão de negócio explícita sobre migração dos valores existentes.
+  numeroDependentes Int @default(0)
 
   // Snapshot herdado do Cargo — recalculado só na criação e na troca de cargoId.
   vinculoFuncionalHerdado String
@@ -544,6 +558,45 @@ model EmpregadoHeadcount {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  beneficiosElegibilidade EmpregadoBeneficioElegibilidade[]
+
   @@index([tenantId, propostaId])
   @@index([tenantId, cargoId])
+}
+
+// ADR-020 — US-108a. Elegibilidade individual do Empregado por benefício —
+// distinta da Tabela Mestre do Cargo (ADR-019, "o benefício existe e tem
+// valor") e do snapshot congelado de custo (ADR-018, "quanto esse Empregado
+// custava quando foi vinculado"). O valor financeiro é sempre lido AO VIVO
+// do Cargo na leitura (não persistido aqui) — elegibilidade é registro de
+// uso, não histórico de custo.
+enum TipoBeneficioElegibilidade {
+  VA
+  VR
+  PLANO_SAUDE
+  PLANO_ODONTO
+  SEGURO_VIDA
+  AUXILIO_CRECHE
+  VALE_TRANSPORTE
+}
+
+model EmpregadoBeneficioElegibilidade {
+  id       String @id @default(uuid())
+  tenantId String
+
+  empregadoId String
+  empregado   EmpregadoHeadcount @relation(fields: [empregadoId], references: [id])
+
+  tipoBeneficio TipoBeneficioElegibilidade
+
+  ativo             Boolean   @default(false)
+  periodoInicio     DateTime?
+  periodoFim        DateTime?
+  numeroDependentes Int       @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, empregadoId, tipoBeneficio])
+  @@index([tenantId, empregadoId])
 }

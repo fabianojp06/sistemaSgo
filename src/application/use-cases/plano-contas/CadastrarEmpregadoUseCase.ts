@@ -17,7 +17,6 @@ type CadastrarEmpregadoInput = {
   categoria: CategoriaEmpregado;
   periodoInicio: Date;
   periodoFim?: Date | null;
-  numeroDependentes?: number;
 };
 
 /**
@@ -70,7 +69,9 @@ export class CadastrarEmpregadoUseCase {
           categoria: input.categoria,
           periodoInicio: input.periodoInicio,
           periodoFim: input.periodoFim ?? null,
-          numeroDependentes: input.numeroDependentes ?? 0,
+          // numeroDependentes deliberadamente omitido (default 0) — deprecated
+          // pelo ADR-020/US-108a; dependentes agora são por benefício em
+          // EmpregadoBeneficioElegibilidade.
           vinculoFuncionalHerdado: cargo.unidadeFuncional.nome,
           custoTotalMensal: cargo.custoTotalCargo,
         },

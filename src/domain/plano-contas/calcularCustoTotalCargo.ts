@@ -16,6 +16,8 @@ type BeneficiosCargo = {
   seguroVidaValor: Prisma.Decimal.Value;
   auxilioCrecheAtivo: boolean;
   auxilioCrecheValor: Prisma.Decimal.Value;
+  transporteAtivo: boolean;
+  transporteValorUnitario: Prisma.Decimal.Value;
 };
 
 /** US-107a — Encargos Sociais = salarioTotal × percentual configurado no Cargo. */
@@ -36,6 +38,7 @@ export function calcularTotalBeneficios(cargo: BeneficiosCargo, diasUteisPadrao:
   if (cargo.planoOdontoAtivo) total = total.plus(cargo.planoOdontoValor);
   if (cargo.seguroVidaAtivo) total = total.plus(cargo.seguroVidaValor);
   if (cargo.auxilioCrecheAtivo) total = total.plus(cargo.auxilioCrecheValor);
+  if (cargo.transporteAtivo) total = total.plus(new Prisma.Decimal(cargo.transporteValorUnitario).times(diasUteisPadrao));
   return total;
 }
 

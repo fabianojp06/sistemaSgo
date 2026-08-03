@@ -20,6 +20,8 @@ type ConfigurarBeneficiosCargoInput = {
   seguroVidaValor: number;
   auxilioCrecheAtivo: boolean;
   auxilioCrecheValor: number;
+  transporteAtivo: boolean;
+  transporteValorUnitario: number;
 };
 
 const CAMPOS_VALOR_NAO_NEGATIVO = [
@@ -29,6 +31,7 @@ const CAMPOS_VALOR_NAO_NEGATIVO = [
   'planoOdontoValor',
   'seguroVidaValor',
   'auxilioCrecheValor',
+  'transporteValorUnitario',
 ] as const;
 
 /**
@@ -73,11 +76,13 @@ export class ConfigurarBeneficiosCargoUseCase {
       seguroVidaValor: new Prisma.Decimal(input.seguroVidaValor),
       auxilioCrecheAtivo: input.auxilioCrecheAtivo,
       auxilioCrecheValor: new Prisma.Decimal(input.auxilioCrecheValor),
+      transporteAtivo: input.transporteAtivo,
+      transporteValorUnitario: new Prisma.Decimal(input.transporteValorUnitario),
     };
 
     const custoTotalCargo = calcularCustoTotalCargo(cargo.salarioTotal, dadosBeneficios, diasUteisPadrao);
     // Heurística de auditoria: estado "nunca configurado" é o default (0%, tudo inativo).
-    const jaConfigurado = !cargo.encargosSociaisPct.isZero() || cargo.vaAtivo || cargo.vrAtivo || cargo.planoSaudeAtivo || cargo.planoOdontoAtivo || cargo.seguroVidaAtivo || cargo.auxilioCrecheAtivo;
+    const jaConfigurado = !cargo.encargosSociaisPct.isZero() || cargo.vaAtivo || cargo.vrAtivo || cargo.planoSaudeAtivo || cargo.planoOdontoAtivo || cargo.seguroVidaAtivo || cargo.auxilioCrecheAtivo || cargo.transporteAtivo;
 
     return this.prisma.$transaction(async (tx) => {
       const atualizado = await tx.cargo.update({

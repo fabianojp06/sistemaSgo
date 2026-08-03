@@ -28,6 +28,7 @@ import { CadastrarEmpregadoUseCase } from './CadastrarEmpregadoUseCase';
 import { EditarEmpregadoUseCase } from './EditarEmpregadoUseCase';
 import { ExcluirEmpregadoUseCase } from './ExcluirEmpregadoUseCase';
 import { ConfigurarBeneficiosCargoUseCase } from './ConfigurarBeneficiosCargoUseCase';
+import { ConfigurarElegibilidadeBeneficioUseCase } from './ConfigurarElegibilidadeBeneficioUseCase';
 
 export function getSincronizarPlanoContasUseCase(): SincronizarPlanoContasUseCase {
   return new SincronizarPlanoContasUseCase(
@@ -132,4 +133,8 @@ export function getExcluirEmpregadoUseCase(): ExcluirEmpregadoUseCase {
 
 export function getConfigurarBeneficiosCargoUseCase(): ConfigurarBeneficiosCargoUseCase {
   return new ConfigurarBeneficiosCargoUseCase(prisma);
+}
+
+export function getConfigurarElegibilidadeBeneficioUseCase(): ConfigurarElegibilidadeBeneficioUseCase {
+  return new ConfigurarElegibilidadeBeneficioUseCase(prisma);
 }

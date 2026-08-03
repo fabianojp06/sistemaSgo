@@ -24,6 +24,7 @@ import {
   getEditarEmpregadoUseCase,
   getExcluirEmpregadoUseCase,
   getConfigurarBeneficiosCargoUseCase,
+  getConfigurarElegibilidadeBeneficioUseCase,
 } from '@/application/use-cases/plano-contas/container';
 
 type ActionResult = { sucesso: true } | { sucesso: false; mensagem: string };
@@ -455,7 +456,6 @@ const CadastrarEmpregadoSchema = z.object({
   categoria: CategoriaEmpregadoSchema,
   periodoInicio: z.coerce.date(),
   periodoFim: z.coerce.date().nullable().optional(),
-  numeroDependentes: z.number().int().nonnegative().optional(),
 });
 
 /** US-108, Cenários 1-5 — Cadastrar Empregado, herdando custo e vínculo do Cargo. */
@@ -466,7 +466,6 @@ export async function cadastrarEmpregado(input: {
   categoria: 'EMPREGADO' | 'ESTAGIARIO' | 'JOVEM_APRENDIZ';
   periodoInicio: string;
   periodoFim?: string | null;
-  numeroDependentes?: number;
 }): Promise<ActionResultComDados<EmpregadoResultado>> {
   const contexto = await usuarioAtual();
   if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
@@ -500,7 +499,6 @@ const EditarEmpregadoSchema = z.object({
   categoria: CategoriaEmpregadoSchema,
   periodoInicio: z.coerce.date(),
   periodoFim: z.coerce.date().nullable().optional(),
-  numeroDependentes: z.number().int().nonnegative().optional(),
 });
 
 /** US-108, Cenário 6/7 — Editar Empregado. Custo Total Mensal sempre herdado do Cargo. */
@@ -511,7 +509,6 @@ export async function editarEmpregado(input: {
   categoria: 'EMPREGADO' | 'ESTAGIARIO' | 'JOVEM_APRENDIZ';
   periodoInicio: string;
   periodoFim?: string | null;
-  numeroDependentes?: number;
 }): Promise<ActionResultComDados<EmpregadoResultado>> {
   const contexto = await usuarioAtual();
   if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
@@ -570,6 +567,8 @@ const ConfigurarBeneficiosCargoSchema = z.object({
   seguroVidaValor: z.number().min(0),
   auxilioCrecheAtivo: z.boolean(),
   auxilioCrecheValor: z.number().min(0),
+  transporteAtivo: z.boolean(),
+  transporteValorUnitario: z.number().min(0),
 });
 
 export type BeneficiosCargoResultado = { id: string; custoTotalCargo: string };
@@ -591,6 +590,8 @@ export async function configurarBeneficiosCargo(input: {
   seguroVidaValor: number;
   auxilioCrecheAtivo: boolean;
   auxilioCrecheValor: number;
+  transporteAtivo: boolean;
+  transporteValorUnitario: number;
 }): Promise<ActionResultComDados<BeneficiosCargoResultado>> {
   const contexto = await usuarioAtual();
   if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
@@ -604,6 +605,66 @@ export async function configurarBeneficiosCargo(input: {
     const cargo = await getConfigurarBeneficiosCargoUseCase().execute({ ...contexto, ...entrada.data });
     revalidatePath('/plano-contas');
     return { sucesso: true, dados: { id: cargo.id, custoTotalCargo: cargo.custoTotalCargo.toString() } };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+const TipoBeneficioElegibilidadeSchema = z.enum([
+  'VA',
+  'VR',
+  'PLANO_SAUDE',
+  'PLANO_ODONTO',
+  'SEGURO_VIDA',
+  'AUXILIO_CRECHE',
+  'VALE_TRANSPORTE',
+]);
+
+const ConfigurarElegibilidadeBeneficioSchema = z.object({
+  empregadoId: z.string().min(1),
+  tipoBeneficio: TipoBeneficioElegibilidadeSchema,
+  ativo: z.boolean(),
+  periodoInicio: z.coerce.date().nullable().optional(),
+  periodoFim: z.coerce.date().nullable().optional(),
+  numeroDependentes: z.number().int().nonnegative().optional(),
+});
+
+export type ElegibilidadeBeneficioResultado = {
+  id: string;
+  tipoBeneficio: string;
+  ativo: boolean;
+  numeroDependentes: number;
+};
+
+/** US-108a — Configurar Elegibilidade Individual de um Benefício do Empregado (UC03.28). */
+export async function configurarElegibilidadeBeneficio(input: {
+  empregadoId: string;
+  tipoBeneficio: 'VA' | 'VR' | 'PLANO_SAUDE' | 'PLANO_ODONTO' | 'SEGURO_VIDA' | 'AUXILIO_CRECHE' | 'VALE_TRANSPORTE';
+  ativo: boolean;
+  periodoInicio?: string | null;
+  periodoFim?: string | null;
+  numeroDependentes?: number;
+}): Promise<ActionResultComDados<ElegibilidadeBeneficioResultado>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const entrada = ConfigurarElegibilidadeBeneficioSchema.safeParse(input);
+  if (!entrada.success) {
+    return { sucesso: false, mensagem: 'Dados inválidos para configuração de elegibilidade de benefício.' };
+  }
+
+  try {
+    const elegibilidade = await getConfigurarElegibilidadeBeneficioUseCase().execute({ ...contexto, ...entrada.data });
+    revalidatePath('/plano-contas');
+    return {
+      sucesso: true,
+      dados: {
+        id: elegibilidade.id,
+        tipoBeneficio: elegibilidade.tipoBeneficio,
+        ativo: elegibilidade.ativo,
+        numeroDependentes: elegibilidade.numeroDependentes,
+      },
+    };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
   }

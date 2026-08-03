@@ -16,7 +16,6 @@ type EditarEmpregadoInput = {
   categoria: CategoriaEmpregado;
   periodoInicio: Date;
   periodoFim?: Date | null;
-  numeroDependentes?: number;
   /** Cenário 7 — qualquer valor enviado aqui é ignorado; sempre herdado do Cargo atual. */
   custoTotalMensal?: number | null;
 };
@@ -84,7 +83,8 @@ export class EditarEmpregadoUseCase {
           categoria: input.categoria,
           periodoInicio: input.periodoInicio,
           periodoFim: input.periodoFim ?? null,
-          numeroDependentes: input.numeroDependentes ?? 0,
+          // numeroDependentes deliberadamente não tocado — deprecated pelo
+          // ADR-020/US-108a; dependentes agora são por benefício.
           vinculoFuncionalHerdado,
           custoTotalMensal,
         },

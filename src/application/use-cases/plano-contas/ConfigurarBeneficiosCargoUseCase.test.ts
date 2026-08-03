@@ -22,6 +22,8 @@ type CargoMock = {
   seguroVidaValor: Prisma.Decimal;
   auxilioCrecheAtivo: boolean;
   auxilioCrecheValor: Prisma.Decimal;
+  transporteAtivo: boolean;
+  transporteValorUnitario: Prisma.Decimal;
   custoTotalCargo: Prisma.Decimal;
 };
 
@@ -67,6 +69,8 @@ function cargoZerado(overrides: Partial<CargoMock> = {}): CargoMock {
     seguroVidaValor: new Prisma.Decimal(0),
     auxilioCrecheAtivo: false,
     auxilioCrecheValor: new Prisma.Decimal(0),
+    transporteAtivo: false,
+    transporteValorUnitario: new Prisma.Decimal(0),
     custoTotalCargo: new Prisma.Decimal(0),
     ...overrides,
   };
@@ -95,6 +99,8 @@ describe('ConfigurarBeneficiosCargoUseCase [US-107a]', () => {
       seguroVidaValor: 40,
       auxilioCrecheAtivo: false,
       auxilioCrecheValor: 0,
+      transporteAtivo: false,
+      transporteValorUnitario: 0,
     });
 
     // encargos = 6200*0.68 = 4216; beneficios = 30*22 + 25*22 + 450 + 40 = 660+550+450+40=1700
@@ -127,6 +133,8 @@ describe('ConfigurarBeneficiosCargoUseCase [US-107a]', () => {
       seguroVidaValor: 999,
       auxilioCrecheAtivo: false,
       auxilioCrecheValor: 999,
+      transporteAtivo: false,
+      transporteValorUnitario: 0,
     });
 
     expect(cargo.custoTotalCargo.toString()).toBe('6200'); // só o salário
@@ -154,6 +162,8 @@ describe('ConfigurarBeneficiosCargoUseCase [US-107a]', () => {
         seguroVidaValor: 0,
         auxilioCrecheAtivo: false,
         auxilioCrecheValor: 0,
+        transporteAtivo: false,
+        transporteValorUnitario: 0,
       }),
     ).rejects.toThrow(EncargosSociaisPercentualInvalidoError);
   });
@@ -180,6 +190,8 @@ describe('ConfigurarBeneficiosCargoUseCase [US-107a]', () => {
         seguroVidaValor: 0,
         auxilioCrecheAtivo: false,
         auxilioCrecheValor: 0,
+        transporteAtivo: false,
+        transporteValorUnitario: 0,
       }),
     ).rejects.toThrow(ValorBeneficioNegativoError);
   });
@@ -206,6 +218,8 @@ describe('ConfigurarBeneficiosCargoUseCase [US-107a]', () => {
       seguroVidaValor: 0,
       auxilioCrecheAtivo: false,
       auxilioCrecheValor: 0,
+      transporteAtivo: false,
+      transporteValorUnitario: 0,
     });
 
     expect(cargo.custoTotalCargo.toString()).toBe('10540'); // 6200 + 6200*0.70
@@ -236,6 +250,8 @@ describe('ConfigurarBeneficiosCargoUseCase [US-107a]', () => {
         seguroVidaValor: 0,
         auxilioCrecheAtivo: false,
         auxilioCrecheValor: 0,
+        transporteAtivo: false,
+        transporteValorUnitario: 0,
       }),
     ).rejects.toThrow(CargoNaoEncontradoError);
   });
@@ -261,6 +277,8 @@ describe('ConfigurarBeneficiosCargoUseCase [US-107a]', () => {
       seguroVidaValor: 0,
       auxilioCrecheAtivo: false,
       auxilioCrecheValor: 0,
+      transporteAtivo: false,
+      transporteValorUnitario: 0,
     });
 
     expect(cargo.custoTotalCargo.toString()).toBe('6420'); // 6200 + 10*22
