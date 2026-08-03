@@ -23,6 +23,7 @@ import {
   getCadastrarEmpregadoUseCase,
   getEditarEmpregadoUseCase,
   getExcluirEmpregadoUseCase,
+  getConfigurarBeneficiosCargoUseCase,
 } from '@/application/use-cases/plano-contas/container';
 
 type ActionResult = { sucesso: true } | { sucesso: false; mensagem: string };
@@ -546,6 +547,63 @@ export async function excluirEmpregado(empregadoId: string): Promise<ActionResul
     await getExcluirEmpregadoUseCase().execute({ ...contexto, empregadoId });
     revalidatePath('/plano-contas');
     return { sucesso: true };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+const FaixaPlanoSaudeSchema = z.enum(['BASICO', 'INTERMEDIARIO', 'EXECUTIVO']);
+
+const ConfigurarBeneficiosCargoSchema = z.object({
+  cargoId: z.string().min(1),
+  encargosSociaisPct: z.number().min(0).max(100),
+  vaAtivo: z.boolean(),
+  vaValorUnitario: z.number().min(0),
+  vrAtivo: z.boolean(),
+  vrValorUnitario: z.number().min(0),
+  planoSaudeAtivo: z.boolean(),
+  planoSaudeFaixa: FaixaPlanoSaudeSchema.nullable().optional(),
+  planoSaudeValor: z.number().min(0),
+  planoOdontoAtivo: z.boolean(),
+  planoOdontoValor: z.number().min(0),
+  seguroVidaAtivo: z.boolean(),
+  seguroVidaValor: z.number().min(0),
+  auxilioCrecheAtivo: z.boolean(),
+  auxilioCrecheValor: z.number().min(0),
+});
+
+export type BeneficiosCargoResultado = { id: string; custoTotalCargo: string };
+
+/** US-107a — Configurar Encargos e Benefícios (Tabela Mestre) de um Cargo. */
+export async function configurarBeneficiosCargo(input: {
+  cargoId: string;
+  encargosSociaisPct: number;
+  vaAtivo: boolean;
+  vaValorUnitario: number;
+  vrAtivo: boolean;
+  vrValorUnitario: number;
+  planoSaudeAtivo: boolean;
+  planoSaudeFaixa?: 'BASICO' | 'INTERMEDIARIO' | 'EXECUTIVO' | null;
+  planoSaudeValor: number;
+  planoOdontoAtivo: boolean;
+  planoOdontoValor: number;
+  seguroVidaAtivo: boolean;
+  seguroVidaValor: number;
+  auxilioCrecheAtivo: boolean;
+  auxilioCrecheValor: number;
+}): Promise<ActionResultComDados<BeneficiosCargoResultado>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const entrada = ConfigurarBeneficiosCargoSchema.safeParse(input);
+  if (!entrada.success) {
+    return { sucesso: false, mensagem: 'Dados inválidos para configuração de benefícios do cargo.' };
+  }
+
+  try {
+    const cargo = await getConfigurarBeneficiosCargoUseCase().execute({ ...contexto, ...entrada.data });
+    revalidatePath('/plano-contas');
+    return { sucesso: true, dados: { id: cargo.id, custoTotalCargo: cargo.custoTotalCargo.toString() } };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
   }

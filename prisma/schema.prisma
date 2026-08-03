@@ -43,6 +43,8 @@ enum TipoOperacao {
   EMPREGADO_CRIADO
   EMPREGADO_EDITADO
   EMPREGADO_EXCLUIDO
+  CARGO_BENEFICIOS_CONFIGURADOS
+  CARGO_BENEFICIOS_EDITADOS
 }
 
 model Usuario {
@@ -143,6 +145,7 @@ model ParametroSistema {
   tenantId              String  @id
   limiteTentativasLogin Int     @default(5)
   flagManutencao        Boolean @default(false)
+  diasUteisPadrao       Int     @default(22) // US-107a — usado na fórmula VA/VR
 }
 
 // UC03.00 — Plano de Contas Único.
@@ -462,6 +465,33 @@ model Cargo {
   // Calculado e persistido pelo use case a cada create/update — nunca input direto.
   salarioTotal Decimal @db.Decimal(15, 2)
 
+  // ADR-019 — US-107a: Encargos e Benefícios. Atributos do próprio Cargo (sem
+  // CRUD/cardinalidade próprios que justifiquem tabela separada) — sempre
+  // editados junto do Cargo, na mesma tela.
+  encargosSociaisPct Decimal @default(0) @db.Decimal(5, 2) // 0-100, validado no use case
+
+  vaAtivo         Boolean @default(false)
+  vaValorUnitario Decimal @default(0) @db.Decimal(15, 2)
+
+  vrAtivo         Boolean @default(false)
+  vrValorUnitario Decimal @default(0) @db.Decimal(15, 2)
+
+  planoSaudeAtivo Boolean          @default(false)
+  planoSaudeFaixa FaixaPlanoSaude?
+  planoSaudeValor Decimal          @default(0) @db.Decimal(15, 2)
+
+  planoOdontoAtivo Boolean @default(false)
+  planoOdontoValor Decimal @default(0) @db.Decimal(15, 2)
+
+  seguroVidaAtivo Boolean @default(false)
+  seguroVidaValor Decimal @default(0) @db.Decimal(15, 2)
+
+  auxilioCrecheAtivo Boolean @default(false)
+  auxilioCrecheValor Decimal @default(0) @db.Decimal(15, 2)
+
+  // Calculado e persistido pelo use case a cada create/update — nunca input direto.
+  custoTotalCargo Decimal @default(0) @db.Decimal(15, 2)
+
   ativo     Boolean  @default(true) // soft delete
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -471,6 +501,13 @@ model Cargo {
   @@unique([tenantId, codigoCargo])
   @@index([tenantId, propostaId])
   @@index([tenantId, unidadeFuncionalId])
+}
+
+// ADR-019 — US-107a.
+enum FaixaPlanoSaude {
+  BASICO
+  INTERMEDIARIO
+  EXECUTIVO
 }
 
 // ADR-018 — US-108. EmpregadoHeadcount é escopado por Proposta (nesta US, só

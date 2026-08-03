@@ -72,7 +72,7 @@ export class CadastrarEmpregadoUseCase {
           periodoFim: input.periodoFim ?? null,
           numeroDependentes: input.numeroDependentes ?? 0,
           vinculoFuncionalHerdado: cargo.unidadeFuncional.nome,
-          custoTotalMensal: cargo.salarioTotal,
+          custoTotalMensal: cargo.custoTotalCargo,
         },
       });
 
@@ -86,7 +86,7 @@ export class CadastrarEmpregadoUseCase {
             empregadoId: empregado.id,
             propostaId: input.propostaId,
             cargoId: input.cargoId,
-            custoTotalMensal: cargo.salarioTotal.toString(),
+            custoTotalMensal: cargo.custoTotalCargo.toString(),
           },
         },
       });

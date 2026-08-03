@@ -71,7 +71,7 @@ export class EditarEmpregadoUseCase {
         throw new CargoNaoEncontradoParaEmpregadoError();
       }
       vinculoFuncionalHerdado = novoCargo.unidadeFuncional.nome;
-      custoTotalMensal = novoCargo.salarioTotal;
+      custoTotalMensal = novoCargo.custoTotalCargo;
       codigoCargoParaAuditoria = novoCargo.codigoCargo;
     }
 

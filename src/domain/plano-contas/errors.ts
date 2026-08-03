@@ -376,3 +376,20 @@ export class CargoNaoEncontradoParaEmpregadoError extends Error {
     this.name = 'CargoNaoEncontradoParaEmpregadoError';
   }
 }
+
+// US-107a, Cenário 3 — percentual de Encargos Sociais fora da faixa 0-100.
+export class EncargosSociaisPercentualInvalidoError extends Error {
+  constructor() {
+    super('Percentual de Encargos Sociais deve estar entre 0 e 100.');
+    this.name = 'EncargosSociaisPercentualInvalidoError';
+  }
+}
+
+// US-107a, Cenário 4 — valor de benefício negativo.
+export class ValorBeneficioNegativoError extends Error {
+  constructor() {
+    super('Valores de benefícios não podem ser negativos.');
+    this.name = 'ValorBeneficioNegativoError';
+  }
+}
+

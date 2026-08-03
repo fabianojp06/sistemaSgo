@@ -13,7 +13,7 @@ type CargoMock = {
   tenantId: string;
   propostaId: string;
   codigoCargo: string;
-  salarioTotal: Prisma.Decimal;
+  custoTotalCargo: Prisma.Decimal;
   unidadeFuncional: { nome: string };
 };
 
@@ -61,7 +61,7 @@ const cargo: CargoMock = {
   tenantId: 't1',
   propostaId: 'p1',
   codigoCargo: 'CARGO-2026-0001',
-  salarioTotal: new Prisma.Decimal(6200),
+  custoTotalCargo: new Prisma.Decimal(6200),
   unidadeFuncional: { nome: 'Setor de Compras' },
 };
 

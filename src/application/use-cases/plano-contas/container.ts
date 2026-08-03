@@ -27,6 +27,7 @@ import { ExcluirMetaUseCase } from './ExcluirMetaUseCase';
 import { CadastrarEmpregadoUseCase } from './CadastrarEmpregadoUseCase';
 import { EditarEmpregadoUseCase } from './EditarEmpregadoUseCase';
 import { ExcluirEmpregadoUseCase } from './ExcluirEmpregadoUseCase';
+import { ConfigurarBeneficiosCargoUseCase } from './ConfigurarBeneficiosCargoUseCase';
 
 export function getSincronizarPlanoContasUseCase(): SincronizarPlanoContasUseCase {
   return new SincronizarPlanoContasUseCase(
@@ -127,4 +128,8 @@ export function getEditarEmpregadoUseCase(): EditarEmpregadoUseCase {
 
 export function getExcluirEmpregadoUseCase(): ExcluirEmpregadoUseCase {
   return new ExcluirEmpregadoUseCase(prisma);
+}
+
+export function getConfigurarBeneficiosCargoUseCase(): ConfigurarBeneficiosCargoUseCase {
+  return new ConfigurarBeneficiosCargoUseCase(prisma);
 }
