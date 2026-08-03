@@ -37,6 +37,12 @@ enum TipoOperacao {
   UNIDADE_FUNCIONAL_INATIVADA
   CARGO_CRIADO
   CARGO_EDITADO
+  META_CRIADA
+  META_EDITADA
+  META_EXCLUIDA
+  EMPREGADO_CRIADO
+  EMPREGADO_EDITADO
+  EMPREGADO_EXCLUIDO
 }
 
 model Usuario {
@@ -255,6 +261,7 @@ model Proposta {
   versoes           VersaoProposta[]
   unidadesFuncionais UnidadeFuncional[]
   cargos            Cargo[]
+  empregados        EmpregadoHeadcount[]
 
   @@unique([tenantId, codigo])
   @@index([tenantId, status])
@@ -279,9 +286,39 @@ model VersaoProposta {
 
   valoresOrcados ValorOrcadoConta[]
   rateiosImposto RateioImpostoGrade[]
+  meta           Meta?
 
   @@unique([tenantId, propostaId, numeroVersao])
   @@index([tenantId, propostaId, vigente])
+}
+
+// ADR-017 — US-112. Meta é 1:1 OPCIONAL por VersaoProposta: existe no máximo 1
+// Meta quando Proposta.categoria=POR_META; nenhuma quando categoria=CONSOLIDADA.
+// valorGlobal nunca é digitado — é sempre um espelho de SUM(ValorOrcadoConta.valor)
+// para a mesma versão (todos os exercícios, já que o contrato pode cobrir de 12
+// a 120 meses) [ORIGEM BLINDADA], recalculado a cada escrita.
+enum StatusMeta {
+  ATIVO
+  INATIVO
+}
+
+model Meta {
+  id       String         @id @default(uuid())
+  tenantId String
+  versaoId String         @unique
+  versao   VersaoProposta @relation(fields: [versaoId], references: [id])
+
+  tipo        String
+  nome        String
+  valorGlobal Decimal    @db.Decimal(15, 2)
+  status      StatusMeta @default(ATIVO)
+  observacao  String?
+
+  ativo     Boolean  @default(true) // soft delete
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, versaoId])
 }
 
 // US-007 — valor orçado de uma conta analítica (isAnalitica=true), escopado por
@@ -429,7 +466,47 @@ model Cargo {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  empregados EmpregadoHeadcount[]
+
   @@unique([tenantId, codigoCargo])
   @@index([tenantId, propostaId])
   @@index([tenantId, unidadeFuncionalId])
+}
+
+// ADR-018 — US-108. EmpregadoHeadcount é escopado por Proposta (nesta US, só
+// categoria=CONSOLIDADA) e herda um SNAPSHOT (não FK viva) de Vínculo Funcional
+// e Custo Total Mensal do Cargo no momento do cadastro/troca de cargo — mesmo
+// princípio de Cargo.salarioTotal (ADR-016): congelado até ação explícita do
+// usuário, nunca retroage sozinho se o Cargo for editado depois [ORIGEM BLINDADA].
+enum CategoriaEmpregado {
+  EMPREGADO
+  ESTAGIARIO
+  JOVEM_APRENDIZ
+}
+
+model EmpregadoHeadcount {
+  id         String   @id @default(uuid())
+  tenantId   String
+  propostaId String
+  proposta   Proposta @relation(fields: [propostaId], references: [id])
+
+  cargoId String
+  cargo   Cargo  @relation(fields: [cargoId], references: [id])
+
+  nome              String // "A CONTRATAR" se vaga de contingência (RN0249)
+  categoria         CategoriaEmpregado
+  periodoInicio     DateTime
+  periodoFim        DateTime?
+  numeroDependentes Int      @default(0)
+
+  // Snapshot herdado do Cargo — recalculado só na criação e na troca de cargoId.
+  vinculoFuncionalHerdado String
+  custoTotalMensal        Decimal @db.Decimal(15, 2)
+
+  ativo     Boolean  @default(true) // soft delete
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, propostaId])
+  @@index([tenantId, cargoId])
 }

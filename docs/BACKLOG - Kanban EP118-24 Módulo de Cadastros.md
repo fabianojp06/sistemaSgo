@@ -19,7 +19,9 @@
 | US-104 (UC03.08) | Duplicar Proposta | Sempre nasce RASCUNHO/Versão 1, mesmo duplicando origem Oficializada |
 | US-105 (UC03.10, parcial) | Controle de Concorrência (Optimistic Locking) | Cobre `ValorOrcadoConta`/`RateioImpostoGrade`; resto do UC03.10 seguirá quando novas guias existirem |
 | US-106 (UC03.18, parcial) | Estrutura Funcional (Organograma) | `UnidadeFuncional` escopada por Proposta (ADR-015); RN_EST_01/03/05 pendentes até `Cargo` existir |
-| US-107 (UC03.19, blocos A/B) | Cargos e Salários | `Cargo` (ADR-016), vínculo 1:1 com `UnidadeFuncional` Analítica, `CargoRubiFixtureProvider`; migration escrita mas não aplicada (sem acesso ao Supabase); falta Server Action/UI |
+| US-107 (UC03.19, blocos A/B) | Cargos e Salários | `Cargo` (ADR-016), vínculo 1:1 com `UnidadeFuncional` Analítica, `CargoRubiFixtureProvider`; Server Action + migration aplicada |
+| US-112 (UC03.14-17) | Manter Meta | `Meta` 1:1 opcional por `VersaoProposta` (ADR-017, revisado); valorGlobal sempre espelhado de SUM(ValorOrcadoConta); migration escrita, aguardando `prisma migrate deploy` |
+| US-108 (UC03.24-27, blocos CRUD) | Empregados | `EmpregadoHeadcount` (ADR-018), só Proposta CONSOLIDADA; snapshot congelado de custo/vínculo do Cargo; migration escrita, aguardando `prisma migrate deploy` |
 
 ---
 
@@ -27,12 +29,13 @@
 
 | Ordem | Item | Por que é o próximo | Esforço estimado |
 |---|---|---|---|
-| 1a | **US-107a — Benefícios e Encargos (UC03.28)** | Extraída do bloco C do UC03.19 na refinamento de US-107 — depende de US-107 (Cargo) existir | M |
-| 2 | **US-108 — Empregados (UC03.24-27)** | Maior massa de custo real; desbloqueia parcialmente US-008a (fonte de `valorRealizado`) e completa RN_EST_01/03/05 da US-106. `Cargo` já existe (US-107), esta é a próxima da fila. | G |
-| 3 | **US-109 — Viagens (UC03.29-33)** | Segunda maior fonte de custo; mesmo padrão de lançamento por conta analítica já validado em US-007/101 | M |
-| 4 | **US-110 — Bens, Serviços e Equipamentos (UC03.34-36)** | Completa as fontes de `valorRealizado`; menor volume que Empregados/Viagens | M |
-| 5 | **US-008a — Badge do Semáforo (MVP)** | Reavaliar assim que ao menos Empregados estiver no ar — decisão de produto já registrada: não liberar com dado parcial que passe falso senso de segurança | P (depois que a dependência existir) |
-| 6 | **Metas (UC03.13-17)** | Estrutura de metas físicas vinculada a Proposta por Categoria=Por Meta; relevante mas não bloqueia nada além de si mesma | M |
+| 1 | **US-107a — Benefícios e Encargos (UC03.28)** | Ainda não refinada pela AN/PO — depende de US-107 (Cargo), já concluída | M |
+| 2 | **US-108a — Elegibilidade de Benefícios do Empregado (UC03.24, modal)** | Depende de US-107a (Benefícios do Cargo) existir | M |
+| 3 | **US-109 — Viagens (UC03.29-33)** | Próxima fonte de custo relevante; mesmo padrão de lançamento já validado em US-007/101 | M |
+| 4 | **US-110 — Bens, Serviços e Equipamentos (UC03.34-36)** | Completa as fontes de `valorRealizado` | M |
+| 4 | **US-109 — Viagens (UC03.29-33)** | Segunda maior fonte de custo; mesmo padrão de lançamento por conta analítica já validado em US-007/101 | M |
+| 5 | **US-110 — Bens, Serviços e Equipamentos (UC03.34-36)** | Completa as fontes de `valorRealizado`; menor volume que Empregados/Viagens | M |
+| 6 | **US-008a — Badge do Semáforo (MVP)** | Reavaliar assim que ao menos Empregados estiver no ar — decisão de produto já registrada: não liberar com dado parcial que passe falso senso de segurança | P (depois que a dependência existir) |
 | 7 | **Qtde. Empregado (UC03.20-23)** | Consolidação quantitativa — depende de Empregados existir primeiro | P |
 | 8 | **Benefícios (UC03.28)** | Sub-módulo de Empregados — depende de Empregados existir | P |
 

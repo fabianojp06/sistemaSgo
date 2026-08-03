@@ -304,3 +304,75 @@ export class CodigoCargoGeracaoFalhouError extends Error {
     this.name = 'CodigoCargoGeracaoFalhouError';
   }
 }
+
+// US-112 — Proposta não tem categoria=POR_META; Meta não se aplica.
+export class MetaForaDeEscopoCategoriaError extends Error {
+  constructor() {
+    super("Metas só são aplicáveis a Propostas com categoria 'Por Meta'.");
+    this.name = 'MetaForaDeEscopoCategoriaError';
+  }
+}
+
+// US-112, Cenário 2 — Meta é 1:1 opcional por Versão; não pode haver uma segunda.
+export class MetaJaExistenteError extends Error {
+  constructor() {
+    super('Esta Versão já possui uma Meta cadastrada. Altere o registro existente em vez de criar um novo.');
+    this.name = 'MetaJaExistenteError';
+  }
+}
+
+// US-112 — Meta referenciada não existe (ou não pertence ao tenant).
+export class MetaNaoEncontradaError extends Error {
+  constructor() {
+    super('Meta não encontrada.');
+    this.name = 'MetaNaoEncontradaError';
+  }
+}
+
+// US-112, RN0139 — campos obrigatórios do cadastro/alteração de Meta.
+export class CamposObrigatoriosMetaError extends Error {
+  constructor() {
+    super('Preencha Tipo e Status antes de salvar.');
+    this.name = 'CamposObrigatoriosMetaError';
+  }
+}
+
+// US-108, RN0248 — Cargo é obrigatório no cadastro do Empregado.
+export class CargoObrigatorioEmpregadoError extends Error {
+  constructor() {
+    super('Selecione um Cargo antes de salvar o empregado.');
+    this.name = 'CargoObrigatorioEmpregadoError';
+  }
+}
+
+// US-108 — Empregado só é aceito em Proposta categoria=CONSOLIDADA nesta US.
+export class EmpregadoForaDeEscopoCategoriaError extends Error {
+  constructor() {
+    super('Empregados de Propostas por Meta ainda não são suportados — aguarde a implementação do módulo de Metas.');
+    this.name = 'EmpregadoForaDeEscopoCategoriaError';
+  }
+}
+
+// US-108, RN0252 — Período Inicial não pode ser anterior à data de início da Proposta.
+export class PeriodoInicialRetroativoError extends Error {
+  constructor() {
+    super('Período Inicial não pode ser anterior à data de início da Proposta.');
+    this.name = 'PeriodoInicialRetroativoError';
+  }
+}
+
+// US-108 — Empregado referenciado não existe (ou não pertence ao tenant).
+export class EmpregadoNaoEncontradoError extends Error {
+  constructor() {
+    super('Empregado não encontrado.');
+    this.name = 'EmpregadoNaoEncontradoError';
+  }
+}
+
+// US-108, Cargo referenciado no cadastro/edição de Empregado não existe.
+export class CargoNaoEncontradoParaEmpregadoError extends Error {
+  constructor() {
+    super('Cargo não encontrado.');
+    this.name = 'CargoNaoEncontradoParaEmpregadoError';
+  }
+}

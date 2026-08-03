@@ -21,6 +21,12 @@ import { InativarUnidadeFuncionalUseCase } from './InativarUnidadeFuncionalUseCa
 import { CargoRubiFixtureProvider } from '@/infrastructure/integrations/rubi/CargoRubiFixtureProvider';
 import { CadastrarCargoUseCase } from './CadastrarCargoUseCase';
 import { EditarCargoUseCase } from './EditarCargoUseCase';
+import { CadastrarMetaUseCase } from './CadastrarMetaUseCase';
+import { EditarMetaUseCase } from './EditarMetaUseCase';
+import { ExcluirMetaUseCase } from './ExcluirMetaUseCase';
+import { CadastrarEmpregadoUseCase } from './CadastrarEmpregadoUseCase';
+import { EditarEmpregadoUseCase } from './EditarEmpregadoUseCase';
+import { ExcluirEmpregadoUseCase } from './ExcluirEmpregadoUseCase';
 
 export function getSincronizarPlanoContasUseCase(): SincronizarPlanoContasUseCase {
   return new SincronizarPlanoContasUseCase(
@@ -97,4 +103,28 @@ export function getCadastrarCargoUseCase(): CadastrarCargoUseCase {
 
 export function getEditarCargoUseCase(): EditarCargoUseCase {
   return new EditarCargoUseCase(prisma);
+}
+
+export function getCadastrarMetaUseCase(): CadastrarMetaUseCase {
+  return new CadastrarMetaUseCase(prisma);
+}
+
+export function getEditarMetaUseCase(): EditarMetaUseCase {
+  return new EditarMetaUseCase(prisma);
+}
+
+export function getExcluirMetaUseCase(): ExcluirMetaUseCase {
+  return new ExcluirMetaUseCase(prisma);
+}
+
+export function getCadastrarEmpregadoUseCase(): CadastrarEmpregadoUseCase {
+  return new CadastrarEmpregadoUseCase(prisma);
+}
+
+export function getEditarEmpregadoUseCase(): EditarEmpregadoUseCase {
+  return new EditarEmpregadoUseCase(prisma);
+}
+
+export function getExcluirEmpregadoUseCase(): ExcluirEmpregadoUseCase {
+  return new ExcluirEmpregadoUseCase(prisma);
 }

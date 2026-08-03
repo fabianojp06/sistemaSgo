@@ -17,6 +17,12 @@ import {
   getConfigurarSemaforoContaUseCase,
   getCadastrarCargoUseCase,
   getEditarCargoUseCase,
+  getCadastrarMetaUseCase,
+  getEditarMetaUseCase,
+  getExcluirMetaUseCase,
+  getCadastrarEmpregadoUseCase,
+  getEditarEmpregadoUseCase,
+  getExcluirEmpregadoUseCase,
 } from '@/application/use-cases/plano-contas/container';
 
 type ActionResult = { sucesso: true } | { sucesso: false; mensagem: string };
@@ -345,6 +351,201 @@ export async function editarCargo(input: {
         salarioTotal: cargo.salarioTotal.toString(),
       },
     };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+const StatusMetaSchema = z.enum(['ATIVO', 'INATIVO']);
+
+export type MetaResultado = { id: string; nome: string; valorGlobal: string; status: 'ATIVO' | 'INATIVO' };
+
+const CadastrarMetaSchema = z.object({
+  versaoId: z.string().min(1),
+  tipo: z.string().trim().min(1),
+  nome: z.string().trim().min(1),
+  status: StatusMetaSchema,
+  observacao: z.string().trim().max(1000).nullable().optional(),
+});
+
+/** US-112, Cenários 1-5 — Cadastrar a Meta única de uma VersaoProposta POR_META. */
+export async function cadastrarMeta(input: {
+  versaoId: string;
+  tipo: string;
+  nome: string;
+  status: 'ATIVO' | 'INATIVO';
+  observacao?: string | null;
+}): Promise<ActionResultComDados<MetaResultado>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const entrada = CadastrarMetaSchema.safeParse(input);
+  if (!entrada.success) {
+    return { sucesso: false, mensagem: 'Preencha Tipo e Status antes de salvar.' };
+  }
+
+  try {
+    const meta = await getCadastrarMetaUseCase().execute({ ...contexto, ...entrada.data });
+    revalidatePath('/plano-contas');
+    return { sucesso: true, dados: { id: meta.id, nome: meta.nome, valorGlobal: meta.valorGlobal.toString(), status: meta.status } };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+const EditarMetaSchema = z.object({
+  metaId: z.string().min(1),
+  nome: z.string().trim().min(1),
+  status: StatusMetaSchema,
+  observacao: z.string().trim().max(1000).nullable().optional(),
+});
+
+/** US-112, Cenário 6/7 — Editar Meta. Valor Global sempre recalculado no backend. */
+export async function editarMeta(input: {
+  metaId: string;
+  nome: string;
+  status: 'ATIVO' | 'INATIVO';
+  observacao?: string | null;
+}): Promise<ActionResultComDados<MetaResultado>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const entrada = EditarMetaSchema.safeParse(input);
+  if (!entrada.success) {
+    return { sucesso: false, mensagem: 'Preencha Tipo e Status antes de salvar.' };
+  }
+
+  try {
+    const meta = await getEditarMetaUseCase().execute({ ...contexto, ...entrada.data });
+    revalidatePath('/plano-contas');
+    return { sucesso: true, dados: { id: meta.id, nome: meta.nome, valorGlobal: meta.valorGlobal.toString(), status: meta.status } };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+/** US-112, Cenário 8/9 — Excluir Meta (soft delete). */
+export async function excluirMeta(metaId: string): Promise<ActionResult> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  try {
+    await getExcluirMetaUseCase().execute({ ...contexto, metaId });
+    revalidatePath('/plano-contas');
+    return { sucesso: true };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+const CategoriaEmpregadoSchema = z.enum(['EMPREGADO', 'ESTAGIARIO', 'JOVEM_APRENDIZ']);
+
+export type EmpregadoResultado = {
+  id: string;
+  nome: string;
+  vinculoFuncionalHerdado: string;
+  custoTotalMensal: string;
+};
+
+const CadastrarEmpregadoSchema = z.object({
+  propostaId: z.string().min(1),
+  cargoId: z.string().min(1),
+  nome: z.string().trim().nullable().optional(),
+  categoria: CategoriaEmpregadoSchema,
+  periodoInicio: z.coerce.date(),
+  periodoFim: z.coerce.date().nullable().optional(),
+  numeroDependentes: z.number().int().nonnegative().optional(),
+});
+
+/** US-108, Cenários 1-5 — Cadastrar Empregado, herdando custo e vínculo do Cargo. */
+export async function cadastrarEmpregado(input: {
+  propostaId: string;
+  cargoId: string;
+  nome?: string | null;
+  categoria: 'EMPREGADO' | 'ESTAGIARIO' | 'JOVEM_APRENDIZ';
+  periodoInicio: string;
+  periodoFim?: string | null;
+  numeroDependentes?: number;
+}): Promise<ActionResultComDados<EmpregadoResultado>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const entrada = CadastrarEmpregadoSchema.safeParse(input);
+  if (!entrada.success) {
+    return { sucesso: false, mensagem: 'Selecione um Cargo antes de salvar o empregado.' };
+  }
+
+  try {
+    const empregado = await getCadastrarEmpregadoUseCase().execute({ ...contexto, ...entrada.data });
+    revalidatePath('/plano-contas');
+    return {
+      sucesso: true,
+      dados: {
+        id: empregado.id,
+        nome: empregado.nome,
+        vinculoFuncionalHerdado: empregado.vinculoFuncionalHerdado,
+        custoTotalMensal: empregado.custoTotalMensal.toString(),
+      },
+    };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+const EditarEmpregadoSchema = z.object({
+  empregadoId: z.string().min(1),
+  cargoId: z.string().min(1),
+  nome: z.string().trim().nullable().optional(),
+  categoria: CategoriaEmpregadoSchema,
+  periodoInicio: z.coerce.date(),
+  periodoFim: z.coerce.date().nullable().optional(),
+  numeroDependentes: z.number().int().nonnegative().optional(),
+});
+
+/** US-108, Cenário 6/7 — Editar Empregado. Custo Total Mensal sempre herdado do Cargo. */
+export async function editarEmpregado(input: {
+  empregadoId: string;
+  cargoId: string;
+  nome?: string | null;
+  categoria: 'EMPREGADO' | 'ESTAGIARIO' | 'JOVEM_APRENDIZ';
+  periodoInicio: string;
+  periodoFim?: string | null;
+  numeroDependentes?: number;
+}): Promise<ActionResultComDados<EmpregadoResultado>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const entrada = EditarEmpregadoSchema.safeParse(input);
+  if (!entrada.success) {
+    return { sucesso: false, mensagem: 'Selecione um Cargo antes de salvar o empregado.' };
+  }
+
+  try {
+    const empregado = await getEditarEmpregadoUseCase().execute({ ...contexto, ...entrada.data });
+    revalidatePath('/plano-contas');
+    return {
+      sucesso: true,
+      dados: {
+        id: empregado.id,
+        nome: empregado.nome,
+        vinculoFuncionalHerdado: empregado.vinculoFuncionalHerdado,
+        custoTotalMensal: empregado.custoTotalMensal.toString(),
+      },
+    };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+/** US-108, Cenário 8/9/10 — Excluir Empregado (soft delete). */
+export async function excluirEmpregado(empregadoId: string): Promise<ActionResult> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  try {
+    await getExcluirEmpregadoUseCase().execute({ ...contexto, empregadoId });
+    revalidatePath('/plano-contas');
+    return { sucesso: true };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
   }
