@@ -121,6 +121,52 @@ de Parceria, perfil Gestor Master).
 
 ---
 
+## 2026-08-04 — registrada às 18:08 -03:00 — US-111 desbloqueada (ADR-025)
+
+Continuação da sessão da manhã do mesmo dia (registro acima, 10:25). O usuário respondeu aos 3
+bloqueios de US-111 (Termo de Ajuste entre Contas Analíticas, UC03.13) e pediu que o Tech Lead
+(skill `techlead-fsg`) produzisse o ADR de desbloqueio.
+
+**Achado principal:** 2 dos 3 gaps registrados na memória/backlog **já não existiam** — a memória
+estava desatualizada em relação ao schema real, não o código:
+
+1. **Nível 7 de conta**: falso gap. O gate real de "conta analítica" é
+   `ContaContabil.isAnalitica: Boolean`, não `nivel` (que só vai até 4). Esse mapeamento já
+   estava aplicado em US-110, só não tinha sido propagado para US-111.
+2. **"Termo de Parceria" como entidade**: falso gap. Já existe como
+   `enum TipoProposta { CONTRATO, TERMO_DE_PARCERIA }`, em uso desde US-101/US-102. Não precisa
+   de entidade nova — o botão "Criar → Contrato / Termo de Parceria" do menu só popula
+   `Proposta.tipo`.
+3. **Perfil "Gestor Master"**: único gap genuíno. Resolvido **sem mudar o schema de `Perfil`**
+   (que já é nome livre por tenant) — "Gestor Master" nasce como uma linha de dado, não migration.
+   A "aprovação em dois níveis" do Gherkin vira uma nova tabela `TermoAjuste` com
+   `status: PENDENTE_APROVACAO_N1 → PENDENTE_APROVACAO_GESTOR_MASTER → HOMOLOGADO | REJEITADO`,
+   cada transição checando `PerfilFuncionalidade` de uma `Funcionalidade` própria por etapa.
+
+**Decisão (ADR-025):** US-111 sai de "🔴 Bloqueado" para "🔜 Próximo da Fila" (item 9) no
+`docs/BACKLOG - Kanban EP118-24 Módulo de Cadastros.md`. Sem itens em aberto para o AN/PO —
+só um ponto de refinamento não-bloqueante (nomes exatos das 2 `Funcionalidade` de aprovação e
+se o 1º nível usa perfil já existente ou novo).
+
+**O que foi feito:**
+- ADR-025 produzido pela skill `techlead-fsg`.
+- Memória atualizada: nova entrada do ADR-025, `us111_termo_ajuste_refinamento.md` marcado como
+  desbloqueado, backlog kanban de memória atualizado, índice `MEMORY.md` atualizado.
+- `docs/BACKLOG - Kanban EP118-24 Módulo de Cadastros.md` editado (US-111 movida de coluna).
+- Commit `525ae3f`, enviado a `origin/master`.
+
+**Estado do repositório ao final desta sessão:** tudo commitado e enviado a `origin/master`
+(commit `525ae3f`). Nenhuma implementação de código feita ainda — só a decisão de arquitetura
+(ADR) e a atualização de backlog/memória. Usuário avisou que retorna em ~90 minutos (a partir de
+18:08 -03:00, ou seja, por volta de 19:38 -03:00).
+
+**Próximo passo combinado:** implementar US-111 (model `TermoAjuste`, use cases das 2 etapas de
+aprovação, linha de `Perfil` para Gestor Master) seguindo o desenho do ADR-025 — ou, se o usuário
+preferir menor esforço primeiro, continuar a tradução EN-US (US-103/104/105 seguem pendentes,
+ver [[tarefa_traducao_docs_en_us_pendente]] na memória padrão).
+
+---
+
 ## Como usar este arquivo em sessões futuras
 
 No início de uma sessão, se o usuário perguntar "qual o contexto/status de X", leia este arquivo antes de assumir que a memória padrão (`~/.claude/.../memory/`) está atualizada — o ambiente deste projeto (Codespace) pode ter sido recriado desde a última sessão, apagando a memória padrão sem apagar o repositório.
