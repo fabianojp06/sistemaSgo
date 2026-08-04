@@ -47,6 +47,9 @@ enum TipoOperacao {
   CARGO_BENEFICIOS_EDITADOS
   BENEFICIO_ELEGIBILIDADE_CONFIGURADA
   BENEFICIO_ELEGIBILIDADE_EDITADA
+  VIAGEM_CRIADA
+  VIAGEM_EDITADA
+  VIAGEM_EXCLUIDA
 }
 
 model Usuario {
@@ -70,10 +73,10 @@ model Usuario {
 
 // Catálogo global de módulos do sistema — não pertence a nenhum tenant específico [ADR-001].
 model Modulo {
-  id     String @id @default(uuid())
-  chave  String @unique // ex: "dotacoes", "empenhos"
-  nome   String
-  ativo  Boolean @default(true) // CA-01.03.03 — inativo é omitido do menu para todos os tenants
+  id    String  @id @default(uuid())
+  chave String  @unique // ex: "dotacoes", "empenhos"
+  nome  String
+  ativo Boolean @default(true) // CA-01.03.03 — inativo é omitido do menu para todos os tenants
 
   funcionalidades Funcionalidade[]
 }
@@ -90,7 +93,7 @@ model Funcionalidade {
   id       String             @id @default(uuid())
   moduloId String
   modulo   Modulo             @relation(fields: [moduloId], references: [id])
-  chave    String             // ex: "empenhos.criar"
+  chave    String // ex: "empenhos.criar"
   nome     String
   tipo     TipoFuncionalidade @default(NAVEGAVEL)
   ativo    Boolean            @default(true)
@@ -135,17 +138,17 @@ model UsuarioPerfil {
 
 // Append-only — nenhuma UPDATE/DELETE deve ser executada nesta tabela [RNF0006]
 model HistoricoOperacao {
-  id                  String       @id @default(uuid())
-  tenantId            String
-  usuarioId           String?
-  usuario             Usuario?     @relation(fields: [usuarioId], references: [id])
-  clerkSessionId      String?
+  id                   String       @id @default(uuid())
+  tenantId             String
+  usuarioId            String?
+  usuario              Usuario?     @relation(fields: [usuarioId], references: [id])
+  clerkSessionId       String?
   tipoOperacao         TipoOperacao
-  descricao           String
-  ipEstacao           String?
+  descricao            String
+  ipEstacao            String?
   quantidadeTentativas Int?
-  dadosSerializados   Json?
-  dataHoraEvento      DateTime     @default(now())
+  dadosSerializados    Json?
+  dataHoraEvento       DateTime     @default(now())
 
   @@index([tenantId])
   @@index([usuarioId])
@@ -177,29 +180,32 @@ enum NaturezaConta {
 // código de aplicação fora do PlanoContasBulkLoader escreve nesta tabela
 // [RN_PLA_001, RN_PLA_002 — "Trava o Erro"].
 model ContaContabil {
-  id            String            @id @default(uuid())
-  tenantId      String
-  codigoErp     String
-  nomeConta     String
-  nivel         Int // 1 a 4 no cenário de teste
-  idPai         String?
-  pai           ContaContabil?    @relation("Hierarquia", fields: [idPai], references: [id])
-  filhas        ContaContabil[]   @relation("Hierarquia")
-  isAnalitica   Boolean // true somente no último nível (nó folha) [RN_PLA_003]
-  natureza      NaturezaConta? // parametrização local (RF_PLA_REQ_003), não vem da fonte externa
+  id                 String            @id @default(uuid())
+  tenantId           String
+  codigoErp          String
+  nomeConta          String
+  nivel              Int // 1 a 4 no cenário de teste
+  idPai              String?
+  pai                ContaContabil?    @relation("Hierarquia", fields: [idPai], references: [id])
+  filhas             ContaContabil[]   @relation("Hierarquia")
+  isAnalitica        Boolean // true somente no último nível (nó folha) [RN_PLA_003]
+  natureza           NaturezaConta? // parametrização local (RF_PLA_REQ_003), não vem da fonte externa
   // Semáforo Orçamentário (US-008, RN_PLA_006) — parametrização local, "todos ou nenhum".
   // Coerência (0<verde<amarelo<laranja<=100) garantida por CHECK constraint na migration [ADR-013].
   semaforoVerdePct   Int?
   semaforoAmareloPct Int?
   semaforoLaranjaPct Int?
-  statusSync    StatusSincronismo @default(PENDENTE)
-  syncedAt      DateTime?
-  erpUpdatedAt  DateTime?
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
+  statusSync         StatusSincronismo @default(PENDENTE)
+  syncedAt           DateTime?
+  erpUpdatedAt       DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
 
-  agrupadorItens   ContaAgrupadoraItem[]
-  valoresOrcados   ValorOrcadoConta[]
+  agrupadorItens    ContaAgrupadoraItem[]
+  valoresOrcados    ValorOrcadoConta[]
+  viagensPassagem   Viagem[]              @relation("ViagemContaPassagem")
+  viagensDiaria     Viagem[]              @relation("ViagemContaDiaria")
+  viagensTransporte Viagem[]              @relation("ViagemContaTransporte")
 
   @@unique([tenantId, codigoErp])
   @@index([tenantId, nivel])
@@ -272,10 +278,10 @@ model Proposta {
   createdAt  DateTime          @default(now())
   updatedAt  DateTime          @updatedAt
 
-  versoes           VersaoProposta[]
+  versoes            VersaoProposta[]
   unidadesFuncionais UnidadeFuncional[]
-  cargos            Cargo[]
-  empregados        EmpregadoHeadcount[]
+  cargos             Cargo[]
+  empregados         EmpregadoHeadcount[]
 
   @@unique([tenantId, codigo])
   @@index([tenantId, status])
@@ -301,6 +307,7 @@ model VersaoProposta {
   valoresOrcados ValorOrcadoConta[]
   rateiosImposto RateioImpostoGrade[]
   meta           Meta?
+  viagens        Viagem[]
 
   @@unique([tenantId, propostaId, numeroVersao])
   @@index([tenantId, propostaId, vigente])
@@ -332,7 +339,56 @@ model Meta {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  viagens Viagem[]
+
   @@index([tenantId, versaoId])
+}
+
+// ADR-022 — US-109. Viagem só existe quando Proposta.categoria=POR_META (exige
+// metaId — mesma Meta 1:1 da versão, [[Meta]] ADR-017), nunca em CONSOLIDADA.
+// As 3 contas (passagem/diária/transporte) devem ser isAnalitica=true — validado
+// só na camada de aplicação, igual ValorOrcadoConta (não há CHECK/FK parcial
+// possível no Prisma para "isAnalitica=true" da conta referenciada).
+// custoEstimado é persistido e recalculado a cada create/update (mesmo padrão de
+// Cargo.salarioTotal), nunca input direto do usuário [ORIGEM BLINDADA].
+// Fora de escopo: validação de teto agregado por Conta Sintética Mãe somando
+// várias Viagens — não existe TotalizerService formal ainda (mesmo gap de
+// RN0274/US-108a). Sem lock pessimista — mesma simplicidade transacional de
+// Cargo/Meta, sem race condition crítica identificada.
+model Viagem {
+  id       String         @id @default(uuid())
+  tenantId String
+  versaoId String
+  versao   VersaoProposta @relation(fields: [versaoId], references: [id])
+  metaId   String
+  meta     Meta           @relation(fields: [metaId], references: [id])
+
+  descricao String // até 100 caracteres, validado na aplicação
+
+  quantidadePessoas Int
+  mediaDias         Int
+
+  custoUnitarioPassagem Decimal       @db.Decimal(15, 2)
+  contaPassagemId       String
+  contaPassagem         ContaContabil @relation("ViagemContaPassagem", fields: [contaPassagemId], references: [id])
+
+  custoUnitarioDiaria Decimal       @db.Decimal(15, 2)
+  contaDiariaId       String
+  contaDiaria         ContaContabil @relation("ViagemContaDiaria", fields: [contaDiariaId], references: [id])
+
+  custoUnitarioTransporte Decimal       @db.Decimal(15, 2)
+  contaTransporteId       String
+  contaTransporte         ContaContabil @relation("ViagemContaTransporte", fields: [contaTransporteId], references: [id])
+
+  // Calculado e persistido pelo use case a cada create/update — nunca input direto.
+  custoEstimado Decimal @db.Decimal(15, 2)
+
+  ativo     Boolean  @default(true) // soft delete
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, versaoId])
+  @@index([tenantId, metaId])
 }
 
 // US-007 — valor orçado de uma conta analítica (isAnalitica=true), escopado por
@@ -547,10 +603,10 @@ model EmpregadoHeadcount {
   cargoId String
   cargo   Cargo  @relation(fields: [cargoId], references: [id])
 
-  nome              String // "A CONTRATAR" se vaga de contingência (RN0249)
-  categoria         CategoriaEmpregado
-  periodoInicio     DateTime
-  periodoFim        DateTime?
+  nome          String // "A CONTRATAR" se vaga de contingência (RN0249)
+  categoria     CategoriaEmpregado
+  periodoInicio DateTime
+  periodoFim    DateTime?
 
   // DEPRECATED (ADR-020, US-108a) — dependentes agora são por benefício, em
   // EmpregadoBeneficioElegibilidade.numeroDependentes. Mantido só para não

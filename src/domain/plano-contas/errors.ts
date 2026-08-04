@@ -417,3 +417,43 @@ export class CamposObrigatoriosBeneficioError extends Error {
   }
 }
 
+// US-109, Cenário 2 — Viagem exige Meta, que só existe em Proposta categoria=POR_META.
+export class ViagemForaDeEscopoCategoriaError extends Error {
+  constructor() {
+    super('Viagem exige uma Meta vinculada — disponível apenas em Propostas por Meta.');
+    this.name = 'ViagemForaDeEscopoCategoriaError';
+  }
+}
+
+// US-109, Cenário 3 — conta referenciada (passagem/diária/transporte) não é analítica.
+export class ContaViagemNaoAnaliticaError extends Error {
+  constructor() {
+    super('Selecione uma conta analítica (nível folha) para passagem, diária e transporte.');
+    this.name = 'ContaViagemNaoAnaliticaError';
+  }
+}
+
+// US-109 — campos obrigatórios do cadastro/alteração de Viagem.
+export class CamposObrigatoriosViagemError extends Error {
+  constructor() {
+    super('Preencha Descrição, Quantidade de Pessoas, Média de Dias e os custos/contas de passagem, diária e transporte.');
+    this.name = 'CamposObrigatoriosViagemError';
+  }
+}
+
+// US-109 — Viagem referenciada não existe (ou não pertence ao tenant).
+export class ViagemNaoEncontradaError extends Error {
+  constructor() {
+    super('Viagem não encontrada.');
+    this.name = 'ViagemNaoEncontradaError';
+  }
+}
+
+// US-109, Cenário 5 — exclusão bloqueada quando a Proposta já foi enviada para aprovação.
+export class ViagemPropostaEmAprovacaoError extends Error {
+  constructor() {
+    super('Não é possível excluir viagem de Proposta em aprovação.');
+    this.name = 'ViagemPropostaEmAprovacaoError';
+  }
+}
+

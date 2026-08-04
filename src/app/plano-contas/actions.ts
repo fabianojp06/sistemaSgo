@@ -25,6 +25,9 @@ import {
   getExcluirEmpregadoUseCase,
   getConfigurarBeneficiosCargoUseCase,
   getConfigurarElegibilidadeBeneficioUseCase,
+  getCadastrarViagemUseCase,
+  getEditarViagemUseCase,
+  getExcluirViagemUseCase,
 } from '@/application/use-cases/plano-contas/container';
 
 type ActionResult = { sucesso: true } | { sucesso: false; mensagem: string };
@@ -605,6 +608,112 @@ export async function configurarBeneficiosCargo(input: {
     const cargo = await getConfigurarBeneficiosCargoUseCase().execute({ ...contexto, ...entrada.data });
     revalidatePath('/plano-contas');
     return { sucesso: true, dados: { id: cargo.id, custoTotalCargo: cargo.custoTotalCargo.toString() } };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+export type ViagemResultado = {
+  id: string;
+  descricao: string;
+  custoEstimado: string;
+};
+
+const CadastrarViagemSchema = z.object({
+  versaoId: z.string().min(1),
+  descricao: z.string().trim().min(1).max(100),
+  quantidadePessoas: z.number().int().positive(),
+  mediaDias: z.number().int().positive(),
+  custoUnitarioPassagem: z.number().nonnegative(),
+  contaPassagemId: z.string().min(1),
+  custoUnitarioDiaria: z.number().nonnegative(),
+  contaDiariaId: z.string().min(1),
+  custoUnitarioTransporte: z.number().nonnegative(),
+  contaTransporteId: z.string().min(1),
+});
+
+/** US-109, Cenário 1 — Cadastrar Viagem (exige Proposta POR_META com Meta cadastrada). */
+export async function cadastrarViagem(input: {
+  versaoId: string;
+  descricao: string;
+  quantidadePessoas: number;
+  mediaDias: number;
+  custoUnitarioPassagem: number;
+  contaPassagemId: string;
+  custoUnitarioDiaria: number;
+  contaDiariaId: string;
+  custoUnitarioTransporte: number;
+  contaTransporteId: string;
+}): Promise<ActionResultComDados<ViagemResultado>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const entrada = CadastrarViagemSchema.safeParse(input);
+  if (!entrada.success) {
+    return { sucesso: false, mensagem: 'Preencha Descrição, Quantidade de Pessoas, Média de Dias e os custos/contas de passagem, diária e transporte.' };
+  }
+
+  try {
+    const viagem = await getCadastrarViagemUseCase().execute({ ...contexto, ...entrada.data });
+    revalidatePath('/plano-contas');
+    return { sucesso: true, dados: { id: viagem.id, descricao: viagem.descricao, custoEstimado: viagem.custoEstimado.toString() } };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+const EditarViagemSchema = z.object({
+  viagemId: z.string().min(1),
+  descricao: z.string().trim().min(1).max(100),
+  quantidadePessoas: z.number().int().positive(),
+  mediaDias: z.number().int().positive(),
+  custoUnitarioPassagem: z.number().nonnegative(),
+  contaPassagemId: z.string().min(1),
+  custoUnitarioDiaria: z.number().nonnegative(),
+  contaDiariaId: z.string().min(1),
+  custoUnitarioTransporte: z.number().nonnegative(),
+  contaTransporteId: z.string().min(1),
+});
+
+/** US-109, Cenário 4 — Editar Viagem. Vínculos com Proposta/Meta são congelados. */
+export async function editarViagem(input: {
+  viagemId: string;
+  descricao: string;
+  quantidadePessoas: number;
+  mediaDias: number;
+  custoUnitarioPassagem: number;
+  contaPassagemId: string;
+  custoUnitarioDiaria: number;
+  contaDiariaId: string;
+  custoUnitarioTransporte: number;
+  contaTransporteId: string;
+}): Promise<ActionResultComDados<ViagemResultado>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const entrada = EditarViagemSchema.safeParse(input);
+  if (!entrada.success) {
+    return { sucesso: false, mensagem: 'Preencha Descrição, Quantidade de Pessoas, Média de Dias e os custos/contas de passagem, diária e transporte.' };
+  }
+
+  try {
+    const viagem = await getEditarViagemUseCase().execute({ ...contexto, ...entrada.data });
+    revalidatePath('/plano-contas');
+    return { sucesso: true, dados: { id: viagem.id, descricao: viagem.descricao, custoEstimado: viagem.custoEstimado.toString() } };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+/** US-109, Cenário 5/6 — Excluir Viagem (soft delete; bloqueada se Proposta em aprovação). */
+export async function excluirViagem(viagemId: string): Promise<ActionResult> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  try {
+    await getExcluirViagemUseCase().execute({ ...contexto, viagemId });
+    revalidatePath('/plano-contas');
+    return { sucesso: true };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
   }
