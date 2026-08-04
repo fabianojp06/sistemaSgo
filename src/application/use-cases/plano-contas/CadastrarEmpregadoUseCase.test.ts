@@ -1,13 +1,11 @@
 import { Prisma } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 import { CadastrarEmpregadoUseCase } from './CadastrarEmpregadoUseCase';
-import {
-  CargoObrigatorioEmpregadoError,
-  EmpregadoForaDeEscopoCategoriaError,
-  PeriodoInicialRetroativoError,
-} from '@/domain/plano-contas/errors';
+import { CargoObrigatorioEmpregadoError, MetaNaoEncontradaError, PeriodoInicialRetroativoError } from '@/domain/plano-contas/errors';
 
 type PropostaMock = { id: string; tenantId: string; categoria: string; status: string; dataInicio: Date };
+type VersaoMock = { id: string; tenantId: string; propostaId: string; vigente: boolean; ativa: boolean };
+type MetaMock = { id: string; tenantId: string; versaoId: string; ativo: boolean };
 type CargoMock = {
   id: string;
   tenantId: string;
@@ -17,13 +15,27 @@ type CargoMock = {
   unidadeFuncional: { nome: string };
 };
 
-function criarPrismaMock(propostas: PropostaMock[], cargos: CargoMock[]) {
+function criarPrismaMock(propostas: PropostaMock[], cargos: CargoMock[], versoes: VersaoMock[] = [], metas: MetaMock[] = []) {
   let idSeq = 1;
 
   const base = {
     proposta: {
       findFirst: vi.fn(({ where }: { where: { tenantId: string; id: string } }) =>
         Promise.resolve(propostas.find((p) => p.tenantId === where.tenantId && p.id === where.id) ?? null),
+      ),
+    },
+    versaoProposta: {
+      findFirst: vi.fn(({ where }: { where: { tenantId: string; propostaId: string; vigente: boolean; ativa: boolean } }) =>
+        Promise.resolve(
+          versoes.find(
+            (v) => v.tenantId === where.tenantId && v.propostaId === where.propostaId && v.vigente === where.vigente && v.ativa === where.ativa,
+          ) ?? null,
+        ),
+      ),
+    },
+    meta: {
+      findFirst: vi.fn(({ where }: { where: { tenantId: string; versaoId: string; ativo: boolean } }) =>
+        Promise.resolve(metas.find((m) => m.tenantId === where.tenantId && m.versaoId === where.versaoId && m.ativo === where.ativo) ?? null),
       ),
     },
     cargo: {
@@ -56,6 +68,8 @@ const propostaPorMeta: PropostaMock = {
   status: 'RASCUNHO',
   dataInicio: new Date('2026-01-01'),
 };
+const versaoVigentePorMeta: VersaoMock = { id: 'v2', tenantId: 't1', propostaId: 'p2', vigente: true, ativa: true };
+const metaAtiva: MetaMock = { id: 'm1', tenantId: 't1', versaoId: 'v2', ativo: true };
 const cargo: CargoMock = {
   id: 'c1',
   tenantId: 't1',
@@ -63,6 +77,14 @@ const cargo: CargoMock = {
   codigoCargo: 'CARGO-2026-0001',
   custoTotalCargo: new Prisma.Decimal(6200),
   unidadeFuncional: { nome: 'Setor de Compras' },
+};
+const cargoPorMeta: CargoMock = {
+  id: 'c2',
+  tenantId: 't1',
+  propostaId: 'p2',
+  codigoCargo: 'CARGO-2026-0002',
+  custoTotalCargo: new Prisma.Decimal(5000),
+  unidadeFuncional: { nome: 'Setor de Projetos' },
 };
 
 describe('CadastrarEmpregadoUseCase [US-108]', () => {
@@ -104,8 +126,24 @@ describe('CadastrarEmpregadoUseCase [US-108]', () => {
     expect(empregado.nome).toBe('A CONTRATAR');
   });
 
-  it('bloqueia cadastro em Proposta POR_META [Cenário 3]', async () => {
-    const prisma = criarPrismaMock([propostaPorMeta], [cargo]);
+  it('cadastra Empregado em Proposta POR_META derivando metaId da Meta vigente [Cenário 3, ADR-024]', async () => {
+    const prisma = criarPrismaMock([propostaPorMeta], [cargoPorMeta], [versaoVigentePorMeta], [metaAtiva]);
+    const useCase = new CadastrarEmpregadoUseCase(prisma as never);
+
+    const empregado = await useCase.execute({
+      tenantId: 't1',
+      usuarioId: 'u1',
+      propostaId: 'p2',
+      cargoId: 'c2',
+      categoria: 'EMPREGADO',
+      periodoInicio: new Date('2026-02-01'),
+    });
+
+    expect(empregado.metaId).toBe('m1');
+  });
+
+  it('bloqueia cadastro em Proposta POR_META sem Meta cadastrada', async () => {
+    const prisma = criarPrismaMock([propostaPorMeta], [cargoPorMeta], [versaoVigentePorMeta], []);
     const useCase = new CadastrarEmpregadoUseCase(prisma as never);
 
     await expect(
@@ -113,11 +151,11 @@ describe('CadastrarEmpregadoUseCase [US-108]', () => {
         tenantId: 't1',
         usuarioId: 'u1',
         propostaId: 'p2',
-        cargoId: 'c1',
+        cargoId: 'c2',
         categoria: 'EMPREGADO',
         periodoInicio: new Date('2026-02-01'),
       }),
-    ).rejects.toThrow(EmpregadoForaDeEscopoCategoriaError);
+    ).rejects.toThrow(MetaNaoEncontradaError);
   });
 
   it('bloqueia cadastro sem Cargo [Cenário 4]', async () => {

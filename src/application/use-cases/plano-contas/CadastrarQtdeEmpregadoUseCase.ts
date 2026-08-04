@@ -1,0 +1,115 @@
+import type { PrismaClient, QtdeEmpregado } from '@prisma/client';
+import {
+  CamposObrigatoriosQtdeEmpregadoError,
+  MetaNaoEncontradaError,
+  PeriodoQtdeEmpregadoForaDaVigenciaError,
+  PropostaNaoEncontradaError,
+  SobreposicaoPeriodoQtdeEmpregadoError,
+  VersaoPropostaInvalidaError,
+} from '@/domain/plano-contas/errors';
+
+type CadastrarQtdeEmpregadoInput = {
+  tenantId: string;
+  usuarioId: string;
+  propostaId: string;
+  periodoInicio: Date;
+  periodoFim: Date;
+  numeroDocumento: string;
+};
+
+/**
+ * US-113, Cenários 1/2/3/4/8 — Cadastrar Qtde. Empregado. metaId é derivado
+ * automaticamente da Meta 1:1 da versão vigente [[Meta]] (mesmo padrão de
+ * CadastrarEmpregadoUseCase, ADR-024) — obrigatório só em Proposta POR_META.
+ * Quantitativos são ORIGEM BLINDADA: COUNT sobre EmpregadoHeadcount ativo,
+ * escopado por propostaId (+ metaId quando POR_META), nunca input direto.
+ */
+export class CadastrarQtdeEmpregadoUseCase {
+  constructor(private readonly prisma: PrismaClient) {}
+
+  async execute(input: CadastrarQtdeEmpregadoInput): Promise<QtdeEmpregado> {
+    const numeroDocumento = input.numeroDocumento?.trim() ?? '';
+    if (!input.periodoInicio || !input.periodoFim || numeroDocumento.length === 0) {
+      throw new CamposObrigatoriosQtdeEmpregadoError();
+    }
+
+    const proposta = await this.prisma.proposta.findFirst({ where: { tenantId: input.tenantId, id: input.propostaId } });
+    if (!proposta) {
+      throw new PropostaNaoEncontradaError();
+    }
+    if (proposta.status !== 'RASCUNHO' && proposta.status !== 'EM_ELABORACAO') {
+      throw new VersaoPropostaInvalidaError(
+        'Ação Negada [TRAVA O ERRO]: esta Proposta está oficializada e seus dados estão congelados.',
+      );
+    }
+    if (input.periodoInicio.getTime() < proposta.dataInicio.getTime() || input.periodoFim.getTime() > proposta.dataFim.getTime()) {
+      throw new PeriodoQtdeEmpregadoForaDaVigenciaError();
+    }
+
+    const existentes = await this.prisma.qtdeEmpregado.findMany({
+      where: { tenantId: input.tenantId, propostaId: input.propostaId, ativo: true },
+      select: { periodoInicio: true, periodoFim: true },
+    });
+    const sobrepoe = existentes.some(
+      (e) => input.periodoInicio.getTime() <= e.periodoFim.getTime() && input.periodoFim.getTime() >= e.periodoInicio.getTime(),
+    );
+    if (sobrepoe) {
+      throw new SobreposicaoPeriodoQtdeEmpregadoError();
+    }
+
+    let metaId: string | null = null;
+    if (proposta.categoria === 'POR_META') {
+      const versaoVigente = await this.prisma.versaoProposta.findFirst({
+        where: { tenantId: input.tenantId, propostaId: input.propostaId, vigente: true, ativa: true },
+      });
+      const meta = versaoVigente
+        ? await this.prisma.meta.findFirst({ where: { tenantId: input.tenantId, versaoId: versaoVigente.id, ativo: true } })
+        : null;
+      if (!meta) {
+        throw new MetaNaoEncontradaError();
+      }
+      metaId = meta.id;
+    }
+
+    const escopoContagem = { tenantId: input.tenantId, propostaId: input.propostaId, ativo: true, ...(metaId ? { metaId } : {}) };
+    const [quantidadeEmpregados, quantidadeEstagiarios, quantidadeJovemAprendiz] = await Promise.all([
+      this.prisma.empregadoHeadcount.count({ where: { ...escopoContagem, categoria: 'EMPREGADO' } }),
+      this.prisma.empregadoHeadcount.count({ where: { ...escopoContagem, categoria: 'ESTAGIARIO' } }),
+      this.prisma.empregadoHeadcount.count({ where: { ...escopoContagem, categoria: 'JOVEM_APRENDIZ' } }),
+    ]);
+
+    return this.prisma.$transaction(async (tx) => {
+      const qtdeEmpregado = await tx.qtdeEmpregado.create({
+        data: {
+          tenantId: input.tenantId,
+          propostaId: input.propostaId,
+          metaId,
+          periodoInicio: input.periodoInicio,
+          periodoFim: input.periodoFim,
+          numeroDocumento,
+          quantidadeEmpregados,
+          quantidadeEstagiarios,
+          quantidadeJovemAprendiz,
+        },
+      });
+
+      await tx.historicoOperacao.create({
+        data: {
+          tenantId: input.tenantId,
+          usuarioId: input.usuarioId,
+          tipoOperacao: 'QTDE_EMPREGADO_CADASTRADA',
+          descricao: `Qtde. Empregado "${numeroDocumento}" cadastrada para a Proposta ${input.propostaId}`,
+          dadosSerializados: {
+            qtdeEmpregadoId: qtdeEmpregado.id,
+            propostaId: input.propostaId,
+            quantidadeEmpregados,
+            quantidadeEstagiarios,
+            quantidadeJovemAprendiz,
+          },
+        },
+      });
+
+      return qtdeEmpregado;
+    });
+  }
+}

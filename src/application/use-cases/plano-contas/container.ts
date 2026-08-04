@@ -35,6 +35,9 @@ import { ExcluirViagemUseCase } from './ExcluirViagemUseCase';
 import { CadastrarItemPatrimonialUseCase } from './CadastrarItemPatrimonialUseCase';
 import { EditarItemPatrimonialUseCase } from './EditarItemPatrimonialUseCase';
 import { ExcluirItemPatrimonialUseCase } from './ExcluirItemPatrimonialUseCase';
+import { CadastrarQtdeEmpregadoUseCase } from './CadastrarQtdeEmpregadoUseCase';
+import { EditarQtdeEmpregadoUseCase } from './EditarQtdeEmpregadoUseCase';
+import { ExcluirQtdeEmpregadoUseCase } from './ExcluirQtdeEmpregadoUseCase';
 
 export function getSincronizarPlanoContasUseCase(): SincronizarPlanoContasUseCase {
   return new SincronizarPlanoContasUseCase(
@@ -167,4 +170,16 @@ export function getEditarItemPatrimonialUseCase(): EditarItemPatrimonialUseCase 
 
 export function getExcluirItemPatrimonialUseCase(): ExcluirItemPatrimonialUseCase {
   return new ExcluirItemPatrimonialUseCase(prisma);
+}
+
+export function getCadastrarQtdeEmpregadoUseCase(): CadastrarQtdeEmpregadoUseCase {
+  return new CadastrarQtdeEmpregadoUseCase(prisma);
+}
+
+export function getEditarQtdeEmpregadoUseCase(): EditarQtdeEmpregadoUseCase {
+  return new EditarQtdeEmpregadoUseCase(prisma);
+}
+
+export function getExcluirQtdeEmpregadoUseCase(): ExcluirQtdeEmpregadoUseCase {
+  return new ExcluirQtdeEmpregadoUseCase(prisma);
 }

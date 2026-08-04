@@ -497,3 +497,43 @@ export class ItemPatrimonialNaoEncontradoError extends Error {
   }
 }
 
+// US-113, Cenário 4, RN0153 — campos obrigatórios do cadastro/alteração de Qtde. Empregado.
+export class CamposObrigatoriosQtdeEmpregadoError extends Error {
+  constructor() {
+    super('Período Inicial, Período Final e Número do Documento são obrigatórios.');
+    this.name = 'CamposObrigatoriosQtdeEmpregadoError';
+  }
+}
+
+// US-113, Cenário 2, RN0154 — período extrapola a vigência da Proposta.
+export class PeriodoQtdeEmpregadoForaDaVigenciaError extends Error {
+  constructor() {
+    super('Período não pode extrapolar a vigência da Proposta.');
+    this.name = 'PeriodoQtdeEmpregadoForaDaVigenciaError';
+  }
+}
+
+// US-113, Cenário 3, RN0155 — sobreposição de período de consolidação na mesma Proposta.
+export class SobreposicaoPeriodoQtdeEmpregadoError extends Error {
+  constructor() {
+    super('Já existe um período de consolidação sobreposto para esta Proposta.');
+    this.name = 'SobreposicaoPeriodoQtdeEmpregadoError';
+  }
+}
+
+// US-113, Cenário 6, RN0159 — edição/exclusão só permitida com Proposta em RASCUNHO/EM_ELABORACAO.
+export class QtdeEmpregadoPropostaImutavelError extends Error {
+  constructor() {
+    super('Não é possível alterar Qtde. Empregado de Proposta homologada ou fechada.');
+    this.name = 'QtdeEmpregadoPropostaImutavelError';
+  }
+}
+
+// US-113 — Qtde. Empregado referenciada não existe (ou não pertence ao tenant).
+export class QtdeEmpregadoNaoEncontradaError extends Error {
+  constructor() {
+    super('Registro de Qtde. Empregado não encontrado.');
+    this.name = 'QtdeEmpregadoNaoEncontradaError';
+  }
+}
+

@@ -31,6 +31,9 @@ import {
   getCadastrarItemPatrimonialUseCase,
   getEditarItemPatrimonialUseCase,
   getExcluirItemPatrimonialUseCase,
+  getCadastrarQtdeEmpregadoUseCase,
+  getEditarQtdeEmpregadoUseCase,
+  getExcluirQtdeEmpregadoUseCase,
 } from '@/application/use-cases/plano-contas/container';
 
 type ActionResult = { sucesso: true } | { sucesso: false; mensagem: string };
@@ -865,6 +868,108 @@ export async function excluirItemPatrimonial(itemPatrimonialId: string): Promise
 
   try {
     await getExcluirItemPatrimonialUseCase().execute({ ...contexto, itemPatrimonialId });
+    revalidatePath('/plano-contas');
+    return { sucesso: true };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+export type QtdeEmpregadoResultado = {
+  id: string;
+  numeroDocumento: string;
+  quantidadeEmpregados: number;
+  quantidadeEstagiarios: number;
+  quantidadeJovemAprendiz: number;
+};
+
+const CadastrarQtdeEmpregadoSchema = z.object({
+  propostaId: z.string().min(1),
+  periodoInicio: z.coerce.date(),
+  periodoFim: z.coerce.date(),
+  numeroDocumento: z.string().trim().min(1),
+});
+
+/** US-113, Cenários 1/2/3/4/8 — Cadastrar Qtde. Empregado (quantitativos calculados por COUNT). */
+export async function cadastrarQtdeEmpregado(input: {
+  propostaId: string;
+  periodoInicio: Date | string;
+  periodoFim: Date | string;
+  numeroDocumento: string;
+}): Promise<ActionResultComDados<QtdeEmpregadoResultado>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const entrada = CadastrarQtdeEmpregadoSchema.safeParse(input);
+  if (!entrada.success) {
+    return { sucesso: false, mensagem: 'Período Inicial, Período Final e Número do Documento são obrigatórios.' };
+  }
+
+  try {
+    const qtdeEmpregado = await getCadastrarQtdeEmpregadoUseCase().execute({ ...contexto, ...entrada.data });
+    revalidatePath('/plano-contas');
+    return {
+      sucesso: true,
+      dados: {
+        id: qtdeEmpregado.id,
+        numeroDocumento: qtdeEmpregado.numeroDocumento,
+        quantidadeEmpregados: qtdeEmpregado.quantidadeEmpregados,
+        quantidadeEstagiarios: qtdeEmpregado.quantidadeEstagiarios,
+        quantidadeJovemAprendiz: qtdeEmpregado.quantidadeJovemAprendiz,
+      },
+    };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+const EditarQtdeEmpregadoSchema = z.object({
+  qtdeEmpregadoId: z.string().min(1),
+  periodoInicio: z.coerce.date(),
+  periodoFim: z.coerce.date(),
+  numeroDocumento: z.string().trim().min(1),
+});
+
+/** US-113, Cenários 5/6 — Editar Qtde. Empregado. Vínculos com Proposta/Meta são congelados. */
+export async function editarQtdeEmpregado(input: {
+  qtdeEmpregadoId: string;
+  periodoInicio: Date | string;
+  periodoFim: Date | string;
+  numeroDocumento: string;
+}): Promise<ActionResultComDados<QtdeEmpregadoResultado>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const entrada = EditarQtdeEmpregadoSchema.safeParse(input);
+  if (!entrada.success) {
+    return { sucesso: false, mensagem: 'Período Inicial, Período Final e Número do Documento são obrigatórios.' };
+  }
+
+  try {
+    const qtdeEmpregado = await getEditarQtdeEmpregadoUseCase().execute({ ...contexto, ...entrada.data });
+    revalidatePath('/plano-contas');
+    return {
+      sucesso: true,
+      dados: {
+        id: qtdeEmpregado.id,
+        numeroDocumento: qtdeEmpregado.numeroDocumento,
+        quantidadeEmpregados: qtdeEmpregado.quantidadeEmpregados,
+        quantidadeEstagiarios: qtdeEmpregado.quantidadeEstagiarios,
+        quantidadeJovemAprendiz: qtdeEmpregado.quantidadeJovemAprendiz,
+      },
+    };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+/** US-113, Cenário 7 — Excluir Qtde. Empregado (soft delete). */
+export async function excluirQtdeEmpregado(qtdeEmpregadoId: string): Promise<ActionResult> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  try {
+    await getExcluirQtdeEmpregadoUseCase().execute({ ...contexto, qtdeEmpregadoId });
     revalidatePath('/plano-contas');
     return { sucesso: true };
   } catch (erro) {

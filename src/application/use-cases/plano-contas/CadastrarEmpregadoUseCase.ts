@@ -2,7 +2,7 @@ import type { CategoriaEmpregado, EmpregadoHeadcount, PrismaClient } from '@pris
 import {
   CargoNaoEncontradoParaEmpregadoError,
   CargoObrigatorioEmpregadoError,
-  EmpregadoForaDeEscopoCategoriaError,
+  MetaNaoEncontradaError,
   PeriodoInicialRetroativoError,
   PropostaNaoEncontradaError,
   VersaoPropostaInvalidaError,
@@ -20,10 +20,14 @@ type CadastrarEmpregadoInput = {
 };
 
 /**
- * US-108 — Cadastrar Empregado. Restrita a Proposta categoria=CONSOLIDADA
- * nesta US. Herda (snapshot) Vínculo Funcional e Custo Total Mensal do
- * Cargo no momento do cadastro — congelado até troca explícita de Cargo
- * [ORIGEM BLINDADA, ADR-018].
+ * US-108 — Cadastrar Empregado. Herda (snapshot) Vínculo Funcional e Custo
+ * Total Mensal do Cargo no momento do cadastro — congelado até troca
+ * explícita de Cargo [ORIGEM BLINDADA, ADR-018].
+ *
+ * ADR-024/US-113 — Empregado passou a ser aceito também em Proposta
+ * categoria=POR_META (antes restrito a CONSOLIDADA): metaId é derivado
+ * automaticamente da Meta 1:1 da versão vigente [[Meta]] (mesmo padrão de
+ * CadastrarViagemUseCase), nunca input direto. Em CONSOLIDADA, metaId=null.
  */
 export class CadastrarEmpregadoUseCase {
   constructor(private readonly prisma: PrismaClient) {}
@@ -37,9 +41,6 @@ export class CadastrarEmpregadoUseCase {
     if (!proposta) {
       throw new PropostaNaoEncontradaError();
     }
-    if (proposta.categoria !== 'CONSOLIDADA') {
-      throw new EmpregadoForaDeEscopoCategoriaError();
-    }
     if (proposta.status !== 'RASCUNHO' && proposta.status !== 'EM_ELABORACAO') {
       throw new VersaoPropostaInvalidaError(
         'Ação Negada [TRAVA O ERRO]: esta Proposta está oficializada e seus dados estão congelados.',
@@ -47,6 +48,20 @@ export class CadastrarEmpregadoUseCase {
     }
     if (input.periodoInicio.getTime() < proposta.dataInicio.getTime()) {
       throw new PeriodoInicialRetroativoError();
+    }
+
+    let metaId: string | null = null;
+    if (proposta.categoria === 'POR_META') {
+      const versaoVigente = await this.prisma.versaoProposta.findFirst({
+        where: { tenantId: input.tenantId, propostaId: input.propostaId, vigente: true, ativa: true },
+      });
+      const meta = versaoVigente
+        ? await this.prisma.meta.findFirst({ where: { tenantId: input.tenantId, versaoId: versaoVigente.id, ativo: true } })
+        : null;
+      if (!meta) {
+        throw new MetaNaoEncontradaError();
+      }
+      metaId = meta.id;
     }
 
     const cargo = await this.prisma.cargo.findFirst({
@@ -64,6 +79,7 @@ export class CadastrarEmpregadoUseCase {
         data: {
           tenantId: input.tenantId,
           propostaId: input.propostaId,
+          metaId,
           cargoId: input.cargoId,
           nome,
           categoria: input.categoria,

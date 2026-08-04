@@ -53,6 +53,9 @@ enum TipoOperacao {
   ITEM_PATRIMONIAL_CADASTRADO
   ITEM_PATRIMONIAL_EDITADO
   ITEM_PATRIMONIAL_EXCLUIDO
+  QTDE_EMPREGADO_CADASTRADA
+  QTDE_EMPREGADO_EDITADA
+  QTDE_EMPREGADO_EXCLUIDA
 }
 
 model Usuario {
@@ -286,6 +289,7 @@ model Proposta {
   unidadesFuncionais UnidadeFuncional[]
   cargos             Cargo[]
   empregados         EmpregadoHeadcount[]
+  qtdeEmpregados     QtdeEmpregado[]
 
   @@unique([tenantId, codigo])
   @@index([tenantId, status])
@@ -346,6 +350,8 @@ model Meta {
 
   viagens           Viagem[]
   itensPatrimoniais ItemPatrimonial[]
+  empregados        EmpregadoHeadcount[]
+  qtdeEmpregados    QtdeEmpregado[]
 
   @@index([tenantId, versaoId])
 }
@@ -645,6 +651,14 @@ model EmpregadoHeadcount {
   propostaId String
   proposta   Proposta @relation(fields: [propostaId], references: [id])
 
+  // ADR-024 — US-113. Nullable — obrigatório apenas quando Proposta.categoria=
+  // POR_META (derivado automaticamente da Meta 1:1 da versão vigente, [[Meta]]
+  // ADR-017), sempre null em CONSOLIDADA. Validado só na camada de aplicação
+  // (Prisma não suporta FK condicional). Adicionado retroativamente sem
+  // backfill — tabela vazia em produção no momento desta migration.
+  metaId String?
+  meta   Meta?   @relation(fields: [metaId], references: [id])
+
   cargoId String
   cargo   Cargo  @relation(fields: [cargoId], references: [id])
 
@@ -672,6 +686,41 @@ model EmpregadoHeadcount {
 
   @@index([tenantId, propostaId])
   @@index([tenantId, cargoId])
+  @@index([tenantId, metaId])
+}
+
+// ADR-024 — US-113 (UC03.20-23). Snapshot/consolidação de headcount por
+// período e documento de respaldo (Apostilamento/Termo Aditivo). Quantitativos
+// são ORIGEM BLINDADA: calculados por COUNT sobre EmpregadoHeadcount ativo no
+// momento do create/update, nunca input direto — mesmo padrão de
+// Cargo.custoTotalCargo e Viagem.custoEstimado. metaId segue a mesma regra
+// condicional de EmpregadoHeadcount. Sem lock pessimista — mesma simplicidade
+// de Cargo/Viagem/Meta/ItemPatrimonial. Sem checagem de despesas vinculadas na
+// exclusão (RN0145/E2 da Minuta) — não existe módulo de Diária/Adiantamento;
+// mesmo gap aceito em Excluir Viagem/Meta UseCase.
+model QtdeEmpregado {
+  id         String   @id @default(uuid())
+  tenantId   String
+  propostaId String
+  proposta   Proposta @relation(fields: [propostaId], references: [id])
+  metaId     String?
+  meta       Meta?    @relation(fields: [metaId], references: [id])
+
+  periodoInicio   DateTime
+  periodoFim      DateTime
+  numeroDocumento String
+
+  // Calculados e persistidos pelo use case a cada create/update — nunca input direto.
+  quantidadeEmpregados    Int
+  quantidadeEstagiarios   Int
+  quantidadeJovemAprendiz Int
+
+  ativo     Boolean  @default(true) // soft delete
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, propostaId])
+  @@index([tenantId, metaId])
 }
 
 // ADR-020 — US-108a. Elegibilidade individual do Empregado por benefício —
