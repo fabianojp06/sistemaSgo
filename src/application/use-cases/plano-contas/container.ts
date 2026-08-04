@@ -32,6 +32,9 @@ import { ConfigurarElegibilidadeBeneficioUseCase } from './ConfigurarElegibilida
 import { CadastrarViagemUseCase } from './CadastrarViagemUseCase';
 import { EditarViagemUseCase } from './EditarViagemUseCase';
 import { ExcluirViagemUseCase } from './ExcluirViagemUseCase';
+import { CadastrarItemPatrimonialUseCase } from './CadastrarItemPatrimonialUseCase';
+import { EditarItemPatrimonialUseCase } from './EditarItemPatrimonialUseCase';
+import { ExcluirItemPatrimonialUseCase } from './ExcluirItemPatrimonialUseCase';
 
 export function getSincronizarPlanoContasUseCase(): SincronizarPlanoContasUseCase {
   return new SincronizarPlanoContasUseCase(
@@ -152,4 +155,16 @@ export function getEditarViagemUseCase(): EditarViagemUseCase {
 
 export function getExcluirViagemUseCase(): ExcluirViagemUseCase {
   return new ExcluirViagemUseCase(prisma);
+}
+
+export function getCadastrarItemPatrimonialUseCase(): CadastrarItemPatrimonialUseCase {
+  return new CadastrarItemPatrimonialUseCase(prisma);
+}
+
+export function getEditarItemPatrimonialUseCase(): EditarItemPatrimonialUseCase {
+  return new EditarItemPatrimonialUseCase(prisma);
+}
+
+export function getExcluirItemPatrimonialUseCase(): ExcluirItemPatrimonialUseCase {
+  return new ExcluirItemPatrimonialUseCase(prisma);
 }

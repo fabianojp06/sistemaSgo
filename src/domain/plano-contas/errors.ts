@@ -457,3 +457,43 @@ export class ViagemPropostaEmAprovacaoError extends Error {
   }
 }
 
+// US-110, Cenário 2 — metaId é obrigatório apenas quando Proposta.categoria=POR_META.
+export class MetaObrigatoriaItemPatrimonialError extends Error {
+  constructor() {
+    super('Meta é obrigatória para Propostas por Meta.');
+    this.name = 'MetaObrigatoriaItemPatrimonialError';
+  }
+}
+
+// US-110, Cenário 4 — campos obrigatórios do cadastro/alteração de Item Patrimonial.
+export class CamposObrigatoriosItemPatrimonialError extends Error {
+  constructor() {
+    super('Descrição, Data, Quantidade e Conta Analítica são obrigatórios.');
+    this.name = 'CamposObrigatoriosItemPatrimonialError';
+  }
+}
+
+// US-110, Cenário 5 — quantidade <= 0 ou valor unitário negativo.
+export class QuantidadeOuValorItemPatrimonialInvalidoError extends Error {
+  constructor() {
+    super('Quantidade deve ser maior que zero e Valor Unitário não pode ser negativo.');
+    this.name = 'QuantidadeOuValorItemPatrimonialInvalidoError';
+  }
+}
+
+// US-110 — conta referenciada não é analítica (isAnalitica=false).
+export class ContaItemPatrimonialNaoAnaliticaError extends Error {
+  constructor() {
+    super('Selecione uma conta analítica (nível folha) para o item patrimonial.');
+    this.name = 'ContaItemPatrimonialNaoAnaliticaError';
+  }
+}
+
+// US-110 — Item Patrimonial referenciado não existe (ou não pertence ao tenant).
+export class ItemPatrimonialNaoEncontradoError extends Error {
+  constructor() {
+    super('Item patrimonial não encontrado.');
+    this.name = 'ItemPatrimonialNaoEncontradoError';
+  }
+}
+

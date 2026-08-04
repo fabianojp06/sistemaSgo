@@ -50,6 +50,9 @@ enum TipoOperacao {
   VIAGEM_CRIADA
   VIAGEM_EDITADA
   VIAGEM_EXCLUIDA
+  ITEM_PATRIMONIAL_CADASTRADO
+  ITEM_PATRIMONIAL_EDITADO
+  ITEM_PATRIMONIAL_EXCLUIDO
 }
 
 model Usuario {
@@ -206,6 +209,7 @@ model ContaContabil {
   viagensPassagem   Viagem[]              @relation("ViagemContaPassagem")
   viagensDiaria     Viagem[]              @relation("ViagemContaDiaria")
   viagensTransporte Viagem[]              @relation("ViagemContaTransporte")
+  itensPatrimoniais ItemPatrimonial[]
 
   @@unique([tenantId, codigoErp])
   @@index([tenantId, nivel])
@@ -304,10 +308,11 @@ model VersaoProposta {
   createdAt    DateTime       @default(now())
   createdBy    String
 
-  valoresOrcados ValorOrcadoConta[]
-  rateiosImposto RateioImpostoGrade[]
-  meta           Meta?
-  viagens        Viagem[]
+  valoresOrcados    ValorOrcadoConta[]
+  rateiosImposto    RateioImpostoGrade[]
+  meta              Meta?
+  viagens           Viagem[]
+  itensPatrimoniais ItemPatrimonial[]
 
   @@unique([tenantId, propostaId, numeroVersao])
   @@index([tenantId, propostaId, vigente])
@@ -339,7 +344,8 @@ model Meta {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  viagens Viagem[]
+  viagens           Viagem[]
+  itensPatrimoniais ItemPatrimonial[]
 
   @@index([tenantId, versaoId])
 }
@@ -389,6 +395,45 @@ model Viagem {
 
   @@index([tenantId, versaoId])
   @@index([tenantId, metaId])
+}
+
+// ADR-023 — US-110. ItemPatrimonial cobre Bens, Serviços e Equipamentos (CAPEX),
+// UC03.34-37 da Minuta V5. Estrutura análoga a Viagem (ADR-022), mas metaId é
+// nullable — obrigatório só quando Proposta.categoria=POR_META (mesma Meta 1:1
+// da versão, [[Meta]] ADR-017); sempre null em Proposta CONSOLIDADA. Validado
+// só na camada de aplicação (Prisma não suporta FK condicional).
+// contaId aceita qualquer ContaContabil.isAnalitica=true, sem filtro de grupo
+// Imobilizado/Intangível (tag de natureza CAPEX não existe no schema ainda —
+// fica para quando/se for refinada como US própria).
+// valorTotal é persistido e recalculado a cada create/update, nunca input
+// direto do usuário [ORIGEM BLINDADA], mesmo padrão de Viagem.custoEstimado.
+// Sem lock pessimista — mesma simplicidade transacional de Cargo/Viagem/Meta.
+model ItemPatrimonial {
+  id       String         @id @default(uuid())
+  tenantId String
+  versaoId String
+  versao   VersaoProposta @relation(fields: [versaoId], references: [id])
+  metaId   String?
+  meta     Meta?          @relation(fields: [metaId], references: [id])
+  contaId  String
+  conta    ContaContabil  @relation(fields: [contaId], references: [id])
+
+  descricao String // até 100 caracteres, validado na aplicação
+  data      DateTime
+
+  quantidade    Int
+  valorUnitario Decimal @db.Decimal(15, 2)
+
+  // Calculado e persistido pelo use case a cada create/update — nunca input direto.
+  valorTotal Decimal @db.Decimal(15, 2)
+
+  ativo     Boolean  @default(true) // soft delete
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, versaoId])
+  @@index([tenantId, metaId])
+  @@index([tenantId, contaId])
 }
 
 // US-007 — valor orçado de uma conta analítica (isAnalitica=true), escopado por

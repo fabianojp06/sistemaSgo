@@ -28,6 +28,9 @@ import {
   getCadastrarViagemUseCase,
   getEditarViagemUseCase,
   getExcluirViagemUseCase,
+  getCadastrarItemPatrimonialUseCase,
+  getEditarItemPatrimonialUseCase,
+  getExcluirItemPatrimonialUseCase,
 } from '@/application/use-cases/plano-contas/container';
 
 type ActionResult = { sucesso: true } | { sucesso: false; mensagem: string };
@@ -774,6 +777,96 @@ export async function configurarElegibilidadeBeneficio(input: {
         numeroDependentes: elegibilidade.numeroDependentes,
       },
     };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+export type ItemPatrimonialResultado = {
+  id: string;
+  descricao: string;
+  valorTotal: string;
+};
+
+const CadastrarItemPatrimonialSchema = z.object({
+  versaoId: z.string().min(1),
+  contaId: z.string().min(1),
+  descricao: z.string().trim().min(1).max(100),
+  data: z.coerce.date(),
+  quantidade: z.number().int().positive(),
+  valorUnitario: z.number().nonnegative(),
+});
+
+/** US-110, Cenários 1/2 — Cadastrar Item Patrimonial (Meta obrigatória apenas em Proposta POR_META). */
+export async function cadastrarItemPatrimonial(input: {
+  versaoId: string;
+  contaId: string;
+  descricao: string;
+  data: Date | string;
+  quantidade: number;
+  valorUnitario: number;
+}): Promise<ActionResultComDados<ItemPatrimonialResultado>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const entrada = CadastrarItemPatrimonialSchema.safeParse(input);
+  if (!entrada.success) {
+    return { sucesso: false, mensagem: 'Descrição, Data, Quantidade e Conta Analítica são obrigatórios.' };
+  }
+
+  try {
+    const item = await getCadastrarItemPatrimonialUseCase().execute({ ...contexto, ...entrada.data });
+    revalidatePath('/plano-contas');
+    return { sucesso: true, dados: { id: item.id, descricao: item.descricao, valorTotal: item.valorTotal.toString() } };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+const EditarItemPatrimonialSchema = z.object({
+  itemPatrimonialId: z.string().min(1),
+  contaId: z.string().min(1),
+  descricao: z.string().trim().min(1).max(100),
+  data: z.coerce.date(),
+  quantidade: z.number().int().positive(),
+  valorUnitario: z.number().nonnegative(),
+});
+
+/** US-110, Cenário 6 — Editar Item Patrimonial. Vínculos com Proposta/Meta são congelados. */
+export async function editarItemPatrimonial(input: {
+  itemPatrimonialId: string;
+  contaId: string;
+  descricao: string;
+  data: Date | string;
+  quantidade: number;
+  valorUnitario: number;
+}): Promise<ActionResultComDados<ItemPatrimonialResultado>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const entrada = EditarItemPatrimonialSchema.safeParse(input);
+  if (!entrada.success) {
+    return { sucesso: false, mensagem: 'Descrição, Data, Quantidade e Conta Analítica são obrigatórios.' };
+  }
+
+  try {
+    const item = await getEditarItemPatrimonialUseCase().execute({ ...contexto, ...entrada.data });
+    revalidatePath('/plano-contas');
+    return { sucesso: true, dados: { id: item.id, descricao: item.descricao, valorTotal: item.valorTotal.toString() } };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+/** US-110, Cenário 7 — Excluir Item Patrimonial (soft delete). */
+export async function excluirItemPatrimonial(itemPatrimonialId: string): Promise<ActionResult> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  try {
+    await getExcluirItemPatrimonialUseCase().execute({ ...contexto, itemPatrimonialId });
+    revalidatePath('/plano-contas');
+    return { sucesso: true };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
   }
