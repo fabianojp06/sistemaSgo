@@ -8,13 +8,13 @@ fica disponível em qualquer computador que clone/puxe o projeto.
 ler este arquivo para recuperar o contexto de onde o trabalho parou.
 
 **Convenção obrigatória:** todo novo registro de sessão neste arquivo deve ter o cabeçalho no
-formato `## Sessão AAAA-MM-DD — registrada às HH:MM UTC` (data e hora explícitas, obtidas do
-relógio real no momento do registro — nunca aproximadas). Sessões novas entram sempre no topo,
-logo abaixo desta convenção, mais recente primeiro.
+formato `## Sessão AAAA-MM-DD — registrada às HH:MM -03:00` (data e hora no fuso local do usuário,
+UTC-3/América-São_Paulo, obtidas do relógio real no momento do registro — nunca aproximadas).
+Sessões novas entram sempre no topo, logo abaixo desta convenção, mais recente primeiro.
 
 ---
 
-## Sessão 2026-08-04 — registrada às 13:22 UTC
+## Sessão 2026-08-04 — registrada às 10:25 -03:00
 
 Retomando de onde a sessão de 2026-08-03 parou (US-106→US-108a + US-112 concluídas, US-109
 implementada em seguida).
