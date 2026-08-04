@@ -37,6 +37,7 @@
 | 6 | **US-008a — Badge do Semáforo (MVP)** | Reavaliar assim que ao menos Empregados estiver no ar — decisão de produto já registrada: não liberar com dado parcial que passe falso senso de segurança | P (depois que a dependência existir) |
 | 7 | **Qtde. Empregado (UC03.20-23)** | Consolidação quantitativa — depende de Empregados existir primeiro | P |
 | 8 | **Benefícios (UC03.28)** | Sub-módulo de Empregados — depende de Empregados existir | P |
+| 9 | **US-111 — Criar Termo de Ajuste (UC03.13)** | Desbloqueada via ADR-025 (2026-08-04) — 2 dos 3 gaps já não existiam no schema atual (Nível 7 = `isAnalitica`; Termo de Parceria já é `TipoProposta.TERMO_DE_PARCERIA`), Gestor Master resolvido como linha de `Perfil` + workflow de 2 etapas em nova tabela `TermoAjuste`, sem migration em `Perfil`/`UsuarioPerfil` | M |
 
 ---
 
@@ -53,7 +54,6 @@
 | US/UC | Bloqueio | Condição de desbloqueio |
 |---|---|---|
 | **US-008a — Badge do Semáforo Orçamentário** (UC03.02) | Depende de `valorRealizado`, que vem da agregação dos módulos de custo (Empregados, Viagens, Bens, Rateio já parcialmente coberto) — não de execução orçamentária pública como se pensava inicialmente | Ao menos Empregados (item 1 da fila) implementado — decisão de produto pendente sobre liberar com dado parcial |
-| **US-111 — Criar Termo de Ajuste** (UC03.13, refinado 2026-08-02) | Não é duplicata de UC03.12 — redistribui saldo entre contas analíticas sem alterar valor global, com registro externo (Transferegov.br) e aprovação em dois níveis. Três bloqueios: (1) UC pede conta de Nível 7, schema atual só vai até nível 4 — precisa confirmação do usuário se é jargão legado ou gap real; (2) "Termo de Parceria" não existe como entidade, precisa de ADR do Tech Lead mapeando para `Proposta`/`OFICIALIZADA`; (3) perfil "Gestor Master" não existe em `Perfil` (mesmo achado do UC03.12) | ADR do Tech Lead + resposta do usuário sobre Nível 7 + decisão de RBAC do Gestor Master |
 
 ---
 
