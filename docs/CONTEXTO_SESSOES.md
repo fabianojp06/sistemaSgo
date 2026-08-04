@@ -71,6 +71,56 @@ Senha resetada no Clerk. **Login confirmado funcionando em produção** (`https:
 
 ---
 
+## 2026-08-04 — registrada às 10:25 -03:00 — US-110, US-113, READMEs e tradução EN-US
+
+Retomando de onde a sessão de 2026-08-03 parou (US-106→US-108a + US-112 concluídas, US-109
+implementada em seguida).
+
+**O que foi feito, em ordem:**
+
+1. Sincronização inicial + ajuste solto de versão do Prisma (`^6.3.0`→`^6.19.3`), commit `9d60db1`.
+2. **US-110 — Bens, Serviços e Equipamentos (ADR-023)**: refinada (AN/PO) → ADR-023 (Tech Lead) →
+   implementada ponta a ponta (fullstack-dev). Novo model `ItemPatrimonial`: `metaId` **opcional**
+   (obrigatório só quando `Proposta.categoria=POR_META`, diferente de `Viagem`/ADR-022, que exige
+   Meta sempre). `contaId` aceita qualquer conta analítica, sem filtro de grupo
+   "Imobilizado/Intangível" (tag não existe no schema). Exclusão sempre soft delete. Commit
+   `02c676a`.
+3. **README.md**: reescrito com layout moderno (badges, seções, arquitetura em camadas) em PT-BR
+   + nova versão `README.en-US.md`, com link cruzado entre as duas. Commit `17dc03c`.
+4. **US-113 — Qtde. Empregado (ADR-024)**: refinada (AN/PO), com achado estrutural relevante:
+   `EmpregadoHeadcount` só tinha `propostaId`, sem `metaId` — usuário decidiu corrigir o gap (não
+   simplificar a US). Segundo achado, ao acionar o dev: `CadastrarEmpregadoUseCase` bloqueava
+   totalmente Proposta `POR_META` — usuário decidiu também liberar Empregado para `POR_META` na
+   mesma rodada, para não deixar `metaId` como coluna morta. Resultado: `EmpregadoHeadcount.metaId`
+   adicionado (sem backfill — confirmado 0 registros em produção antes de migrar); novo model
+   `QtdeEmpregado` (snapshot de headcount por período e documento de respaldo, quantitativos
+   sempre calculados por COUNT, nunca input direto). Commit `3beb9fc`. 187 testes passando,
+   typecheck limpo.
+5. **Tradução EN-US da documentação**: avançou de 6/21 para 12/21 (US-006, US-007, US-008,
+   US-008a, US-101, US-102 traduzidos nesta sessão). Commits `6d33dea` e `a919afc`.
+   Já traduzidos: UC03.00, US-001 a US-008, US-008a, US-101, US-102.
+   Próximos 3: US-103, US-104, US-105.
+   Faltam depois: US-106, US-107, US-107a, US-108, US-108a, US-112 (completando os 21 da lista
+   original) — e, fora da lista original (criada depois do levantamento), a **US-113** ainda sem
+   `.en-US.md`.
+6. Criado (por engano, em local errado) um arquivo duplicado `CONTEXTO_SESSOES.md` na raiz do
+   repo — corrigido nesta mesma sessão: o conteúdo foi movido para este arquivo (o real, em
+   `docs/`) e o duplicado da raiz foi removido.
+
+**Estado do repositório ao final desta sessão:** tudo commitado e enviado a `origin/master`.
+Suíte de testes: 187 passando (`npm test`). Typecheck limpo (`npx tsc --noEmit`).
+
+**Nenhuma US refinada e desbloqueada aguardando dev no momento deste registro** — US-008a segue
+bloqueada por decisão de produto pendente (não liberar semáforo com `valorRealizado` parcial);
+US-111 (Termo de Ajuste) segue bloqueada por gaps de arquitetura (conta Nível 7, entidade Termo
+de Parceria, perfil Gestor Master).
+
+**Próximo passo combinado (menor esforço primeiro):** (1) continuar a tradução EN-US
+(US-103/104/105, depois seguir a lista); (2) traduzir a US-113 (pendente, fora da lista original);
+(3) revisitar as decisões de produto/arquitetura pendentes de US-008a/US-111 se houver novidade.
+
+---
+
 ## Como usar este arquivo em sessões futuras
 
 No início de uma sessão, se o usuário perguntar "qual o contexto/status de X", leia este arquivo antes de assumir que a memória padrão (`~/.claude/.../memory/`) está atualizada — o ambiente deste projeto (Codespace) pode ter sido recriado desde a última sessão, apagando a memória padrão sem apagar o repositório.
