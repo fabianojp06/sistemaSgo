@@ -7,9 +7,14 @@ fica disponível em qualquer computador que clone/puxe o projeto.
 **Como usar:** ao iniciar uma nova sessão em outra máquina ou outro dia, pedir para o assistente
 ler este arquivo para recuperar o contexto de onde o trabalho parou.
 
+**Convenção obrigatória:** todo novo registro de sessão neste arquivo deve ter o cabeçalho no
+formato `## Sessão AAAA-MM-DD — registrada às HH:MM UTC` (data e hora explícitas, obtidas do
+relógio real no momento do registro — nunca aproximadas). Sessões novas entram sempre no topo,
+logo abaixo desta convenção, mais recente primeiro.
+
 ---
 
-## Sessão 2026-08-04 (manhã)
+## Sessão 2026-08-04 — registrada às 13:22 UTC
 
 Retomando de onde a sessão de 2026-08-03 parou (US-106→US-108a + US-112 concluídas, US-109
 implementada em seguida).
