@@ -537,3 +537,75 @@ export class QtdeEmpregadoNaoEncontradaError extends Error {
   }
 }
 
+// US-111, RN de origem/destino [TRAVA O ERRO] — conta sintética não recebe/cede ajuste.
+export class TermoAjusteContaNaoAnaliticaError extends Error {
+  constructor() {
+    super('Selecione contas analíticas (nível folha) de origem e destino para o ajuste.');
+    this.name = 'TermoAjusteContaNaoAnaliticaError';
+  }
+}
+
+// US-111 — origem e destino não podem ser a mesma conta.
+export class TermoAjusteMesmaContaError extends Error {
+  constructor() {
+    super('Conta de origem e conta de destino não podem ser a mesma.');
+    this.name = 'TermoAjusteMesmaContaError';
+  }
+}
+
+// US-111, Cenário 2 [TRAVA O ERRO] — saldo da conta de origem insuficiente para o ajuste.
+export class TermoAjusteSaldoInsuficienteError extends Error {
+  constructor() {
+    super('Saldo insuficiente na conta de origem para o ajuste solicitado.');
+    this.name = 'TermoAjusteSaldoInsuficienteError';
+  }
+}
+
+// US-111, Cenário 3 [TRAVA O ERRO] — RN0139-equivalente: homologação não pode alterar o valor global da Proposta.
+export class TermoAjusteInvarianciaValorGlobalError extends Error {
+  constructor() {
+    super('Ajuste não preserva o valor global da Proposta.');
+    this.name = 'TermoAjusteInvarianciaValorGlobalError';
+  }
+}
+
+// US-111 — valor do ajuste deve ser positivo.
+export class TermoAjusteValorInvalidoError extends Error {
+  constructor() {
+    super('Valor Inválido: informe um valor de ajuste maior que zero.');
+    this.name = 'TermoAjusteValorInvalidoError';
+  }
+}
+
+// US-111 — Termo de Ajuste referenciado não existe (ou não pertence ao tenant).
+export class TermoAjusteNaoEncontradoError extends Error {
+  constructor() {
+    super('Termo de Ajuste não encontrado.');
+    this.name = 'TermoAjusteNaoEncontradoError';
+  }
+}
+
+// US-111, Cenário 4 [TRAVA O ERRO] — transição de status fora da ordem definida (N1 -> Gestor Master -> Homologado).
+export class TermoAjusteEstadoInvalidoError extends Error {
+  constructor(motivo: string) {
+    super(motivo);
+    this.name = 'TermoAjusteEstadoInvalidoError';
+  }
+}
+
+// US-111, Cenário 6 [TRAVA O ERRO] — usuário sem PerfilFuncionalidade de aprovação N1.
+export class TermoAjusteAcessoNegadoN1Error extends Error {
+  constructor() {
+    super('Perfil sem permissão para aprovar Termo de Ajuste (1º nível).');
+    this.name = 'TermoAjusteAcessoNegadoN1Error';
+  }
+}
+
+// US-111, Cenário 6 [TRAVA O ERRO] — usuário sem PerfilFuncionalidade de homologação do Gestor Master.
+export class TermoAjusteAcessoNegadoGestorMasterError extends Error {
+  constructor() {
+    super('Perfil sem permissão para homologar Termo de Ajuste (Gestor Master).');
+    this.name = 'TermoAjusteAcessoNegadoGestorMasterError';
+  }
+}
+

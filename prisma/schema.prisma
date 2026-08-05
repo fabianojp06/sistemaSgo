@@ -56,6 +56,10 @@ enum TipoOperacao {
   QTDE_EMPREGADO_CADASTRADA
   QTDE_EMPREGADO_EDITADA
   QTDE_EMPREGADO_EXCLUIDA
+  TERMO_AJUSTE_SOLICITADO
+  TERMO_AJUSTE_APROVADO_N1
+  TERMO_AJUSTE_HOMOLOGADO
+  TERMO_AJUSTE_REJEITADO
 }
 
 model Usuario {
@@ -207,12 +211,14 @@ model ContaContabil {
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
 
-  agrupadorItens    ContaAgrupadoraItem[]
-  valoresOrcados    ValorOrcadoConta[]
-  viagensPassagem   Viagem[]              @relation("ViagemContaPassagem")
-  viagensDiaria     Viagem[]              @relation("ViagemContaDiaria")
-  viagensTransporte Viagem[]              @relation("ViagemContaTransporte")
-  itensPatrimoniais ItemPatrimonial[]
+  agrupadorItens      ContaAgrupadoraItem[]
+  valoresOrcados      ValorOrcadoConta[]
+  viagensPassagem     Viagem[]              @relation("ViagemContaPassagem")
+  viagensDiaria       Viagem[]              @relation("ViagemContaDiaria")
+  viagensTransporte   Viagem[]              @relation("ViagemContaTransporte")
+  itensPatrimoniais   ItemPatrimonial[]
+  termosAjusteOrigem  TermoAjuste[]         @relation("TermoAjusteContaOrigem")
+  termosAjusteDestino TermoAjuste[]         @relation("TermoAjusteContaDestino")
 
   @@unique([tenantId, codigoErp])
   @@index([tenantId, nivel])
@@ -317,9 +323,42 @@ model VersaoProposta {
   meta              Meta?
   viagens           Viagem[]
   itensPatrimoniais ItemPatrimonial[]
+  termosAjuste      TermoAjuste[]
 
   @@unique([tenantId, propostaId, numeroVersao])
   @@index([tenantId, propostaId, vigente])
+}
+
+// US-111 (UC03.13, ADR-025) — redistribui saldo entre 2 ContaContabil isAnalitica=true
+// da mesma VersaoProposta, sem alterar o valor global (SUM(ValorOrcadoConta) da versão
+// é o mesmo antes/depois). Aprovação em 2 etapas via PerfilFuncionalidade — "Gestor
+// Master" é uma linha de Perfil (dado de seed), não um campo de hierarquia em Perfil
+// [decisão ADR-025, rejeitada complexidade especulativa de nivelHierarquico genérico].
+enum StatusTermoAjuste {
+  PENDENTE_APROVACAO_N1
+  PENDENTE_APROVACAO_GESTOR_MASTER
+  HOMOLOGADO
+  REJEITADO
+}
+
+model TermoAjuste {
+  id             String            @id @default(uuid())
+  tenantId       String
+  versaoId       String
+  versao         VersaoProposta    @relation(fields: [versaoId], references: [id])
+  contaOrigemId  String
+  contaOrigem    ContaContabil     @relation("TermoAjusteContaOrigem", fields: [contaOrigemId], references: [id])
+  contaDestinoId String
+  contaDestino   ContaContabil     @relation("TermoAjusteContaDestino", fields: [contaDestinoId], references: [id])
+  exercicio      Int
+  valor          Decimal           @db.Decimal(15, 2)
+  status         StatusTermoAjuste @default(PENDENTE_APROVACAO_N1)
+  createdBy      String
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([tenantId, versaoId])
+  @@index([tenantId, status])
 }
 
 // ADR-017 — US-112. Meta é 1:1 OPCIONAL por VersaoProposta: existe no máximo 1

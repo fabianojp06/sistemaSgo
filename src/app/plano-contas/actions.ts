@@ -34,6 +34,11 @@ import {
   getCadastrarQtdeEmpregadoUseCase,
   getEditarQtdeEmpregadoUseCase,
   getExcluirQtdeEmpregadoUseCase,
+  getSolicitarTermoAjusteUseCase,
+  getAprovarTermoAjusteN1UseCase,
+  getHomologarTermoAjusteUseCase,
+  getRejeitarTermoAjusteUseCase,
+  getListarTermosAjusteUseCase,
 } from '@/application/use-cases/plano-contas/container';
 
 type ActionResult = { sucesso: true } | { sucesso: false; mensagem: string };
@@ -972,6 +977,161 @@ export async function excluirQtdeEmpregado(qtdeEmpregadoId: string): Promise<Act
     await getExcluirQtdeEmpregadoUseCase().execute({ ...contexto, qtdeEmpregadoId });
     revalidatePath('/plano-contas');
     return { sucesso: true };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+const SolicitarTermoAjusteSchema = z.object({
+  versaoId: z.string().min(1),
+  contaOrigemId: z.string().min(1),
+  contaDestinoId: z.string().min(1),
+  exercicio: z.number().int().min(2000).max(2100),
+  valor: z.string().min(1),
+});
+
+export type TermoAjusteResultado = { id: string; status: string; valor: string };
+
+/** US-111 (UC03.13, ADR-025), Cenário 1 — Solicitar Termo de Ajuste entre contas analíticas. */
+export async function solicitarTermoAjuste(input: {
+  versaoId: string;
+  contaOrigemId: string;
+  contaDestinoId: string;
+  exercicio: number;
+  valor: string;
+}): Promise<ActionResultComDados<TermoAjusteResultado>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const entrada = SolicitarTermoAjusteSchema.safeParse(input);
+  if (!entrada.success) {
+    return { sucesso: false, mensagem: 'Valor Inválido: informe um valor de ajuste maior que zero.' };
+  }
+
+  try {
+    const termoAjuste = await getSolicitarTermoAjusteUseCase().execute({ ...contexto, ...entrada.data });
+    revalidatePath('/plano-contas');
+    return { sucesso: true, dados: { id: termoAjuste.id, status: termoAjuste.status, valor: termoAjuste.valor.toString() } };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+/** US-111, Cenário 4 (1ª etapa) — Aprovar Termo de Ajuste em 1º nível. */
+export async function aprovarTermoAjusteN1(
+  termoAjusteId: string,
+  tokenConcorrencia?: Date,
+): Promise<ActionResultComDados<TermoAjusteResultado>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const temPermissaoAprovarN1 = await usuarioTemFuncionalidade(
+    prisma,
+    contexto.tenantId,
+    contexto.usuarioId,
+    'termo-ajuste.aprovar-n1',
+  );
+
+  try {
+    const termoAjuste = await getAprovarTermoAjusteN1UseCase().execute({
+      ...contexto,
+      termoAjusteId,
+      temPermissaoAprovarN1,
+      tokenConcorrencia,
+    });
+    revalidatePath('/plano-contas');
+    return { sucesso: true, dados: { id: termoAjuste.id, status: termoAjuste.status, valor: '' } };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+/** US-111, Cenário 4 (2ª etapa) / Cenário 5 — Homologar Termo de Ajuste (Gestor Master). */
+export async function homologarTermoAjuste(
+  termoAjusteId: string,
+  tokenConcorrencia?: Date,
+): Promise<ActionResultComDados<TermoAjusteResultado>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const temPermissaoGestorMaster = await usuarioTemFuncionalidade(
+    prisma,
+    contexto.tenantId,
+    contexto.usuarioId,
+    'termo-ajuste.homologar-gestor-master',
+  );
+
+  try {
+    const termoAjuste = await getHomologarTermoAjusteUseCase().execute({
+      ...contexto,
+      termoAjusteId,
+      temPermissaoGestorMaster,
+      tokenConcorrencia,
+    });
+    revalidatePath('/plano-contas');
+    return { sucesso: true, dados: { id: termoAjuste.id, status: termoAjuste.status, valor: '' } };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+export type TermoAjusteListadoResultado = {
+  id: string;
+  contaOrigemLabel: string;
+  contaDestinoLabel: string;
+  exercicio: number;
+  valor: string;
+  status: string;
+  updatedAt: string;
+};
+
+/** US-111 — lista os Termos de Ajuste de uma Versão de Proposta. */
+export async function listarTermosAjuste(versaoId: string): Promise<ActionResultComDados<TermoAjusteListadoResultado[]>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  try {
+    const termos = await getListarTermosAjusteUseCase().execute(contexto.tenantId, versaoId);
+    return {
+      sucesso: true,
+      dados: termos.map((t) => ({
+        id: t.id,
+        contaOrigemLabel: t.contaOrigemLabel,
+        contaDestinoLabel: t.contaDestinoLabel,
+        exercicio: t.exercicio,
+        valor: t.valor.toString(),
+        status: t.status,
+        updatedAt: t.updatedAt.toISOString(),
+      })),
+    };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+/** US-111 — Rejeitar Termo de Ajuste (disponível na etapa N1 ou Gestor Master). */
+export async function rejeitarTermoAjuste(
+  termoAjusteId: string,
+  tokenConcorrencia?: Date,
+): Promise<ActionResultComDados<TermoAjusteResultado>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const [temPermissaoAprovarN1, temPermissaoGestorMaster] = await Promise.all([
+    usuarioTemFuncionalidade(prisma, contexto.tenantId, contexto.usuarioId, 'termo-ajuste.aprovar-n1'),
+    usuarioTemFuncionalidade(prisma, contexto.tenantId, contexto.usuarioId, 'termo-ajuste.homologar-gestor-master'),
+  ]);
+
+  try {
+    const termoAjuste = await getRejeitarTermoAjusteUseCase().execute({
+      ...contexto,
+      termoAjusteId,
+      temPermissaoAprovarN1,
+      temPermissaoGestorMaster,
+      tokenConcorrencia,
+    });
+    revalidatePath('/plano-contas');
+    return { sucesso: true, dados: { id: termoAjuste.id, status: termoAjuste.status, valor: '' } };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
   }

@@ -24,6 +24,10 @@
 | US-108 (UC03.24-27, blocos CRUD) | Empregados | `EmpregadoHeadcount` (ADR-018), só Proposta CONSOLIDADA; snapshot congelado de custo/vínculo do Cargo; migration aplicada |
 | US-107a (bloco C sem numeração do UC03.19) | Tabela Mestre de Benefícios e Encargos do Cargo | `Cargo.custoTotalCargo` (ADR-019); `diasUteisPadrao` em `ParametroSistema`; `EmpregadoHeadcount` agora herda `custoTotalCargo`; migration aplicada |
 | US-108a (UC03.28) | Elegibilidade de Benefícios do Empregado | `EmpregadoBeneficioElegibilidade` (ADR-020), 1 linha por Empregado×Benefício; Vale Transporte adicionado a `Cargo`; `EmpregadoHeadcount.numeroDependentes` deprecated; migration aplicada |
+| US-109 (UC03.29-33) | Viagens | Exclusiva de Proposta POR_META, 3 subcontas analíticas, `custoEstimado` calculado (ADR-022); migration aplicada |
+| US-110 (UC03.34-36) | Bens, Serviços e Equipamentos | `ItemPatrimonial` (ADR-023), `metaId` opcional (diferente de Viagem); migration aplicada |
+| US-113 (UC03.20-23) | Qtde. Empregado | `EmpregadoHeadcount` ganhou `metaId`, `Empregado` liberado p/ POR_META, model `QtdeEmpregado` (ADR-024); migration aplicada |
+| US-111 (UC03.13) | Criar Termo de Ajuste entre Contas Analíticas | Desbloqueada via ADR-025; nova tabela `TermoAjuste` com aprovação em 2 etapas (N1 → Gestor Master), débito/crédito atômico em `ValorOrcadoConta`, optimistic locking (padrão US-105); Perfil "Gestor Master" + 2 `Funcionalidade` seedadas; migration aplicada |
 
 ---
 
@@ -31,13 +35,7 @@
 
 | Ordem | Item | Por que é o próximo | Esforço estimado |
 |---|---|---|---|
-| 1 | **US-109 — Viagens (UC03.29-33)** | Próxima fonte de custo relevante; mesmo padrão de lançamento já validado em US-007/101 | M |
-| 2 | **US-110 — Bens, Serviços e Equipamentos (UC03.34-36)** | Completa as fontes de `valorRealizado` | M |
-| 5 | **US-110 — Bens, Serviços e Equipamentos (UC03.34-36)** | Completa as fontes de `valorRealizado`; menor volume que Empregados/Viagens | M |
-| 6 | **US-008a — Badge do Semáforo (MVP)** | Reavaliar assim que ao menos Empregados estiver no ar — decisão de produto já registrada: não liberar com dado parcial que passe falso senso de segurança | P (depois que a dependência existir) |
-| 7 | **Qtde. Empregado (UC03.20-23)** | Consolidação quantitativa — depende de Empregados existir primeiro | P |
-| 8 | **Benefícios (UC03.28)** | Sub-módulo de Empregados — depende de Empregados existir | P |
-| 9 | **US-111 — Criar Termo de Ajuste (UC03.13)** | Desbloqueada via ADR-025 (2026-08-04) — 2 dos 3 gaps já não existiam no schema atual (Nível 7 = `isAnalitica`; Termo de Parceria já é `TipoProposta.TERMO_DE_PARCERIA`), Gestor Master resolvido como linha de `Perfil` + workflow de 2 etapas em nova tabela `TermoAjuste`, sem migration em `Perfil`/`UsuarioPerfil` | M |
+| 1 | **US-008a — Badge do Semáforo (MVP)** | Empregados, Viagens e Bens já no ar — decisão de produto ainda pendente sobre liberar com Rateio de Impostos parcialmente coberto | P (aguarda decisão de produto) |
 
 ---
 

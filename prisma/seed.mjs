@@ -54,6 +54,44 @@ async function seedModuloPlanoContas() {
     update: {},
     create: { moduloId: modulo.id, chave: 'plano-contas.configurar-rateio-imposto', nome: 'Parametrizar Impostos em Proposta', tipo: 'CONTEXTUAL' },
   });
+
+  // US-111 (UC03.13, ADR-025) — aprovação em 2 etapas do Termo de Ajuste. [ADR-021] CONTEXTUAL.
+  await prisma.funcionalidade.upsert({
+    where: { moduloId_chave: { moduloId: modulo.id, chave: 'termo-ajuste.aprovar-n1' } },
+    update: {},
+    create: { moduloId: modulo.id, chave: 'termo-ajuste.aprovar-n1', nome: 'Aprovar Termo de Ajuste (1º Nível)', tipo: 'CONTEXTUAL' },
+  });
+
+  await prisma.funcionalidade.upsert({
+    where: { moduloId_chave: { moduloId: modulo.id, chave: 'termo-ajuste.homologar-gestor-master' } },
+    update: {},
+    create: { moduloId: modulo.id, chave: 'termo-ajuste.homologar-gestor-master', nome: 'Homologar Termo de Ajuste (Gestor Master)', tipo: 'CONTEXTUAL' },
+  });
+}
+
+// US-111 (ADR-025) — "Gestor Master" nasce como uma linha de Perfil por tenant, sem
+// hierarquia no schema. Recebe só a funcionalidade de homologação — a de aprovação N1
+// já chega ao Administrador automaticamente (linha 117-129, "recebe toda funcionalidade
+// ativa"), sem precisar de um 2º perfil dedicado a essa etapa.
+async function seedPerfilGestorMaster(tenantId) {
+  const perfilGestorMaster = await prisma.perfil.upsert({
+    where: { tenantId_nome: { tenantId, nome: 'Gestor Master' } },
+    update: {},
+    create: { tenantId, nome: 'Gestor Master' },
+  });
+
+  const funcionalidadeHomologar = await prisma.funcionalidade.findFirst({
+    where: { chave: 'termo-ajuste.homologar-gestor-master' },
+  });
+  if (!funcionalidadeHomologar) return;
+
+  await prisma.perfilFuncionalidade.upsert({
+    where: {
+      perfilId_funcionalidadeId: { perfilId: perfilGestorMaster.id, funcionalidadeId: funcionalidadeHomologar.id },
+    },
+    update: {},
+    create: { perfilId: perfilGestorMaster.id, funcionalidadeId: funcionalidadeHomologar.id },
+  });
 }
 
 // US-101 (ADR-014) — parâmetros fiscais globais por tenant. PIS e COFINS ficam
@@ -105,6 +143,7 @@ async function main() {
 
   for (const tenantId of tenants) {
     await seedAliquotasImposto(tenantId);
+    await seedPerfilGestorMaster(tenantId);
 
     const perfilAdministrador = await prisma.perfil.upsert({
       where: { tenantId_nome: { tenantId, nome: 'Administrador' } },

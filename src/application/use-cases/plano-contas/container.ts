@@ -38,6 +38,11 @@ import { ExcluirItemPatrimonialUseCase } from './ExcluirItemPatrimonialUseCase';
 import { CadastrarQtdeEmpregadoUseCase } from './CadastrarQtdeEmpregadoUseCase';
 import { EditarQtdeEmpregadoUseCase } from './EditarQtdeEmpregadoUseCase';
 import { ExcluirQtdeEmpregadoUseCase } from './ExcluirQtdeEmpregadoUseCase';
+import { SolicitarTermoAjusteUseCase } from './SolicitarTermoAjusteUseCase';
+import { AprovarTermoAjusteN1UseCase } from './AprovarTermoAjusteN1UseCase';
+import { HomologarTermoAjusteUseCase } from './HomologarTermoAjusteUseCase';
+import { RejeitarTermoAjusteUseCase } from './RejeitarTermoAjusteUseCase';
+import { ListarTermosAjusteUseCase } from './ListarTermosAjusteUseCase';
 
 export function getSincronizarPlanoContasUseCase(): SincronizarPlanoContasUseCase {
   return new SincronizarPlanoContasUseCase(
@@ -182,4 +187,24 @@ export function getEditarQtdeEmpregadoUseCase(): EditarQtdeEmpregadoUseCase {
 
 export function getExcluirQtdeEmpregadoUseCase(): ExcluirQtdeEmpregadoUseCase {
   return new ExcluirQtdeEmpregadoUseCase(prisma);
+}
+
+export function getSolicitarTermoAjusteUseCase(): SolicitarTermoAjusteUseCase {
+  return new SolicitarTermoAjusteUseCase(prisma);
+}
+
+export function getAprovarTermoAjusteN1UseCase(): AprovarTermoAjusteN1UseCase {
+  return new AprovarTermoAjusteN1UseCase(prisma);
+}
+
+export function getHomologarTermoAjusteUseCase(): HomologarTermoAjusteUseCase {
+  return new HomologarTermoAjusteUseCase(prisma);
+}
+
+export function getRejeitarTermoAjusteUseCase(): RejeitarTermoAjusteUseCase {
+  return new RejeitarTermoAjusteUseCase(prisma);
+}
+
+export function getListarTermosAjusteUseCase(): ListarTermosAjusteUseCase {
+  return new ListarTermosAjusteUseCase(prisma);
 }
