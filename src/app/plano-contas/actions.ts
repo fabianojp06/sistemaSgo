@@ -262,9 +262,14 @@ export async function criarVersaoProposta(
 
 const FonteAtivaSalarioSchema = z.enum(['MERCADO_MINIMO', 'MERCADO_MAXIMO', 'RUBI']);
 
+const AlocacaoPercentualSchema = z.object({
+  unidadeFuncionalId: z.string().min(1),
+  percentual: z.number().positive(),
+});
+
 const CadastrarCargoSchema = z.object({
   propostaId: z.string().min(1),
-  unidadeFuncionalId: z.string().min(1),
+  alocacoes: z.array(AlocacaoPercentualSchema).min(1),
   nomeCargoMercado: z.string().trim().min(1),
   funcaoGratificada: z.number().nonnegative().nullable().optional(),
   periodoInicio: z.coerce.date(),
@@ -280,10 +285,10 @@ export type CargoResultado = {
   salarioTotal: string;
 };
 
-/** US-107, Cenários 1-3/5 — Cadastrar Cargo vinculado a um nó Analítico da Estrutura Funcional. */
+/** US-107, Cenários 1-3/5 — Cadastrar Cargo, com rateio percentual (ADR-026, RN_EST_03) entre nós Analíticos da Estrutura Funcional. */
 export async function cadastrarCargo(input: {
   propostaId: string;
-  unidadeFuncionalId: string;
+  alocacoes: { unidadeFuncionalId: string; percentual: number }[];
   nomeCargoMercado: string;
   funcaoGratificada?: number | null;
   periodoInicio: string;
@@ -321,7 +326,7 @@ export async function cadastrarCargo(input: {
 
 const EditarCargoSchema = z.object({
   cargoId: z.string().min(1),
-  unidadeFuncionalId: z.string().min(1),
+  alocacoes: z.array(AlocacaoPercentualSchema).min(1),
   nomeCargoMercado: z.string().trim().min(1),
   funcaoGratificada: z.number().nonnegative().nullable().optional(),
   periodoInicio: z.coerce.date(),
@@ -333,10 +338,11 @@ const EditarCargoSchema = z.object({
 /**
  * US-107, Cenário 4 — Editar Cargo. Qualquer `salarioReal` enviado pelo
  * client é ignorado pelo use case (campo soberano do provider Rubi).
+ * ADR-026 — `alocacoes` substitui integralmente o rateio anterior.
  */
 export async function editarCargo(input: {
   cargoId: string;
-  unidadeFuncionalId: string;
+  alocacoes: { unidadeFuncionalId: string; percentual: number }[];
   nomeCargoMercado: string;
   funcaoGratificada?: number | null;
   periodoInicio: string;
@@ -414,6 +420,7 @@ const EditarMetaSchema = z.object({
   nome: z.string().trim().min(1),
   status: StatusMetaSchema,
   observacao: z.string().trim().max(1000).nullable().optional(),
+  tokenConcorrencia: z.coerce.date().optional(),
 });
 
 /** US-112, Cenário 6/7 — Editar Meta. Valor Global sempre recalculado no backend. */
@@ -422,6 +429,7 @@ export async function editarMeta(input: {
   nome: string;
   status: 'ATIVO' | 'INATIVO';
   observacao?: string | null;
+  tokenConcorrencia?: Date;
 }): Promise<ActionResultComDados<MetaResultado>> {
   const contexto = await usuarioAtual();
   if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
@@ -513,6 +521,7 @@ const EditarEmpregadoSchema = z.object({
   categoria: CategoriaEmpregadoSchema,
   periodoInicio: z.coerce.date(),
   periodoFim: z.coerce.date().nullable().optional(),
+  tokenConcorrencia: z.coerce.date().optional(),
 });
 
 /** US-108, Cenário 6/7 — Editar Empregado. Custo Total Mensal sempre herdado do Cargo. */
@@ -523,6 +532,7 @@ export async function editarEmpregado(input: {
   categoria: 'EMPREGADO' | 'ESTAGIARIO' | 'JOVEM_APRENDIZ';
   periodoInicio: string;
   periodoFim?: string | null;
+  tokenConcorrencia?: Date;
 }): Promise<ActionResultComDados<EmpregadoResultado>> {
   const contexto = await usuarioAtual();
   if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
@@ -684,6 +694,7 @@ const EditarViagemSchema = z.object({
   contaDiariaId: z.string().min(1),
   custoUnitarioTransporte: z.number().nonnegative(),
   contaTransporteId: z.string().min(1),
+  tokenConcorrencia: z.coerce.date().optional(),
 });
 
 /** US-109, Cenário 4 — Editar Viagem. Vínculos com Proposta/Meta são congelados. */
@@ -698,6 +709,7 @@ export async function editarViagem(input: {
   contaDiariaId: string;
   custoUnitarioTransporte: number;
   contaTransporteId: string;
+  tokenConcorrencia?: Date;
 }): Promise<ActionResultComDados<ViagemResultado>> {
   const contexto = await usuarioAtual();
   if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
@@ -838,6 +850,7 @@ const EditarItemPatrimonialSchema = z.object({
   data: z.coerce.date(),
   quantidade: z.number().int().positive(),
   valorUnitario: z.number().nonnegative(),
+  tokenConcorrencia: z.coerce.date().optional(),
 });
 
 /** US-110, Cenário 6 — Editar Item Patrimonial. Vínculos com Proposta/Meta são congelados. */
@@ -848,6 +861,7 @@ export async function editarItemPatrimonial(input: {
   data: Date | string;
   quantidade: number;
   valorUnitario: number;
+  tokenConcorrencia?: Date;
 }): Promise<ActionResultComDados<ItemPatrimonialResultado>> {
   const contexto = await usuarioAtual();
   if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
@@ -933,6 +947,7 @@ const EditarQtdeEmpregadoSchema = z.object({
   periodoInicio: z.coerce.date(),
   periodoFim: z.coerce.date(),
   numeroDocumento: z.string().trim().min(1),
+  tokenConcorrencia: z.coerce.date().optional(),
 });
 
 /** US-113, Cenários 5/6 — Editar Qtde. Empregado. Vínculos com Proposta/Meta são congelados. */
@@ -941,6 +956,7 @@ export async function editarQtdeEmpregado(input: {
   periodoInicio: Date | string;
   periodoFim: Date | string;
   numeroDocumento: string;
+  tokenConcorrencia?: Date;
 }): Promise<ActionResultComDados<QtdeEmpregadoResultado>> {
   const contexto = await usuarioAtual();
   if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };

@@ -1,6 +1,7 @@
 import type { PrismaClient, QtdeEmpregado } from '@prisma/client';
 import {
   CamposObrigatoriosQtdeEmpregadoError,
+  ConflitoConcorrenciaError,
   PeriodoQtdeEmpregadoForaDaVigenciaError,
   QtdeEmpregadoNaoEncontradaError,
   QtdeEmpregadoPropostaImutavelError,
@@ -14,6 +15,8 @@ type EditarQtdeEmpregadoInput = {
   periodoInicio: Date;
   periodoFim: Date;
   numeroDocumento: string;
+  /** US-105 — updatedAt lido pelo cliente antes de editar; se divergir do atual, é conflito. */
+  tokenConcorrencia?: Date;
 };
 
 /**
@@ -68,9 +71,17 @@ export class EditarQtdeEmpregadoUseCase {
       this.prisma.empregadoHeadcount.count({ where: { ...escopoContagem, categoria: 'JOVEM_APRENDIZ' } }),
     ]);
 
+    // US-105 — se o cliente informou o token e ele já diverge do estado lido, nem tenta:
+    // conflito é certo. Evita abrir transação para uma escrita que vamos rejeitar de qualquer forma.
+    if (input.tokenConcorrencia && input.tokenConcorrencia.getTime() !== atual.updatedAt.getTime()) {
+      throw new ConflitoConcorrenciaError();
+    }
+
     return this.prisma.$transaction(async (tx) => {
-      const qtdeEmpregado = await tx.qtdeEmpregado.update({
-        where: { id: input.qtdeEmpregadoId },
+      // Condição por updatedAt (optimistic locking, US-105) — vale mesmo sem tokenConcorrencia
+      // explícito, usando o valor que este próprio use-case acabou de ler.
+      const resultado = await tx.qtdeEmpregado.updateMany({
+        where: { id: input.qtdeEmpregadoId, updatedAt: atual.updatedAt },
         data: {
           periodoInicio: input.periodoInicio,
           periodoFim: input.periodoFim,
@@ -80,6 +91,10 @@ export class EditarQtdeEmpregadoUseCase {
           quantidadeJovemAprendiz,
         },
       });
+      if (resultado.count === 0) {
+        throw new ConflitoConcorrenciaError();
+      }
+      const qtdeEmpregado = await tx.qtdeEmpregado.findUniqueOrThrow({ where: { id: input.qtdeEmpregadoId } });
 
       await tx.historicoOperacao.create({
         data: {

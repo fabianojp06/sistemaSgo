@@ -2,6 +2,7 @@ import type { PrismaClient, Viagem } from '@prisma/client';
 import { calcularCustoEstimadoViagem } from '@/domain/plano-contas/calcularCustoEstimadoViagem';
 import {
   CamposObrigatoriosViagemError,
+  ConflitoConcorrenciaError,
   ContaViagemNaoAnaliticaError,
   VersaoPropostaInvalidaError,
   ViagemNaoEncontradaError,
@@ -20,6 +21,8 @@ type EditarViagemInput = {
   contaDiariaId: string;
   custoUnitarioTransporte: number;
   contaTransporteId: string;
+  /** US-105 — updatedAt lido pelo cliente antes de editar; se divergir do atual, é conflito. */
+  tokenConcorrencia?: Date;
 };
 
 /**
@@ -86,9 +89,17 @@ export class EditarViagemUseCase {
       custoUnitarioTransporte: input.custoUnitarioTransporte,
     });
 
+    // US-105 — se o cliente informou o token e ele já diverge do estado lido, nem tenta:
+    // conflito é certo. Evita abrir transação para uma escrita que vamos rejeitar de qualquer forma.
+    if (input.tokenConcorrencia && input.tokenConcorrencia.getTime() !== viagemAtual.updatedAt.getTime()) {
+      throw new ConflitoConcorrenciaError();
+    }
+
     return this.prisma.$transaction(async (tx) => {
-      const viagem = await tx.viagem.update({
-        where: { id: input.viagemId },
+      // Condição por updatedAt (optimistic locking, US-105) — vale mesmo sem tokenConcorrencia
+      // explícito, usando o valor que este próprio use-case acabou de ler.
+      const resultado = await tx.viagem.updateMany({
+        where: { id: input.viagemId, updatedAt: viagemAtual.updatedAt },
         data: {
           descricao,
           quantidadePessoas: input.quantidadePessoas,
@@ -102,6 +113,10 @@ export class EditarViagemUseCase {
           custoEstimado,
         },
       });
+      if (resultado.count === 0) {
+        throw new ConflitoConcorrenciaError();
+      }
+      const viagem = await tx.viagem.findUniqueOrThrow({ where: { id: input.viagemId } });
 
       await tx.historicoOperacao.create({
         data: {

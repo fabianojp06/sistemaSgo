@@ -577,7 +577,7 @@ model UnidadeFuncional {
   createdAt  DateTime                  @default(now())
   updatedAt  DateTime                  @updatedAt
 
-  cargos Cargo[]
+  alocacoesCargo CargoAlocacaoPercentual[]
 
   @@index([tenantId, propostaId])
   @@index([tenantId, propostaId, idPai])
@@ -600,8 +600,7 @@ model Cargo {
   propostaId String
   proposta   Proposta @relation(fields: [propostaId], references: [id])
 
-  unidadeFuncionalId String
-  unidadeFuncional   UnidadeFuncional @relation(fields: [unidadeFuncionalId], references: [id])
+  alocacoes CargoAlocacaoPercentual[]
 
   nomeCargoMercado  String
   codigoCargo       String // gerado internamente (CARGO-{ano}-{seq}), Read-only na UI
@@ -663,6 +662,27 @@ model Cargo {
 
   @@unique([tenantId, codigoCargo])
   @@index([tenantId, propostaId])
+}
+
+// ADR-026 — RN_EST_03 (UC03.18). Substitui o vínculo 1:1 de ADR-016
+// (Cargo.unidadeFuncionalId) por rateio percentual N:M: um Cargo pode ser
+// distribuído por múltiplas UnidadeFuncional analíticas, soma sempre 100%.
+// Soma e "só nível Analítico" (RN_EST_02) são validadas no use case a cada
+// substituição atômica do array de alocações — mesmo padrão de
+// validarVinculoNoAnalitico (ADR-016) e RN_PLA_003 (isAnalitica).
+model CargoAlocacaoPercentual {
+  id                 String           @id @default(uuid())
+  tenantId           String
+  cargoId            String
+  cargo              Cargo            @relation(fields: [cargoId], references: [id])
+  unidadeFuncionalId String
+  unidadeFuncional   UnidadeFuncional @relation(fields: [unidadeFuncionalId], references: [id])
+  percentual         Decimal          @db.Decimal(5, 2)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  @@unique([tenantId, cargoId, unidadeFuncionalId])
+  @@index([tenantId, cargoId])
   @@index([tenantId, unidadeFuncionalId])
 }
 

@@ -7,6 +7,7 @@ import {
   PropostaNaoEncontradaError,
   VersaoPropostaInvalidaError,
 } from '@/domain/plano-contas/errors';
+import { formatarVinculoFuncionalHerdado } from '@/domain/plano-contas/formatarVinculoFuncionalHerdado';
 
 type CadastrarEmpregadoInput = {
   tenantId: string;
@@ -66,7 +67,7 @@ export class CadastrarEmpregadoUseCase {
 
     const cargo = await this.prisma.cargo.findFirst({
       where: { tenantId: input.tenantId, id: input.cargoId, propostaId: input.propostaId },
-      include: { unidadeFuncional: true },
+      include: { alocacoes: { include: { unidadeFuncional: true } } },
     });
     if (!cargo) {
       throw new CargoNaoEncontradoParaEmpregadoError();
@@ -88,7 +89,7 @@ export class CadastrarEmpregadoUseCase {
           // numeroDependentes deliberadamente omitido (default 0) — deprecated
           // pelo ADR-020/US-108a; dependentes agora são por benefício em
           // EmpregadoBeneficioElegibilidade.
-          vinculoFuncionalHerdado: cargo.unidadeFuncional.nome,
+          vinculoFuncionalHerdado: formatarVinculoFuncionalHerdado(cargo.alocacoes),
           custoTotalMensal: cargo.custoTotalCargo,
         },
       });

@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 import { EditarEmpregadoUseCase } from './EditarEmpregadoUseCase';
+import { ConflitoConcorrenciaError } from '@/domain/plano-contas/errors';
 
 type PropostaMock = { id: string; tenantId: string; status: string; dataInicio: Date };
 type CargoMock = {
@@ -9,7 +10,7 @@ type CargoMock = {
   propostaId: string;
   codigoCargo: string;
   custoTotalCargo: Prisma.Decimal;
-  unidadeFuncional: { nome: string };
+  alocacoes: { percentual: number; unidadeFuncional: { nome: string } }[];
 };
 type EmpregadoMock = {
   id: string;
@@ -20,6 +21,7 @@ type EmpregadoMock = {
   vinculoFuncionalHerdado: string;
   custoTotalMensal: Prisma.Decimal;
   ativo: boolean;
+  updatedAt: Date;
 };
 
 function criarPrismaMock(empregado: EmpregadoMock, proposta: PropostaMock, cargos: CargoMock[]) {
@@ -30,9 +32,13 @@ function criarPrismaMock(empregado: EmpregadoMock, proposta: PropostaMock, cargo
       findFirst: vi.fn(({ where }: { where: { tenantId: string; id: string } }) =>
         Promise.resolve(atual.tenantId === where.tenantId && atual.id === where.id ? atual : null),
       ),
-      update: vi.fn(({ data }: { data: Partial<EmpregadoMock> }) => {
-        atual = { ...atual, ...data };
-        return Promise.resolve(atual);
+      findUniqueOrThrow: vi.fn(() => Promise.resolve(atual)),
+      updateMany: vi.fn(({ where, data }: { where: { id: string; updatedAt: Date }; data: Partial<EmpregadoMock> }) => {
+        if (atual.id !== where.id || atual.updatedAt.getTime() !== where.updatedAt.getTime()) {
+          return Promise.resolve({ count: 0 });
+        }
+        atual = { ...atual, ...data, updatedAt: new Date(atual.updatedAt.getTime() + 1) };
+        return Promise.resolve({ count: 1 });
       }),
     },
     proposta: {
@@ -58,7 +64,7 @@ const cargoOriginal: CargoMock = {
   propostaId: 'p1',
   codigoCargo: 'CARGO-2026-0001',
   custoTotalCargo: new Prisma.Decimal(6200),
-  unidadeFuncional: { nome: 'Setor de Compras' },
+  alocacoes: [{ percentual: 100, unidadeFuncional: { nome: 'Setor de Compras' } }],
 };
 const cargoNovo: CargoMock = {
   id: 'c2',
@@ -66,7 +72,7 @@ const cargoNovo: CargoMock = {
   propostaId: 'p1',
   codigoCargo: 'CARGO-2026-0003',
   custoTotalCargo: new Prisma.Decimal(7100),
-  unidadeFuncional: { nome: 'Coordenadoria Financeira' },
+  alocacoes: [{ percentual: 100, unidadeFuncional: { nome: 'Coordenadoria Financeira' } }],
 };
 
 const empregadoBase: EmpregadoMock = {
@@ -78,6 +84,7 @@ const empregadoBase: EmpregadoMock = {
   vinculoFuncionalHerdado: 'Setor de Compras',
   custoTotalMensal: new Prisma.Decimal(6200),
   ativo: true,
+  updatedAt: new Date('2026-01-01T00:00:00Z'),
 };
 
 describe('EditarEmpregadoUseCase [US-108]', () => {
@@ -119,5 +126,42 @@ describe('EditarEmpregadoUseCase [US-108]', () => {
     expect(prisma.historicoOperacao.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ tipoOperacao: 'EMPREGADO_EDITADO' }) }),
     );
+  });
+
+  it('bloqueia conflito de concorrência quando o token informado diverge do estado atual [US-105]', async () => {
+    const prisma = criarPrismaMock(empregadoBase, proposta, [cargoOriginal, cargoNovo]);
+    const useCase = new EditarEmpregadoUseCase(prisma as never);
+
+    await expect(
+      useCase.execute({
+        tenantId: 't1',
+        usuarioId: 'u1',
+        empregadoId: 'e1',
+        cargoId: 'c1',
+        nome: 'Maria da Silva Souza',
+        categoria: 'EMPREGADO',
+        periodoInicio: new Date('2026-02-01'),
+        tokenConcorrencia: new Date('2020-01-01T00:00:00Z'),
+      }),
+    ).rejects.toThrow(ConflitoConcorrenciaError);
+    expect(prisma.empregadoHeadcount.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('bloqueia conflito detectado só no updateMany (corrida real entre leitura e escrita) [US-105]', async () => {
+    const prisma = criarPrismaMock(empregadoBase, proposta, [cargoOriginal, cargoNovo]);
+    prisma.empregadoHeadcount.updateMany.mockResolvedValueOnce({ count: 0 });
+    const useCase = new EditarEmpregadoUseCase(prisma as never);
+
+    await expect(
+      useCase.execute({
+        tenantId: 't1',
+        usuarioId: 'u1',
+        empregadoId: 'e1',
+        cargoId: 'c1',
+        nome: 'Maria da Silva Souza',
+        categoria: 'EMPREGADO',
+        periodoInicio: new Date('2026-02-01'),
+      }),
+    ).rejects.toThrow(ConflitoConcorrenciaError);
   });
 });

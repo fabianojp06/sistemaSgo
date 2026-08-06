@@ -1,5 +1,10 @@
 import { Prisma, type Meta, type PrismaClient } from '@prisma/client';
-import { CamposObrigatoriosMetaError, MetaNaoEncontradaError, VersaoPropostaInvalidaError } from '@/domain/plano-contas/errors';
+import {
+  CamposObrigatoriosMetaError,
+  ConflitoConcorrenciaError,
+  MetaNaoEncontradaError,
+  VersaoPropostaInvalidaError,
+} from '@/domain/plano-contas/errors';
 
 type EditarMetaInput = {
   tenantId: string;
@@ -11,6 +16,8 @@ type EditarMetaInput = {
   observacao?: string | null;
   /** Cenário 7 — qualquer valorGlobal enviado pelo client é ignorado; sempre recalculado. */
   valorGlobal?: number | null;
+  /** US-105 — updatedAt lido pelo cliente antes de editar; se divergir do atual, é conflito. */
+  tokenConcorrencia?: Date;
 };
 
 /** US-112 — Editar Meta. Tipo é blindado (RN0140); Valor Global sempre recalculado. */
@@ -40,6 +47,12 @@ export class EditarMetaUseCase {
       );
     }
 
+    // US-105 — se o cliente informou o token e ele já diverge do estado lido, nem tenta:
+    // conflito é certo. Evita abrir transação para uma escrita que vamos rejeitar de qualquer forma.
+    if (input.tokenConcorrencia && input.tokenConcorrencia.getTime() !== metaAtual.updatedAt.getTime()) {
+      throw new ConflitoConcorrenciaError();
+    }
+
     return this.prisma.$transaction(async (tx) => {
       const { _sum } = await tx.valorOrcadoConta.aggregate({
         where: { tenantId: input.tenantId, versaoId: metaAtual.versaoId },
@@ -48,10 +61,16 @@ export class EditarMetaUseCase {
       const valorGlobal = _sum.valor ?? new Prisma.Decimal(0);
 
       // Tipo nunca é aceito aqui — RN0140, blindado após a criação.
-      const meta = await tx.meta.update({
-        where: { id: input.metaId },
+      // Condição por updatedAt (optimistic locking, US-105) — vale mesmo sem tokenConcorrencia
+      // explícito, usando o valor que este próprio use-case acabou de ler.
+      const resultado = await tx.meta.updateMany({
+        where: { id: input.metaId, updatedAt: metaAtual.updatedAt },
         data: { nome, status: input.status, observacao: input.observacao ?? null, valorGlobal },
       });
+      if (resultado.count === 0) {
+        throw new ConflitoConcorrenciaError();
+      }
+      const meta = await tx.meta.findUniqueOrThrow({ where: { id: input.metaId } });
 
       await tx.historicoOperacao.create({
         data: {

@@ -2,10 +2,12 @@ import type { CategoriaEmpregado, EmpregadoHeadcount, PrismaClient } from '@pris
 import {
   CargoNaoEncontradoParaEmpregadoError,
   CargoObrigatorioEmpregadoError,
+  ConflitoConcorrenciaError,
   EmpregadoNaoEncontradoError,
   PeriodoInicialRetroativoError,
   VersaoPropostaInvalidaError,
 } from '@/domain/plano-contas/errors';
+import { formatarVinculoFuncionalHerdado } from '@/domain/plano-contas/formatarVinculoFuncionalHerdado';
 
 type EditarEmpregadoInput = {
   tenantId: string;
@@ -18,6 +20,8 @@ type EditarEmpregadoInput = {
   periodoFim?: Date | null;
   /** Cenário 7 — qualquer valor enviado aqui é ignorado; sempre herdado do Cargo atual. */
   custoTotalMensal?: number | null;
+  /** US-105 — updatedAt lido pelo cliente antes de editar; se divergir do atual, é conflito. */
+  tokenConcorrencia?: Date;
 };
 
 /**
@@ -64,19 +68,27 @@ export class EditarEmpregadoUseCase {
     if (input.cargoId !== empregadoAtual.cargoId) {
       const novoCargo = await this.prisma.cargo.findFirst({
         where: { tenantId: input.tenantId, id: input.cargoId, propostaId: empregadoAtual.propostaId },
-        include: { unidadeFuncional: true },
+        include: { alocacoes: { include: { unidadeFuncional: true } } },
       });
       if (!novoCargo) {
         throw new CargoNaoEncontradoParaEmpregadoError();
       }
-      vinculoFuncionalHerdado = novoCargo.unidadeFuncional.nome;
+      vinculoFuncionalHerdado = formatarVinculoFuncionalHerdado(novoCargo.alocacoes);
       custoTotalMensal = novoCargo.custoTotalCargo;
       codigoCargoParaAuditoria = novoCargo.codigoCargo;
     }
 
+    // US-105 — se o cliente informou o token e ele já diverge do estado lido, nem tenta:
+    // conflito é certo. Evita abrir transação para uma escrita que vamos rejeitar de qualquer forma.
+    if (input.tokenConcorrencia && input.tokenConcorrencia.getTime() !== empregadoAtual.updatedAt.getTime()) {
+      throw new ConflitoConcorrenciaError();
+    }
+
     return this.prisma.$transaction(async (tx) => {
-      const empregado = await tx.empregadoHeadcount.update({
-        where: { id: input.empregadoId },
+      // Condição por updatedAt (optimistic locking, US-105) — vale mesmo sem tokenConcorrencia
+      // explícito, usando o valor que este próprio use-case acabou de ler.
+      const resultado = await tx.empregadoHeadcount.updateMany({
+        where: { id: input.empregadoId, updatedAt: empregadoAtual.updatedAt },
         data: {
           cargoId: input.cargoId,
           nome,
@@ -89,6 +101,10 @@ export class EditarEmpregadoUseCase {
           custoTotalMensal,
         },
       });
+      if (resultado.count === 0) {
+        throw new ConflitoConcorrenciaError();
+      }
+      const empregado = await tx.empregadoHeadcount.findUniqueOrThrow({ where: { id: input.empregadoId } });
 
       await tx.historicoOperacao.create({
         data: {

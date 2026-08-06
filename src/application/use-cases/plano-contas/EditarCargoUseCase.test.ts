@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 import { EditarCargoUseCase } from './EditarCargoUseCase';
-import { CargoNaoEncontradoError, VinculoCargoNaoAnaliticoError } from '@/domain/plano-contas/errors';
+import { CargoNaoEncontradoError, SomaAlocacaoCargoInvalidaError, VinculoCargoNaoAnaliticoError } from '@/domain/plano-contas/errors';
 import { alertaDesvioMercado } from '@/domain/plano-contas/calcularSalarioTotalCargo';
 
 type UnidadeMock = { id: string; tenantId: string; propostaId: string; tipoNivel: string };
@@ -9,13 +9,15 @@ type CargoMock = {
   id: string;
   tenantId: string;
   propostaId: string;
-  unidadeFuncionalId: string;
   codigoCargo: string;
   salarioReal: Prisma.Decimal | null;
 };
+type AlocacaoMock = { id: string; tenantId: string; cargoId: string; unidadeFuncionalId: string; percentual: number };
 
 function criarPrismaMock(unidades: UnidadeMock[], cargo: CargoMock) {
   let atual = { ...cargo };
+  let alocacoes: AlocacaoMock[] = [];
+  let idSeq = 1;
 
   const base = {
     cargo: {
@@ -28,17 +30,26 @@ function criarPrismaMock(unidades: UnidadeMock[], cargo: CargoMock) {
       }),
     },
     unidadeFuncional: {
-      findFirst: vi.fn(({ where }: { where: { id: string; tenantId: string; propostaId: string } }) =>
+      findMany: vi.fn(({ where }: { where: { id: { in: string[] }; tenantId: string; propostaId: string } }) =>
         Promise.resolve(
-          unidades.find((u) => u.id === where.id && u.tenantId === where.tenantId && u.propostaId === where.propostaId) ??
-            null,
+          unidades.filter((u) => where.id.in.includes(u.id) && u.tenantId === where.tenantId && u.propostaId === where.propostaId),
         ),
       ),
+    },
+    cargoAlocacaoPercentual: {
+      deleteMany: vi.fn(() => {
+        alocacoes = [];
+        return Promise.resolve({ count: 0 });
+      }),
+      createMany: vi.fn(({ data }: { data: Omit<AlocacaoMock, 'id'>[] }) => {
+        for (const item of data) alocacoes.push({ id: `al${idSeq++}`, ...item });
+        return Promise.resolve({ count: data.length });
+      }),
     },
     historicoOperacao: { create: vi.fn().mockResolvedValue({}) },
     $transaction: vi.fn((fn: (tx: unknown) => Promise<unknown>) => fn(base)),
   };
-  return base;
+  return { base, getAlocacoes: () => alocacoes };
 }
 
 const unidadeAnalitica: UnidadeMock = { id: 'u1', tenantId: 't1', propostaId: 'p1', tipoNivel: 'ANALITICO_SETOR' };
@@ -48,21 +59,20 @@ const cargoBase: CargoMock = {
   id: 'c1',
   tenantId: 't1',
   propostaId: 'p1',
-  unidadeFuncionalId: 'u1',
   codigoCargo: 'CARGO-2026-0001',
   salarioReal: new Prisma.Decimal(5300),
 };
 
-describe('EditarCargoUseCase [US-107]', () => {
+describe('EditarCargoUseCase [US-107, ADR-026]', () => {
   it('ignora tentativa de edição manual do Salário Real e processa o resto do update [Cenário 4]', async () => {
-    const prisma = criarPrismaMock([unidadeAnalitica], cargoBase);
-    const useCase = new EditarCargoUseCase(prisma as never);
+    const { base, getAlocacoes } = criarPrismaMock([unidadeAnalitica], cargoBase);
+    const useCase = new EditarCargoUseCase(base as never);
 
     const cargo = await useCase.execute({
       tenantId: 't1',
       usuarioId: 'u1',
       cargoId: 'c1',
-      unidadeFuncionalId: 'u1',
+      alocacoes: [{ unidadeFuncionalId: 'u1', percentual: 100 }],
       nomeCargoMercado: 'Analista de Compras Sênior',
       periodoInicio: new Date('2026-01-01'),
       salarioMercadoMinimo: 4500,
@@ -75,21 +85,22 @@ describe('EditarCargoUseCase [US-107]', () => {
     // salarioReal permanece o valor originalmente persistido (5300), nunca o injetado (99999)
     expect(cargo.salarioReal?.toString()).toBe('5300');
     expect(cargo.salarioTotal.toString()).toBe('5300');
-    expect(prisma.historicoOperacao.create).toHaveBeenCalledWith(
+    expect(getAlocacoes()).toHaveLength(1);
+    expect(base.historicoOperacao.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ tipoOperacao: 'CARGO_EDITADO' }) }),
     );
   });
 
   it('bloqueia edição ao trocar vínculo para nó Sintético [Cenário 3]', async () => {
-    const prisma = criarPrismaMock([unidadeAnalitica, unidadeSintetica], cargoBase);
-    const useCase = new EditarCargoUseCase(prisma as never);
+    const { base } = criarPrismaMock([unidadeAnalitica, unidadeSintetica], cargoBase);
+    const useCase = new EditarCargoUseCase(base as never);
 
     await expect(
       useCase.execute({
         tenantId: 't1',
         usuarioId: 'u1',
         cargoId: 'c1',
-        unidadeFuncionalId: 'u2',
+        alocacoes: [{ unidadeFuncionalId: 'u2', percentual: 100 }],
         nomeCargoMercado: 'Analista',
         periodoInicio: new Date('2026-01-01'),
         salarioMercadoMinimo: 4000,
@@ -99,16 +110,35 @@ describe('EditarCargoUseCase [US-107]', () => {
     ).rejects.toThrow(VinculoCargoNaoAnaliticoError);
   });
 
+  it('bloqueia soma de alocações diferente de 100% [RN_EST_03]', async () => {
+    const { base } = criarPrismaMock([unidadeAnalitica], cargoBase);
+    const useCase = new EditarCargoUseCase(base as never);
+
+    await expect(
+      useCase.execute({
+        tenantId: 't1',
+        usuarioId: 'u1',
+        cargoId: 'c1',
+        alocacoes: [{ unidadeFuncionalId: 'u1', percentual: 60 }],
+        nomeCargoMercado: 'Analista',
+        periodoInicio: new Date('2026-01-01'),
+        salarioMercadoMinimo: 4000,
+        salarioMercadoMaximo: 5000,
+        fonteAtiva: 'MERCADO_MINIMO',
+      }),
+    ).rejects.toThrow(SomaAlocacaoCargoInvalidaError);
+  });
+
   it('bloqueia edição de cargo inexistente', async () => {
-    const prisma = criarPrismaMock([unidadeAnalitica], cargoBase);
-    const useCase = new EditarCargoUseCase(prisma as never);
+    const { base } = criarPrismaMock([unidadeAnalitica], cargoBase);
+    const useCase = new EditarCargoUseCase(base as never);
 
     await expect(
       useCase.execute({
         tenantId: 't1',
         usuarioId: 'u1',
         cargoId: 'inexistente',
-        unidadeFuncionalId: 'u1',
+        alocacoes: [{ unidadeFuncionalId: 'u1', percentual: 100 }],
         nomeCargoMercado: 'Analista',
         periodoInicio: new Date('2026-01-01'),
         salarioMercadoMinimo: 4000,

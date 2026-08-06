@@ -2,6 +2,7 @@ import type { Cargo, FonteAtivaSalario, PrismaClient } from '@prisma/client';
 import {
   CamposObrigatoriosCargoError,
   CargoNaoEncontradoError,
+  SomaAlocacaoCargoInvalidaError,
   UnidadeFuncionalNaoEncontradaError,
   VinculoCargoNaoAnaliticoError,
   VinculoFuncionalObrigatorioError,
@@ -10,11 +11,14 @@ import { calcularSalarioTotalCargo } from '@/domain/plano-contas/calcularSalario
 
 const TIPOS_ANALITICOS = ['ANALITICO_ASSESSOR', 'ANALITICO_COORDENADORIA', 'ANALITICO_SETOR'];
 
+type AlocacaoInput = { unidadeFuncionalId: string; percentual: number };
+
 type EditarCargoInput = {
   tenantId: string;
   usuarioId: string;
   cargoId: string;
-  unidadeFuncionalId: string;
+  /** ADR-026, RN_EST_03 — substitui integralmente o rateio anterior (não é diff incremental). */
+  alocacoes: AlocacaoInput[];
   nomeCargoMercado: string;
   funcaoGratificada?: number | null;
   periodoInicio: Date;
@@ -45,8 +49,13 @@ export class EditarCargoUseCase {
       throw new CamposObrigatoriosCargoError();
     }
 
-    if (!input.unidadeFuncionalId) {
+    if (!input.alocacoes || input.alocacoes.length === 0) {
       throw new VinculoFuncionalObrigatorioError();
+    }
+
+    const somaPercentual = input.alocacoes.reduce((soma, a) => soma + a.percentual, 0);
+    if (Math.abs(somaPercentual - 100) > 0.01) {
+      throw new SomaAlocacaoCargoInvalidaError();
     }
 
     const cargoAtual = await this.prisma.cargo.findFirst({
@@ -56,14 +65,18 @@ export class EditarCargoUseCase {
       throw new CargoNaoEncontradoError();
     }
 
-    const unidade = await this.prisma.unidadeFuncional.findFirst({
-      where: { tenantId: input.tenantId, id: input.unidadeFuncionalId, propostaId: cargoAtual.propostaId },
+    const unidades = await this.prisma.unidadeFuncional.findMany({
+      where: { tenantId: input.tenantId, id: { in: input.alocacoes.map((a) => a.unidadeFuncionalId) }, propostaId: cargoAtual.propostaId },
     });
-    if (!unidade) {
-      throw new UnidadeFuncionalNaoEncontradaError();
-    }
-    if (!TIPOS_ANALITICOS.includes(unidade.tipoNivel)) {
-      throw new VinculoCargoNaoAnaliticoError();
+    const unidadesPorId = new Map(unidades.map((u) => [u.id, u]));
+    for (const alocacao of input.alocacoes) {
+      const unidade = unidadesPorId.get(alocacao.unidadeFuncionalId);
+      if (!unidade) {
+        throw new UnidadeFuncionalNaoEncontradaError();
+      }
+      if (!TIPOS_ANALITICOS.includes(unidade.tipoNivel)) {
+        throw new VinculoCargoNaoAnaliticoError();
+      }
     }
 
     // Cenário 4 — salarioReal do input é sempre descartado; usa-se o valor já
@@ -80,7 +93,6 @@ export class EditarCargoUseCase {
       const cargo = await tx.cargo.update({
         where: { id: input.cargoId },
         data: {
-          unidadeFuncionalId: input.unidadeFuncionalId,
           nomeCargoMercado: nome,
           funcaoGratificada: input.funcaoGratificada ?? null,
           periodoInicio: input.periodoInicio,
@@ -92,6 +104,18 @@ export class EditarCargoUseCase {
         },
       });
 
+      // Substituição atômica do rateio inteiro — mais simples/seguro que diff
+      // incremental para um array pequeno de N unidades (ADR-026).
+      await tx.cargoAlocacaoPercentual.deleteMany({ where: { tenantId: input.tenantId, cargoId: input.cargoId } });
+      await tx.cargoAlocacaoPercentual.createMany({
+        data: input.alocacoes.map((a) => ({
+          tenantId: input.tenantId,
+          cargoId: input.cargoId,
+          unidadeFuncionalId: a.unidadeFuncionalId,
+          percentual: a.percentual,
+        })),
+      });
+
       await tx.historicoOperacao.create({
         data: {
           tenantId: input.tenantId,
@@ -100,7 +124,7 @@ export class EditarCargoUseCase {
           descricao: `Cargo "${cargoAtual.codigoCargo} — ${nome}" editado`,
           dadosSerializados: {
             cargoId: cargo.id,
-            unidadeFuncionalId: input.unidadeFuncionalId,
+            alocacoes: input.alocacoes,
             fonteAtiva: input.fonteAtiva,
             salarioTotal: salarioTotal.toString(),
           },

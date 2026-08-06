@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import { EditarQtdeEmpregadoUseCase } from './EditarQtdeEmpregadoUseCase';
-import { QtdeEmpregadoPropostaImutavelError, SobreposicaoPeriodoQtdeEmpregadoError } from '@/domain/plano-contas/errors';
+import {
+  ConflitoConcorrenciaError,
+  QtdeEmpregadoPropostaImutavelError,
+  SobreposicaoPeriodoQtdeEmpregadoError,
+} from '@/domain/plano-contas/errors';
 
 type QtdeMock = {
   id: string;
@@ -14,6 +18,7 @@ type QtdeMock = {
   quantidadeEstagiarios: number;
   quantidadeJovemAprendiz: number;
   ativo: boolean;
+  updatedAt: Date;
 };
 type PropostaMock = { id: string; tenantId: string; status: string; dataInicio: Date; dataFim: Date };
 type HeadcountMock = { tenantId: string; propostaId: string; metaId: string | null; categoria: string; ativo: boolean };
@@ -25,9 +30,13 @@ function criarPrismaMock(qtde: QtdeMock, proposta: PropostaMock, headcounts: Hea
     qtdeEmpregado: {
       findFirst: vi.fn(() => Promise.resolve(atual.ativo ? atual : null)),
       findMany: vi.fn(() => Promise.resolve(outras.filter((e) => e.ativo))),
-      update: vi.fn(({ data }: { data: Partial<QtdeMock> }) => {
-        atual = { ...atual, ...data };
-        return Promise.resolve(atual);
+      findUniqueOrThrow: vi.fn(() => Promise.resolve(atual)),
+      updateMany: vi.fn(({ where, data }: { where: { id: string; updatedAt: Date }; data: Partial<QtdeMock> }) => {
+        if (atual.id !== where.id || atual.updatedAt.getTime() !== where.updatedAt.getTime()) {
+          return Promise.resolve({ count: 0 });
+        }
+        atual = { ...atual, ...data, updatedAt: new Date(atual.updatedAt.getTime() + 1) };
+        return Promise.resolve({ count: 1 });
       }),
     },
     proposta: {
@@ -56,6 +65,7 @@ const qtdeBase: QtdeMock = {
   quantidadeEstagiarios: 0,
   quantidadeJovemAprendiz: 0,
   ativo: true,
+  updatedAt: new Date('2026-01-01T00:00:00Z'),
 };
 const propostaRascunho: PropostaMock = { id: 'p1', tenantId: 't1', status: 'RASCUNHO', dataInicio: new Date('2026-01-01'), dataFim: new Date('2026-12-31') };
 const propostaOficializada: PropostaMock = { id: 'p1', tenantId: 't1', status: 'OFICIALIZADO', dataInicio: new Date('2026-01-01'), dataFim: new Date('2026-12-31') };
@@ -121,5 +131,40 @@ describe('EditarQtdeEmpregadoUseCase [US-113]', () => {
         numeroDocumento: 'APOST-2026-014-REV',
       }),
     ).rejects.toThrow(SobreposicaoPeriodoQtdeEmpregadoError);
+  });
+
+  it('bloqueia conflito de concorrência quando o token informado diverge do estado atual [US-105]', async () => {
+    const { base } = criarPrismaMock(qtdeBase, propostaRascunho);
+    const useCase = new EditarQtdeEmpregadoUseCase(base as never);
+
+    await expect(
+      useCase.execute({
+        tenantId: 't1',
+        usuarioId: 'u1',
+        qtdeEmpregadoId: 'q1',
+        periodoInicio: new Date('2026-01-01'),
+        periodoFim: new Date('2026-06-30'),
+        numeroDocumento: 'APOST-2026-014-REV',
+        tokenConcorrencia: new Date('2020-01-01T00:00:00Z'),
+      }),
+    ).rejects.toThrow(ConflitoConcorrenciaError);
+    expect(base.qtdeEmpregado.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('bloqueia conflito detectado só no updateMany (corrida real entre leitura e escrita) [US-105]', async () => {
+    const { base } = criarPrismaMock(qtdeBase, propostaRascunho);
+    base.qtdeEmpregado.updateMany.mockResolvedValueOnce({ count: 0 });
+    const useCase = new EditarQtdeEmpregadoUseCase(base as never);
+
+    await expect(
+      useCase.execute({
+        tenantId: 't1',
+        usuarioId: 'u1',
+        qtdeEmpregadoId: 'q1',
+        periodoInicio: new Date('2026-01-01'),
+        periodoFim: new Date('2026-06-30'),
+        numeroDocumento: 'APOST-2026-014-REV',
+      }),
+    ).rejects.toThrow(ConflitoConcorrenciaError);
   });
 });

@@ -2,6 +2,7 @@ import type { ItemPatrimonial, PrismaClient } from '@prisma/client';
 import { calcularValorTotalItemPatrimonial } from '@/domain/plano-contas/calcularValorTotalItemPatrimonial';
 import {
   CamposObrigatoriosItemPatrimonialError,
+  ConflitoConcorrenciaError,
   ContaItemPatrimonialNaoAnaliticaError,
   ItemPatrimonialNaoEncontradoError,
   QuantidadeOuValorItemPatrimonialInvalidoError,
@@ -17,6 +18,8 @@ type EditarItemPatrimonialInput = {
   data: Date;
   quantidade: number;
   valorUnitario: number;
+  /** US-105 — updatedAt lido pelo cliente antes de editar; se divergir do atual, é conflito. */
+  tokenConcorrencia?: Date;
 };
 
 /**
@@ -65,9 +68,17 @@ export class EditarItemPatrimonialUseCase {
 
     const valorTotal = calcularValorTotalItemPatrimonial(input.quantidade, input.valorUnitario);
 
+    // US-105 — se o cliente informou o token e ele já diverge do estado lido, nem tenta:
+    // conflito é certo. Evita abrir transação para uma escrita que vamos rejeitar de qualquer forma.
+    if (input.tokenConcorrencia && input.tokenConcorrencia.getTime() !== itemAtual.updatedAt.getTime()) {
+      throw new ConflitoConcorrenciaError();
+    }
+
     return this.prisma.$transaction(async (tx) => {
-      const item = await tx.itemPatrimonial.update({
-        where: { id: input.itemPatrimonialId },
+      // Condição por updatedAt (optimistic locking, US-105) — vale mesmo sem tokenConcorrencia
+      // explícito, usando o valor que este próprio use-case acabou de ler.
+      const resultado = await tx.itemPatrimonial.updateMany({
+        where: { id: input.itemPatrimonialId, updatedAt: itemAtual.updatedAt },
         data: {
           descricao,
           data: input.data,
@@ -77,6 +88,10 @@ export class EditarItemPatrimonialUseCase {
           valorTotal,
         },
       });
+      if (resultado.count === 0) {
+        throw new ConflitoConcorrenciaError();
+      }
+      const item = await tx.itemPatrimonial.findUniqueOrThrow({ where: { id: input.itemPatrimonialId } });
 
       await tx.historicoOperacao.create({
         data: {

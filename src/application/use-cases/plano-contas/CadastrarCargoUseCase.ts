@@ -2,6 +2,7 @@ import type { Cargo, FonteAtivaSalario, PrismaClient } from '@prisma/client';
 import {
   CamposObrigatoriosCargoError,
   CodigoCargoGeracaoFalhouError,
+  SomaAlocacaoCargoInvalidaError,
   UnidadeFuncionalNaoEncontradaError,
   VinculoCargoNaoAnaliticoError,
   VinculoFuncionalObrigatorioError,
@@ -17,11 +18,14 @@ const MAX_TENTATIVAS_CODIGO = 5;
 // (Diretoria/Gerência) existem apenas para consolidar.
 const TIPOS_ANALITICOS = ['ANALITICO_ASSESSOR', 'ANALITICO_COORDENADORIA', 'ANALITICO_SETOR'];
 
+type AlocacaoInput = { unidadeFuncionalId: string; percentual: number };
+
 type CadastrarCargoInput = {
   tenantId: string;
   usuarioId: string;
   propostaId: string;
-  unidadeFuncionalId: string;
+  /** ADR-026, RN_EST_03 — rateio percentual entre unidades funcionais analíticas, soma sempre 100. */
+  alocacoes: AlocacaoInput[];
   nomeCargoMercado: string;
   funcaoGratificada?: number | null;
   periodoInicio: Date;
@@ -50,20 +54,30 @@ export class CadastrarCargoUseCase {
       throw new CamposObrigatoriosCargoError();
     }
 
-    // Cenário 2 [TRAVA O ERRO] — vínculo funcional é obrigatório.
-    if (!input.unidadeFuncionalId) {
+    // Cenário 2 [TRAVA O ERRO] — vínculo funcional é obrigatório (RN_EST_01).
+    if (!input.alocacoes || input.alocacoes.length === 0) {
       throw new VinculoFuncionalObrigatorioError();
     }
 
-    const unidade = await this.prisma.unidadeFuncional.findFirst({
-      where: { tenantId: input.tenantId, id: input.unidadeFuncionalId, propostaId: input.propostaId },
-    });
-    if (!unidade) {
-      throw new UnidadeFuncionalNaoEncontradaError();
+    // RN_EST_03 [TRAVA O ERRO] — soma das alocações deve ser exatamente 100%.
+    const somaPercentual = input.alocacoes.reduce((soma, a) => soma + a.percentual, 0);
+    if (Math.abs(somaPercentual - 100) > 0.01) {
+      throw new SomaAlocacaoCargoInvalidaError();
     }
-    // Cenário 3 [TRAVA O ERRO] — só nó Analítico aceita vínculo de Cargo.
-    if (!TIPOS_ANALITICOS.includes(unidade.tipoNivel)) {
-      throw new VinculoCargoNaoAnaliticoError();
+
+    const unidades = await this.prisma.unidadeFuncional.findMany({
+      where: { tenantId: input.tenantId, id: { in: input.alocacoes.map((a) => a.unidadeFuncionalId) }, propostaId: input.propostaId },
+    });
+    const unidadesPorId = new Map(unidades.map((u) => [u.id, u]));
+    for (const alocacao of input.alocacoes) {
+      const unidade = unidadesPorId.get(alocacao.unidadeFuncionalId);
+      if (!unidade) {
+        throw new UnidadeFuncionalNaoEncontradaError();
+      }
+      // Cenário 3 [TRAVA O ERRO] — só nó Analítico aceita vínculo de Cargo (RN_EST_02), linha a linha.
+      if (!TIPOS_ANALITICOS.includes(unidade.tipoNivel)) {
+        throw new VinculoCargoNaoAnaliticoError();
+      }
     }
 
     // RN_CAR_03 — Salário Real vem exclusivamente do provider Rubi (fixture por ora).
@@ -88,7 +102,6 @@ export class CadastrarCargoUseCase {
             data: {
               tenantId: input.tenantId,
               propostaId: input.propostaId,
-              unidadeFuncionalId: input.unidadeFuncionalId,
               nomeCargoMercado: nome,
               codigoCargo,
               funcaoGratificada: input.funcaoGratificada ?? null,
@@ -103,6 +116,15 @@ export class CadastrarCargoUseCase {
             },
           });
 
+          await tx.cargoAlocacaoPercentual.createMany({
+            data: input.alocacoes.map((a) => ({
+              tenantId: input.tenantId,
+              cargoId: cargo.id,
+              unidadeFuncionalId: a.unidadeFuncionalId,
+              percentual: a.percentual,
+            })),
+          });
+
           await tx.historicoOperacao.create({
             data: {
               tenantId: input.tenantId,
@@ -112,7 +134,7 @@ export class CadastrarCargoUseCase {
               dadosSerializados: {
                 cargoId: cargo.id,
                 propostaId: input.propostaId,
-                unidadeFuncionalId: input.unidadeFuncionalId,
+                alocacoes: input.alocacoes,
                 fonteAtiva: input.fonteAtiva,
                 salarioTotal: salarioTotal.toString(),
               },

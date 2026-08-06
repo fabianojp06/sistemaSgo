@@ -289,6 +289,14 @@ export class UnidadeFuncionalNaoEncontradaError extends Error {
   }
 }
 
+// ADR-026, RN_EST_03 [TRAVA O ERRO] — soma das alocações percentuais de um cargo deve ser exatamente 100%.
+export class SomaAlocacaoCargoInvalidaError extends Error {
+  constructor() {
+    super('A soma dos percentuais de alocação do cargo entre unidades funcionais deve ser exatamente 100%.');
+    this.name = 'SomaAlocacaoCargoInvalidaError';
+  }
+}
+
 // US-107 — Cargo referenciado não existe (ou não pertence ao tenant).
 export class CargoNaoEncontradoError extends Error {
   constructor() {
