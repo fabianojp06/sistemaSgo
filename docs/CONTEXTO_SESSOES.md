@@ -317,6 +317,86 @@ padrão).
 
 ---
 
+## 2026-08-06 (14h18–21h11 UTC) — US-116/US-117 (Organograma+Cargos), ADR-028 e 3 rodadas de feedback de teste HML
+
+Sessão longa: retomou o item (a) da fila anterior (UI de Cargo/UnidadeFuncional) e depois
+processou 3 rodadas de feedback de teste manual do usuário na tela de Empregados, cada uma
+passando pelas skills corretas (`analista-negocios-po`/`techlead-fsg` para decisão,
+`fullstack-dev` para código), conforme a regra obrigatória de roteamento por skill do CLAUDE.md.
+
+**0. Correção de CI (antes de tudo):** os últimos 4 commits estavam falhando no GitHub Actions
+por um erro de lint (`react/no-unescaped-entities`, aspas retas dentro de JSX em
+`EmpregadoPanel.tsx`). Corrigido e enviado (`abad823`) antes de iniciar qualquer trabalho novo.
+
+**1. US-116/US-117 implementadas** (fullstack-dev): nova tela `/propostas/{id}/estrutura`
+(fora do catch-all de US-115, mesmo padrão de ciclo de vida por Proposta já decidido). Sub-abas
+Organograma (`OrganogramaPanel.tsx`, cria/inativa `UnidadeFuncional`) e Cargos (`CargoPanel.tsx`,
+cadastra/edita `Cargo` com rateio percentual `CargoAlocacaoPercentual` + benefícios). De
+passagem, corrigido um stub antigo: `InativarUnidadeFuncionalUseCase.contarCargosVinculados()`
+sempre retornava 0 com um comentário dizendo "trocar quando `Cargo` existir" — `Cargo` já existe
+desde a US-107, então a checagem RN_EST_04 (bloquear inativação com cargo vinculado) nunca
+funcionava de verdade. Corrigido para consultar `CargoAlocacaoPercentual` de fato. Nova
+`Funcionalidade` CONTEXTUAL `propostas.gerenciar-estrutura`. Commit `347b7ef`.
+
+**2. Feedback de teste #1 (`docs/testeHml/empregados.docx`):** 3 pontos — (a) precisa lançar
+quantidade de vagas por Cargo, não só 1 por vez → formalizado como **US-108b**; (b) 2 botões de
+salvar no Cargo (dados + benefícios) → **ADR-028** decidiu manter os use cases separados
+(`CadastrarCargoUseCase`/`ConfigurarBeneficiosCargoUseCase`, não fundir) e orquestrar só na
+Server Action (`salvarCargoCompleto`), com contrato de erro parcial (Cargo salvo mesmo se
+Benefícios falhar); (c) dúvida de UX sobre onde o custo do Empregado aparece na Conta Contábil —
+não era gap de cálculo (já somava certo em `CalcularValorRealizadoUseCase`), era falta de
+exibição. US-108b + ADR-028 + ajuste de UI implementados juntos, commit `96fce36`.
+
+**3. Feedback de teste #2 (`docs/testeHml/empregados1.docx`):** após validar US-108b (11 vagas
+lançadas em lote com sucesso), 2 pontos novos — (a) consolidação de Qtde. Empregado devia
+mostrar um valor total (quantidade × custo × tempo de contrato) → formalizado como **US-113b**,
+com fórmula de overlap de período por Empregado (não é multiplicação simples, cada Empregado do
+lote pode ter período diferente); (b) reforço do ponto (c) anterior. Implementado: nova função
+pura `calcularValorTotalConsolidado.ts`, campo `QtdeEmpregado.valorTotalConsolidado`, exibição
+de Conta Contábil + total mensal na tela. Commit `ab22790`.
+
+**4. Bug de ambiente descoberto e resolvido 2x nesta sessão:** depois de cada `prisma migrate
+dev` + restart do dev server, a tela quebrava com `PrismaClientValidationError: Unknown field`
+mesmo com o client já regenerado e a migration já aplicada no Supabase. Causa raiz: o comando
+`pkill -f "next dev"` **não mata o processo real do Turbopack**, que roda com o nome
+`next-server`, não `next dev` — um processo antigo ficava vivo na porta 3000 servindo o Prisma
+Client velho, mesmo depois de "reiniciar". Correção: sempre matar por `ps aux | grep
+"next-server"` (pelo PID real), nunca confiar em `pkill -f "next dev"`. **Registrar isso é
+importante para não perder tempo de novo:** se aparecer erro de campo desconhecido do Prisma
+depois de uma migration, o primeiro suspeito é processo `next-server` órfão, não o schema.
+
+**5. Feedback de teste #3 (direto no chat, sem docx):** 2 pedidos novos — (a) Número do
+Documento da consolidação devia ser gerado automaticamente, não digitado, formato `C-XXX`
+(prefixo + 3 dígitos, sequencial **por Proposta** — confirmado com o usuário via pergunta direta,
+já que Por Proposta vs. por Tenant era ambíguo); (b) lista de Empregados precisa virar árvore
+agrupada por Cargo (expandir/recolher), em vez de lista plana. Implementado (fullstack-dev,
+sem passar por PO desta vez — specs já vieram fechadas do usuário): nova função pura
+`gerarNumeroDocumentoQtdeEmpregado.ts` (mesmo padrão de `gerarCodigoCargo`/`gerarCodigoProposta`,
+retry em colisão via `isUniqueConstraintError`), novo `@@unique([tenantId, propostaId,
+numeroDocumento])` em `QtdeEmpregado` (precisou resolver um conflito de dados de teste
+pré-existente — dois documentos "003" soft-deleted — antes de aplicar a constraint), componente
+`EmpregadosPorCargoArvore` em `EmpregadoPanel.tsx`. Commit `d2951d2`.
+
+**Migrations aplicadas em produção nesta sessão (todas no Supabase real, não simulado):**
+`add_empregados_lote_cadastrado_enum`, `add_qtde_empregado_valor_total_consolidado`,
+`add_qtde_empregado_numero_documento_unique`. A última precisou ser criada/aplicada manualmente
+(`prisma db execute` + `prisma migrate resolve --applied`) porque `prisma migrate dev` recusa
+rodar em ambiente não-interativo quando detecta risco de perda de dados (mesmo já resolvido) —
+não há flag de bypass, esse é o caminho manual correto quando isso acontecer de novo.
+
+**Estado do repositório ao final desta sessão:** tudo commitado e enviado a `origin/master`
+(`d2951d2`, HEAD). 239 testes passando, `tsc --noEmit` limpo, lint limpo. Dev server local
+testado pelo usuário via navegador real (Codespace), não só build/tsc — primeira vez nesta
+sessão longa de trabalho que houve teste manual de UI de verdade, com 3 rodadas de bugs/gaps
+reais encontrados e corrigidos no mesmo dia.
+
+**Próximo passo combinado:** nenhum item novo priorizado na fila — a sessão foi guiada por
+feedback de teste reativo, não por backlog. Se o usuário continuar testando, próxima ação
+provável é uma 4ª rodada de feedback na mesma tela de Empregados ou expansão para outras guias
+(Viagens, Bens, Rateio de Impostos) que ainda não passaram por teste manual real.
+
+---
+
 ## Como usar este arquivo em sessões futuras
 
 No início de uma sessão, se o usuário perguntar "qual o contexto/status de X", leia este arquivo antes de assumir que a memória padrão (`~/.claude/.../memory/`) está atualizada — o ambiente deste projeto (Codespace) pode ter sido recriado desde a última sessão, apagando a memória padrão sem apagar o repositório.
