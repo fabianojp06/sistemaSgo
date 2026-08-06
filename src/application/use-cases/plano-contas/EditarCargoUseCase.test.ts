@@ -46,6 +46,9 @@ function criarPrismaMock(unidades: UnidadeMock[], cargo: CargoMock) {
         return Promise.resolve({ count: data.length });
       }),
     },
+    contaContabil: {
+      findFirst: vi.fn().mockResolvedValue({ isAnalitica: true }),
+    },
     historicoOperacao: { create: vi.fn().mockResolvedValue({}) },
     $transaction: vi.fn((fn: (tx: unknown) => Promise<unknown>) => fn(base)),
   };
@@ -72,6 +75,7 @@ describe('EditarCargoUseCase [US-107, ADR-026]', () => {
       tenantId: 't1',
       usuarioId: 'u1',
       cargoId: 'c1',
+      contaId: 'conta1',
       alocacoes: [{ unidadeFuncionalId: 'u1', percentual: 100 }],
       nomeCargoMercado: 'Analista de Compras Sênior',
       periodoInicio: new Date('2026-01-01'),
@@ -100,6 +104,7 @@ describe('EditarCargoUseCase [US-107, ADR-026]', () => {
         tenantId: 't1',
         usuarioId: 'u1',
         cargoId: 'c1',
+      contaId: 'conta1',
         alocacoes: [{ unidadeFuncionalId: 'u2', percentual: 100 }],
         nomeCargoMercado: 'Analista',
         periodoInicio: new Date('2026-01-01'),
@@ -119,6 +124,7 @@ describe('EditarCargoUseCase [US-107, ADR-026]', () => {
         tenantId: 't1',
         usuarioId: 'u1',
         cargoId: 'c1',
+      contaId: 'conta1',
         alocacoes: [{ unidadeFuncionalId: 'u1', percentual: 60 }],
         nomeCargoMercado: 'Analista',
         periodoInicio: new Date('2026-01-01'),
@@ -138,6 +144,7 @@ describe('EditarCargoUseCase [US-107, ADR-026]', () => {
         tenantId: 't1',
         usuarioId: 'u1',
         cargoId: 'inexistente',
+      contaId: 'conta1',
         alocacoes: [{ unidadeFuncionalId: 'u1', percentual: 100 }],
         nomeCargoMercado: 'Analista',
         periodoInicio: new Date('2026-01-01'),

@@ -91,6 +91,7 @@ export class CadastrarEmpregadoUseCase {
           // EmpregadoBeneficioElegibilidade.
           vinculoFuncionalHerdado: formatarVinculoFuncionalHerdado(cargo.alocacoes),
           custoTotalMensal: cargo.custoTotalCargo,
+          contaId: cargo.contaId, // ADR-027 — snapshot herdado, mesmo padrão de vinculoFuncionalHerdado
         },
       });
 

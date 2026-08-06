@@ -111,6 +111,7 @@ export class DuplicarPropostaUseCase {
                 tenantId: input.tenantId,
                 versaoId: novaVersao.id,
                 aliquotaParametroId: r.aliquotaParametroId,
+                contaId: r.contaId,
                 competencia: r.competencia,
                 valorDeclarado: r.valorDeclarado,
                 aliquotaAplicadaSnapshot: r.aliquotaAplicadaSnapshot,

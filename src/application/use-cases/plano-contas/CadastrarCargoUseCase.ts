@@ -2,6 +2,7 @@ import type { Cargo, FonteAtivaSalario, PrismaClient } from '@prisma/client';
 import {
   CamposObrigatoriosCargoError,
   CodigoCargoGeracaoFalhouError,
+  ContaCargoNaoAnaliticaError,
   SomaAlocacaoCargoInvalidaError,
   UnidadeFuncionalNaoEncontradaError,
   VinculoCargoNaoAnaliticoError,
@@ -26,6 +27,8 @@ type CadastrarCargoInput = {
   propostaId: string;
   /** ADR-026, RN_EST_03 — rateio percentual entre unidades funcionais analíticas, soma sempre 100. */
   alocacoes: AlocacaoInput[];
+  /** ADR-027 — natureza da despesa (ex: "Despesa com Pessoal"); 1 conta analítica fixa por Cargo. */
+  contaId: string;
   nomeCargoMercado: string;
   funcaoGratificada?: number | null;
   periodoInicio: Date;
@@ -80,6 +83,15 @@ export class CadastrarCargoUseCase {
       }
     }
 
+    // ADR-027 [TRAVA O ERRO] — conta precisa existir, pertencer ao tenant e ser analítica.
+    const conta = await this.prisma.contaContabil.findFirst({
+      where: { tenantId: input.tenantId, id: input.contaId },
+      select: { isAnalitica: true },
+    });
+    if (!conta?.isAnalitica) {
+      throw new ContaCargoNaoAnaliticaError();
+    }
+
     // RN_CAR_03 — Salário Real vem exclusivamente do provider Rubi (fixture por ora).
     const salarioReal = await this.rubiProvider.buscarSalarioReal(nome);
 
@@ -102,6 +114,7 @@ export class CadastrarCargoUseCase {
             data: {
               tenantId: input.tenantId,
               propostaId: input.propostaId,
+              contaId: input.contaId,
               nomeCargoMercado: nome,
               codigoCargo,
               funcaoGratificada: input.funcaoGratificada ?? null,

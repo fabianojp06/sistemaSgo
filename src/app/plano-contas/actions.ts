@@ -271,6 +271,7 @@ const AlocacaoPercentualSchema = z.object({
 const CadastrarCargoSchema = z.object({
   propostaId: z.string().min(1),
   alocacoes: z.array(AlocacaoPercentualSchema).min(1),
+  contaId: z.string().min(1),
   nomeCargoMercado: z.string().trim().min(1),
   funcaoGratificada: z.number().nonnegative().nullable().optional(),
   periodoInicio: z.coerce.date(),
@@ -290,6 +291,7 @@ export type CargoResultado = {
 export async function cadastrarCargo(input: {
   propostaId: string;
   alocacoes: { unidadeFuncionalId: string; percentual: number }[];
+  contaId: string;
   nomeCargoMercado: string;
   funcaoGratificada?: number | null;
   periodoInicio: string;
@@ -328,6 +330,7 @@ export async function cadastrarCargo(input: {
 const EditarCargoSchema = z.object({
   cargoId: z.string().min(1),
   alocacoes: z.array(AlocacaoPercentualSchema).min(1),
+  contaId: z.string().min(1),
   nomeCargoMercado: z.string().trim().min(1),
   funcaoGratificada: z.number().nonnegative().nullable().optional(),
   periodoInicio: z.coerce.date(),
@@ -344,6 +347,7 @@ const EditarCargoSchema = z.object({
 export async function editarCargo(input: {
   cargoId: string;
   alocacoes: { unidadeFuncionalId: string; percentual: number }[];
+  contaId: string;
   nomeCargoMercado: string;
   funcaoGratificada?: number | null;
   periodoInicio: string;

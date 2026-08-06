@@ -617,3 +617,21 @@ export class TermoAjusteAcessoNegadoGestorMasterError extends Error {
   }
 }
 
+
+// ADR-027 — Cargo precisa de uma ContaContabil analítica (natureza da despesa,
+// ex: "Despesa com Pessoal"), independente do rateio percentual entre
+// UnidadeFuncional (organograma, ADR-026 — dimensões independentes).
+export class ContaCargoNaoAnaliticaError extends Error {
+  constructor() {
+    super('Selecione uma conta analítica (nível folha) para o cargo.');
+    this.name = 'ContaCargoNaoAnaliticaError';
+  }
+}
+
+// ADR-027 — Rateio de Impostos precisa de uma ContaContabil analítica por linha.
+export class ContaRateioImpostoNaoAnaliticaError extends Error {
+  constructor() {
+    super('Selecione uma conta analítica (nível folha) para o rateio de imposto.');
+    this.name = 'ContaRateioImpostoNaoAnaliticaError';
+  }
+}

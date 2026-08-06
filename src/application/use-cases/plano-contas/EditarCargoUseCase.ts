@@ -2,6 +2,7 @@ import type { Cargo, FonteAtivaSalario, PrismaClient } from '@prisma/client';
 import {
   CamposObrigatoriosCargoError,
   CargoNaoEncontradoError,
+  ContaCargoNaoAnaliticaError,
   SomaAlocacaoCargoInvalidaError,
   UnidadeFuncionalNaoEncontradaError,
   VinculoCargoNaoAnaliticoError,
@@ -19,6 +20,8 @@ type EditarCargoInput = {
   cargoId: string;
   /** ADR-026, RN_EST_03 — substitui integralmente o rateio anterior (não é diff incremental). */
   alocacoes: AlocacaoInput[];
+  /** ADR-027 — natureza da despesa (ex: "Despesa com Pessoal"); 1 conta analítica fixa por Cargo. */
+  contaId: string;
   nomeCargoMercado: string;
   funcaoGratificada?: number | null;
   periodoInicio: Date;
@@ -79,6 +82,15 @@ export class EditarCargoUseCase {
       }
     }
 
+    // ADR-027 [TRAVA O ERRO] — conta precisa existir, pertencer ao tenant e ser analítica.
+    const conta = await this.prisma.contaContabil.findFirst({
+      where: { tenantId: input.tenantId, id: input.contaId },
+      select: { isAnalitica: true },
+    });
+    if (!conta?.isAnalitica) {
+      throw new ContaCargoNaoAnaliticaError();
+    }
+
     // Cenário 4 — salarioReal do input é sempre descartado; usa-se o valor já
     // persistido (soberano do provider Rubi).
     const salarioTotal = calcularSalarioTotalCargo({
@@ -94,6 +106,7 @@ export class EditarCargoUseCase {
         where: { id: input.cargoId },
         data: {
           nomeCargoMercado: nome,
+          contaId: input.contaId,
           funcaoGratificada: input.funcaoGratificada ?? null,
           periodoInicio: input.periodoInicio,
           salarioMercadoMinimo: input.salarioMercadoMinimo,

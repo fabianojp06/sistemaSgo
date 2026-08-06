@@ -3,6 +3,14 @@ import { calcularCorSemaforo, LIMIARES_SEMAFORO_PADRAO, type CorSemaforo } from 
 
 type ContaHierarquia = { id: string; idPai: string | null; isAnalitica: boolean };
 
+/**
+ * ADR-027 — nenhuma fonte de custo conhecida está sem contaId hoje. Mantido
+ * como constante (em vez de excluir a lógica de `parcial`) para que a próxima
+ * fonte de custo que nascer sem vínculo com ContaContabil vire `true` aqui,
+ * em vez de o badge silenciosamente reportar 100% de cobertura de novo.
+ */
+const HA_FONTE_DE_CUSTO_SEM_CONTA_CONHECIDA = false;
+
 export type BadgeSemaforoConta = {
   contaId: string;
   valorOrcado: Prisma.Decimal;
@@ -10,26 +18,24 @@ export type BadgeSemaforoConta = {
   percentual: number | null; // null quando valorOrcado = 0 (sem base de comparação)
   cor: CorSemaforo | null;
   /**
-   * US-008a — verdadeiro enquanto valorRealizado não incluir Empregados nem
-   * Rateio de Impostos (ver nota no topo do arquivo). Herdado por contas
-   * sintéticas se qualquer folha descendente estiver parcial.
+   * US-008a — true quando valorRealizado desta conta (ou de algum descendente,
+   * se sintética) não inclui todas as fontes de custo conhecidas do sistema.
+   * Salvaguarda extensível: `FONTES_COBERTAS` lista as fontes já somadas em
+   * `somarValorRealizadoPorConta`; se uma nova fonte de custo for adicionada
+   * ao sistema sem ganhar vínculo com ContaContabil (repetindo o gap fechado
+   * pela ADR-027), adicione-a como pendente aqui em vez de deixar o badge
+   * mentir silenciosamente.
    */
   parcial: boolean;
 };
 
 /**
- * US-008a (ADR-013, decisão AN/PO 2026-08-06) — Badge do Semáforo Orçamentário.
+ * US-008a (ADR-013) + ADR-027 (2026-08-06) — Badge do Semáforo Orçamentário.
  *
- * ACHADO DE IMPLEMENTAÇÃO (reportado ao Tech Lead/AN-PO): a decisão de produto
- * previa somar Empregado + Viagem + ItemPatrimonial + RateioImpostoGrade por
- * `contaId`. Na prática, só `Viagem` (contaPassagem/contaDiaria/contaTransporte)
- * e `ItemPatrimonial.contaId` têm vínculo com `ContaContabil` no schema atual.
- * `EmpregadoHeadcount`/`Cargo` só se vinculam a `UnidadeFuncional` (organograma,
- * ADR-015), nunca a `ContaContabil`; `RateioImpostoGrade` é escopado só por
- * `versaoId`, sem `contaId`. Por isso `valorRealizado` aqui soma apenas
- * Viagem+ItemPatrimonial, e `parcial` é sempre `true` até uma ADR decidir como
- * (ou se) atribuir custo de Empregados e Rateio de Impostos a uma conta
- * analítica específica.
+ * ADR-027 fechou o gap original: Cargo/EmpregadoHeadcount (herdado do Cargo)
+ * e RateioImpostoGrade ganharam `contaId` obrigatório, junto de Viagem e
+ * ItemPatrimonial. As 4 fontes de custo hoje conhecidas no sistema estão
+ * cobertas — `parcial` deixou de ser `true` fixo.
  */
 export class CalcularValorRealizadoUseCase {
   constructor(private readonly prisma: PrismaClient) {}
@@ -136,6 +142,30 @@ export class CalcularValorRealizadoUseCase {
       soma(item.contaId, item.valorTotal);
     }
 
+    // ADR-027 — Empregado não tem versaoId direto (escopado por Proposta); a
+    // conta é o snapshot herdado do Cargo no momento do vínculo.
+    const versao = await this.prisma.versaoProposta.findFirst({
+      where: { tenantId, id: versaoId },
+      select: { propostaId: true },
+    });
+    if (versao) {
+      const empregados = await this.prisma.empregadoHeadcount.findMany({
+        where: { tenantId, propostaId: versao.propostaId, ativo: true },
+        select: { contaId: true, custoTotalMensal: true },
+      });
+      for (const empregado of empregados) {
+        soma(empregado.contaId, empregado.custoTotalMensal);
+      }
+    }
+
+    const rateiosImposto = await this.prisma.rateioImpostoGrade.findMany({
+      where: { tenantId, versaoId, ativo: true },
+      select: { contaId: true, valorDeclarado: true },
+    });
+    for (const rateio of rateiosImposto) {
+      soma(rateio.contaId, rateio.valorDeclarado);
+    }
+
     return porConta;
   }
 
@@ -152,10 +182,8 @@ export class CalcularValorRealizadoUseCase {
     if (conta.isAnalitica) {
       return {
         orcado: valorOrcadoPorConta.get(contaId) ?? new Prisma.Decimal(0),
-        // ACHADO: sempre parcial — Empregados e Rateio de Impostos não são
-        // atribuíveis a uma ContaContabil no schema atual (ver comentário da classe).
         realizado: valorRealizadoPorConta.get(contaId) ?? new Prisma.Decimal(0),
-        parcial: true,
+        parcial: HA_FONTE_DE_CUSTO_SEM_CONTA_CONHECIDA,
       };
     }
 

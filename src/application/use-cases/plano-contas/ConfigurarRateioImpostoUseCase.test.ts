@@ -82,6 +82,9 @@ function criarPrismaMock(versoes: VersaoMock[], aliquotas: AliquotaMock[], ratei
         return Promise.resolve({ count: 1 });
       }),
     },
+    contaContabil: {
+      findFirst: vi.fn().mockResolvedValue({ isAnalitica: true }),
+    },
     historicoOperacao: { create: vi.fn().mockResolvedValue({}) },
     $transaction: vi.fn((fn: (tx: unknown) => Promise<unknown>) => fn(base)),
   };
@@ -111,6 +114,7 @@ describe('ConfigurarRateioImpostoUseCase [US-101]', () => {
       usuarioId: 'u1',
       versaoId: 'v1',
       aliquotaParametroId: 'a-pis',
+        contaId: 'conta1',
       competencia: new Date('2026-01-01'),
       valorDeclarado: '1000.00',
     });
@@ -132,6 +136,7 @@ describe('ConfigurarRateioImpostoUseCase [US-101]', () => {
         usuarioId: 'u1',
         versaoId: 'v1',
         aliquotaParametroId: 'a-pis',
+        contaId: 'conta1',
         competencia: new Date('2026-01-01'),
         valorDeclarado: '-1',
       }),
@@ -148,6 +153,7 @@ describe('ConfigurarRateioImpostoUseCase [US-101]', () => {
         usuarioId: 'u1',
         versaoId: 'v3',
         aliquotaParametroId: 'a-pis',
+        contaId: 'conta1',
         competencia: new Date('2026-01-01'),
         valorDeclarado: '100',
       }),
@@ -164,6 +170,7 @@ describe('ConfigurarRateioImpostoUseCase [US-101]', () => {
         usuarioId: 'u1',
         versaoId: 'v2',
         aliquotaParametroId: 'a-pis',
+        contaId: 'conta1',
         competencia: new Date('2026-01-01'),
         valorDeclarado: '100',
       }),
@@ -179,6 +186,7 @@ describe('ConfigurarRateioImpostoUseCase [US-101]', () => {
       usuarioId: 'u1',
       versaoId: 'v2',
       aliquotaParametroId: 'a-iss',
+      contaId: 'conta1',
       competencia: new Date('2026-01-01'),
       valorDeclarado: '50',
     });
@@ -210,6 +218,7 @@ describe('ConfigurarRateioImpostoUseCase [US-101]', () => {
         usuarioId: 'u1',
         versaoId: 'v1',
         aliquotaParametroId: 'a-pis',
+        contaId: 'conta1',
         competencia: new Date('2026-01-01'),
         valorDeclarado: '200',
         tokenConcorrencia: tokenAntigo,
@@ -241,6 +250,7 @@ describe('ConfigurarRateioImpostoUseCase [US-101]', () => {
         usuarioId: 'u1',
         versaoId: 'v1',
         aliquotaParametroId: 'a-pis',
+        contaId: 'conta1',
         competencia: new Date('2026-01-01'),
         valorDeclarado: '200',
       }),

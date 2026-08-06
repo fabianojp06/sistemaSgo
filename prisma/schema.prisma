@@ -219,6 +219,9 @@ model ContaContabil {
   itensPatrimoniais   ItemPatrimonial[]
   termosAjusteOrigem  TermoAjuste[]         @relation("TermoAjusteContaOrigem")
   termosAjusteDestino TermoAjuste[]         @relation("TermoAjusteContaDestino")
+  cargos              Cargo[]
+  empregados          EmpregadoHeadcount[]
+  rateiosImposto      RateioImpostoGrade[]
 
   @@unique([tenantId, codigoErp])
   @@index([tenantId, nivel])
@@ -538,6 +541,10 @@ model RateioImpostoGrade {
   versao                   VersaoProposta           @relation(fields: [versaoId], references: [id])
   aliquotaParametroId      String
   aliquotaParametro        AliquotaImpostoParametro @relation(fields: [aliquotaParametroId], references: [id])
+  // ADR-027 — 1 conta analítica por linha de rateio (mesma granularidade
+  // de aliquotaParametroId x competencia).
+  contaId                  String
+  conta                    ContaContabil            @relation(fields: [contaId], references: [id])
   competencia              DateTime
   valorDeclarado           Decimal                  @db.Decimal(15, 2)
   aliquotaAplicadaSnapshot Decimal                  @db.Decimal(5, 2)
@@ -601,6 +608,12 @@ model Cargo {
   proposta   Proposta @relation(fields: [propostaId], references: [id])
 
   alocacoes CargoAlocacaoPercentual[]
+
+  // ADR-027 — natureza da despesa (ex: "Despesa com Pessoal"), 1 conta
+  // analítica fixa por Cargo. Independente de `alocacoes` (organograma):
+  // são dimensões distintas, plano de contas x estrutura funcional.
+  contaId String
+  conta   ContaContabil @relation(fields: [contaId], references: [id])
 
   nomeCargoMercado  String
   codigoCargo       String // gerado internamente (CARGO-{ano}-{seq}), Read-only na UI
@@ -736,6 +749,12 @@ model EmpregadoHeadcount {
   // Snapshot herdado do Cargo — recalculado só na criação e na troca de cargoId.
   vinculoFuncionalHerdado String
   custoTotalMensal        Decimal @db.Decimal(15, 2)
+
+  // ADR-027 — snapshot de Cargo.contaId, mesma regra de congelamento de
+  // vinculoFuncionalHerdado/custoTotalMensal: só recalculado na criação e na
+  // troca de cargoId, nunca editável diretamente.
+  contaId String
+  conta   ContaContabil @relation(fields: [contaId], references: [id])
 
   ativo     Boolean  @default(true) // soft delete
   createdAt DateTime @default(now())

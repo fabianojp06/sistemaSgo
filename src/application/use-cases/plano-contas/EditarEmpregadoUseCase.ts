@@ -63,6 +63,7 @@ export class EditarEmpregadoUseCase {
     // é preservado, não recarregado do Cargo (ADR-018 — congelado por padrão).
     let vinculoFuncionalHerdado = empregadoAtual.vinculoFuncionalHerdado;
     let custoTotalMensal = empregadoAtual.custoTotalMensal;
+    let contaId = empregadoAtual.contaId;
     let codigoCargoParaAuditoria = input.cargoId;
 
     if (input.cargoId !== empregadoAtual.cargoId) {
@@ -75,6 +76,7 @@ export class EditarEmpregadoUseCase {
       }
       vinculoFuncionalHerdado = formatarVinculoFuncionalHerdado(novoCargo.alocacoes);
       custoTotalMensal = novoCargo.custoTotalCargo;
+      contaId = novoCargo.contaId; // ADR-027 — snapshot recalculado só na troca de cargo
       codigoCargoParaAuditoria = novoCargo.codigoCargo;
     }
 
@@ -99,6 +101,7 @@ export class EditarEmpregadoUseCase {
           // ADR-020/US-108a; dependentes agora são por benefício.
           vinculoFuncionalHerdado,
           custoTotalMensal,
+          contaId,
         },
       });
       if (resultado.count === 0) {

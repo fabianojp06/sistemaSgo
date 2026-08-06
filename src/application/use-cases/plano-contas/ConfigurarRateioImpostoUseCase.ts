@@ -2,6 +2,7 @@ import { Prisma, type PrismaClient } from '@prisma/client';
 import {
   AliquotaImpostoNaoEncontradaError,
   ConflitoConcorrenciaError,
+  ContaRateioImpostoNaoAnaliticaError,
   ImpostoNaoDisponivelParaTipoPropostaError,
   ValorOrcadoInvalidoError,
   VersaoOficializadaCongeladaError,
@@ -13,6 +14,8 @@ type ConfigurarRateioImpostoInput = {
   usuarioId: string;
   versaoId: string;
   aliquotaParametroId: string;
+  /** ADR-027 — 1 conta analítica por linha de rateio. */
+  contaId: string;
   competencia: Date;
   valorDeclarado: Prisma.Decimal.Value;
   /** US-105 — updatedAt lido pelo cliente antes de editar; se divergir do atual, é conflito. */
@@ -57,6 +60,15 @@ export class ConfigurarRateioImpostoUseCase {
       throw new ImpostoNaoDisponivelParaTipoPropostaError();
     }
 
+    // ADR-027 [TRAVA O ERRO] — conta precisa existir, pertencer ao tenant e ser analítica.
+    const conta = await this.prisma.contaContabil.findFirst({
+      where: { tenantId: input.tenantId, id: input.contaId },
+      select: { isAnalitica: true },
+    });
+    if (!conta?.isAnalitica) {
+      throw new ContaRateioImpostoNaoAnaliticaError();
+    }
+
     const registroAnterior = await this.prisma.rateioImpostoGrade.findUnique({
       where: {
         tenantId_versaoId_aliquotaParametroId_competencia: {
@@ -86,6 +98,7 @@ export class ConfigurarRateioImpostoUseCase {
             tenantId: input.tenantId,
             versaoId: input.versaoId,
             aliquotaParametroId: input.aliquotaParametroId,
+            contaId: input.contaId,
             competencia: input.competencia,
             valorDeclarado: valor,
             aliquotaAplicadaSnapshot: aliquotaParametro.aliquotaPct,
@@ -97,7 +110,12 @@ export class ConfigurarRateioImpostoUseCase {
         // explícito, usando o valor que este próprio use-case acabou de ler.
         const resultado = await tx.rateioImpostoGrade.updateMany({
           where: { id: registroAnterior.id, updatedAt: registroAnterior.updatedAt },
-          data: { valorDeclarado: valor, aliquotaAplicadaSnapshot: aliquotaParametro.aliquotaPct, ativo: true },
+          data: {
+            valorDeclarado: valor,
+            aliquotaAplicadaSnapshot: aliquotaParametro.aliquotaPct,
+            ativo: true,
+            contaId: input.contaId,
+          },
         });
         if (resultado.count === 0) {
           throw new ConflitoConcorrenciaError();
