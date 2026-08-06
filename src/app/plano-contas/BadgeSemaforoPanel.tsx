@@ -1,4 +1,5 @@
 import { getCalcularValorRealizadoUseCase } from '@/application/use-cases/plano-contas/container';
+import { ColumnChartRanking } from './ColumnChartRanking';
 
 type ContaOpcao = { id: string; label: string };
 
@@ -8,6 +9,20 @@ const COR_CLASSE: Record<string, string> = {
   LARANJA: 'bg-orange-100 text-orange-800',
   VERMELHO: 'bg-red-100 text-red-800',
 };
+
+// Mesmas cores de status usadas nos badges da lista — o gráfico reforça o status, não é identidade categórica.
+const COR_HEX: Record<string, string> = {
+  VERDE: '#16a34a',
+  AMARELO: '#eab308',
+  LARANJA: '#f97316',
+  VERMELHO: '#dc2626',
+};
+const COR_SEM_VALOR_HEX = '#d1d5db';
+
+const formatadorMoeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+function formatarMoeda(valor: number | string): string {
+  return formatadorMoeda.format(Number(valor));
+}
 
 /**
  * US-008a (ADR-013) + ADR-027 — Badge do Semáforo Orçamentário por conta
@@ -33,37 +48,68 @@ export async function BadgeSemaforoPanel({
     contasAnaliticas.map((c) => c.id),
   );
 
+  // Ranking do gráfico — mesmo Map já retornado pelo use case, sem cálculo novo.
+  // Cor de cada coluna = status do semáforo daquela conta (mesma cor do badge na lista abaixo).
+  const colunasRanking = contasAnaliticas
+    .map((conta) => {
+      const badge = badges.get(conta.id);
+      if (!badge) return null;
+      return {
+        id: conta.id,
+        label: conta.label,
+        valor: badge.valorRealizado.toNumber(),
+        cor: badge.cor ? COR_HEX[badge.cor] : COR_SEM_VALOR_HEX,
+      };
+    })
+    .filter((c): c is NonNullable<typeof c> => c !== null);
+
   return (
-    <div className="flex flex-col gap-2 rounded border p-4">
-      <h3 className="font-medium">Semáforo Orçamentário</h3>
-      <ul className="flex flex-col gap-1">
-        {contasAnaliticas.map((conta) => {
-          const badge = badges.get(conta.id);
-          if (!badge) return null;
-          return (
-            <li key={conta.id} className="flex items-center gap-2 text-sm">
-              <span className="text-gray-700">{conta.label}</span>
-              {badge.cor ? (
-                <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${COR_CLASSE[badge.cor]}`}>
-                  {badge.percentual?.toFixed(1)}% — {badge.cor}
-                </span>
-              ) : (
-                <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">
-                  Sem valor orçado
-                </span>
-              )}
-              {badge.parcial && (
-                <span
-                  className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600"
-                  title="Valor aproximado — nem todas as fontes de custo conhecidas foram incluídas."
-                >
-                  aproximado
-                </span>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+    <div className="flex flex-col gap-6 rounded-xl bg-slate-50 p-4 md:p-6">
+      {colunasRanking.length > 0 && (
+        <ColumnChartRanking titulo="Ranking de Contas — Valor Realizado" colunas={colunasRanking} formatarValor={formatarMoeda} />
+      )}
+
+      <div className="overflow-hidden rounded-lg border border-gray-100 bg-white shadow-sm">
+        <div className="border-b bg-slate-50 px-4 py-2.5">
+          <h3 className="text-sm font-semibold text-slate-800">Semáforo Orçamentário — por Conta Analítica</h3>
+        </div>
+        <ul className="divide-y">
+          {contasAnaliticas.map((conta) => {
+            const badge = badges.get(conta.id);
+            if (!badge) return null;
+            return (
+              <li key={conta.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm hover:bg-slate-100">
+                <span className="text-slate-700">{conta.label}</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="tabular-nums text-xs text-gray-500">
+                    Valor Realizado: {formatarMoeda(badge.valorRealizado.toString())}
+                  </span>
+                  {badge.cor ? (
+                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${COR_CLASSE[badge.cor]}`}>
+                      {badge.percentual?.toFixed(1)}% — {badge.cor}
+                    </span>
+                  ) : (
+                    <span
+                      className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600"
+                      title="Não há Valor Orçado cadastrado para esta conta — sem base de comparação para calcular o percentual/cor do semáforo. O Valor Realizado acima está correto e não depende disso."
+                    >
+                      Valor Orçado: não cadastrado
+                    </span>
+                  )}
+                  {badge.parcial && (
+                    <span
+                      className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600"
+                      title="Valor aproximado — nem todas as fontes de custo conhecidas foram incluídas."
+                    >
+                      aproximado
+                    </span>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
     </div>
   );
 }

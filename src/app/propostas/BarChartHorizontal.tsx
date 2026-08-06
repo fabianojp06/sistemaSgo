@@ -2,14 +2,14 @@
 
 import { useState } from 'react';
 
-type Barra = { id: string; label: string; valor: number };
+type Barra = { id: string; label: string; valor: number; cor: string };
 
 /**
  * Gráfico de barras horizontais interativo (SVG puro, sem dependência nova).
- * Cor: azul validado (slot categórico 1 da paleta, ver skill dataviz —
- * `node scripts/validate_palette.js "#2a78d6" --mode light` → PASS). Uso de
- * hue único porque cada barra já é identificada pelo rótulo no eixo — não é
- * comparação de múltiplas séries, então não precisa de legenda.
+ * Cada barra recebe sua própria cor (identidade por Cargo) — paleta categórica
+ * validada pela skill dataviz, atribuída pelo chamador (ver EmpregadoPanel.tsx,
+ * ResumoConsolidacao) para ficar consistente entre os dois gráficos da tela.
+ * Identidade já reforçada pelo rótulo no eixo, então não precisa de legenda.
  */
 export function BarChartHorizontal({
   titulo,
@@ -76,7 +76,8 @@ export function BarChartHorizontal({
                 width={Math.max(largura, 2)}
                 height={20}
                 rx={4}
-                fill={ativo ? '#1c5cab' : '#2a78d6'}
+                fill={barra.cor}
+                style={ativo ? { filter: 'brightness(0.85)' } : undefined}
               />
 
               <text

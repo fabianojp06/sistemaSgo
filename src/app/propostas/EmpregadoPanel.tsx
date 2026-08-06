@@ -20,11 +20,83 @@ function formatarMoeda(valor: number | string): string {
   return formatadorMoeda.format(Number(valor));
 }
 
+// Paleta categórica validada pela skill dataviz — ordem fixa (mecanismo de segurança
+// para daltonismo, não embaralhar). Ciclo de 8 hues, repete além disso via módulo.
+const PALETA_CATEGORICA = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#4a3aa7', '#e34948'];
+function corPorCargo(cargoId: string, cargos: CargoOpcao[]): string {
+  const indice = cargos.findIndex((c) => c.id === cargoId);
+  return PALETA_CATEGORICA[(indice < 0 ? 0 : indice) % PALETA_CATEGORICA.length];
+}
+
 const LABEL_CATEGORIA: Record<EmpregadoListado['categoria'], string> = {
   EMPREGADO: 'Empregado',
   ESTAGIARIO: 'Estagiário',
   JOVEM_APRENDIZ: 'Jovem Aprendiz',
 };
+
+// Ícones minimalistas inline — sem dependência de biblioteca de ícones (não instalada no projeto).
+function IconePessoas() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-5 w-5">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="10" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function IconeMoeda() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-5 w-5">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v10M9 9.5c0-1.4 1.34-2.5 3-2.5s3 1.1 3 2.5-1.34 2-3 2-3 .6-3 2 1.34 2.5 3 2.5 3-1.1 3-2.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+function IconeCalendario() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-5 w-5">
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M3 10h18M8 3v4M16 3v4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Faixa executiva (dashboard financeiro) com os 3 KPIs principais da tela. */
+function ResumoExecutivo({
+  totalEmpregados,
+  totalMensal,
+  valorTotalConsolidadoMaisRecente,
+}: {
+  totalEmpregados: number;
+  totalMensal: number;
+  valorTotalConsolidadoMaisRecente: string | null;
+}) {
+  const kpis = [
+    { icone: <IconePessoas />, label: 'Total de Empregados', valor: String(totalEmpregados) },
+    { icone: <IconeMoeda />, label: 'Custo Mensal Total', valor: `${formatarMoeda(totalMensal)}/mês` },
+    {
+      icone: <IconeCalendario />,
+      label: 'Valor Total do Período',
+      valor: valorTotalConsolidadoMaisRecente ? formatarMoeda(valorTotalConsolidadoMaisRecente) : '—',
+    },
+  ];
+
+  return (
+    <div className="rounded-xl bg-slate-900 p-5 shadow-md md:p-6">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-3 md:gap-4">
+        {kpis.map((kpi) => (
+          <div key={kpi.label} className="flex items-start gap-3">
+            <span className="mt-0.5 text-slate-400">{kpi.icone}</span>
+            <div>
+              <p className="text-xs font-medium tracking-wide text-slate-400">{kpi.label}</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums text-amber-400">{kpi.valor}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function NovoEmpregadoForm({
   propostaId,
@@ -86,8 +158,8 @@ function NovoEmpregadoForm({
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded border p-4">
-      <h4 className="text-sm font-medium">Novo Empregado</h4>
+    <div className="flex flex-col gap-3 rounded-lg border border-gray-100 bg-white p-4 shadow-sm md:p-5">
+      <h4 className="text-sm font-semibold text-slate-800">Novo Empregado</h4>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-600">Cargo</label>
@@ -155,19 +227,15 @@ function agruparPorCargo(empregados: EmpregadoListado[]): Map<string, EmpregadoL
   return grupos;
 }
 
-/** Resumo visual: cards de KPI + tabela "Por Cargo" — mesma fonte de dados da árvore, sem cálculo novo. */
+/** Resumo visual: tabela + gráficos "Por Cargo" — mesma fonte de dados da árvore, sem cálculo novo. */
 function ResumoConsolidacao({
   empregados,
   cargos,
   totalMensal,
-  valorTotalConsolidadoMaisRecente,
-  totalEmpregadosMaisRecente,
 }: {
   empregados: EmpregadoListado[];
   cargos: CargoOpcao[];
   totalMensal: number;
-  valorTotalConsolidadoMaisRecente: string | null;
-  totalEmpregadosMaisRecente: number | null;
 }) {
   const cargoLabelPorId = new Map(cargos.map((c) => [c.id, c.label]));
   const grupos = agruparPorCargo(empregados);
@@ -182,64 +250,45 @@ function ResumoConsolidacao({
     };
   });
 
+  if (linhas.length === 0) return null;
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-        <div className="rounded border p-4">
-          <p className="text-xs text-gray-500">Total de Empregados</p>
-          <p className="text-2xl font-semibold">{totalEmpregadosMaisRecente ?? empregados.length}</p>
-        </div>
-        <div className="rounded border p-4">
-          <p className="text-xs text-gray-500">Custo Mensal Total</p>
-          <p className="text-2xl font-semibold">{formatarMoeda(totalMensal)}/mês</p>
-        </div>
-        <div className="rounded border p-4">
-          <p className="text-xs text-gray-500">Valor Total do Período</p>
-          <p className="text-2xl font-semibold">
-            {valorTotalConsolidadoMaisRecente ? formatarMoeda(valorTotalConsolidadoMaisRecente) : '—'}
-          </p>
-        </div>
+      <div className="overflow-x-auto rounded-lg border border-gray-100 bg-white shadow-sm">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b bg-slate-50 text-left text-xs text-gray-500">
+              <th className="px-4 py-2.5 font-medium">Por Cargo</th>
+              <th className="px-4 py-2.5 font-medium">Qtde</th>
+              <th className="px-4 py-2.5 font-medium">R$/mês</th>
+              <th className="px-4 py-2.5 font-medium">%</th>
+            </tr>
+          </thead>
+          <tbody>
+            {linhas.map((linha) => (
+              <tr key={linha.cargoId} className="border-b last:border-0 hover:bg-slate-100">
+                <td className="px-4 py-2.5">{linha.label}</td>
+                <td className="px-4 py-2.5 tabular-nums">{linha.quantidade}</td>
+                <td className="px-4 py-2.5 tabular-nums">{formatarMoeda(linha.subtotal)}</td>
+                <td className="px-4 py-2.5 tabular-nums">{linha.percentual.toFixed(0)}%</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
-      {linhas.length > 0 && (
-        <div className="overflow-x-auto rounded border">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-gray-50 text-left text-xs text-gray-500">
-                <th className="px-3 py-2 font-medium">Por Cargo</th>
-                <th className="px-3 py-2 font-medium">Qtde</th>
-                <th className="px-3 py-2 font-medium">R$/mês</th>
-                <th className="px-3 py-2 font-medium">%</th>
-              </tr>
-            </thead>
-            <tbody>
-              {linhas.map((linha) => (
-                <tr key={linha.cargoId} className="border-b last:border-0">
-                  <td className="px-3 py-2">{linha.label}</td>
-                  <td className="px-3 py-2">{linha.quantidade}</td>
-                  <td className="px-3 py-2">{formatarMoeda(linha.subtotal)}</td>
-                  <td className="px-3 py-2">{linha.percentual.toFixed(0)}%</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {linhas.length > 0 && (
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-          <BarChartHorizontal
-            titulo="Custo Mensal por Cargo"
-            barras={linhas.map((l) => ({ id: l.cargoId, label: l.label, valor: l.subtotal }))}
-            formatarValor={formatarMoeda}
-          />
-          <BarChartHorizontal
-            titulo="Quantidade de Empregados por Cargo"
-            barras={linhas.map((l) => ({ id: l.cargoId, label: l.label, valor: l.quantidade }))}
-            formatarValor={(v) => String(v)}
-          />
-        </div>
-      )}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <BarChartHorizontal
+          titulo="Custo Mensal por Cargo"
+          barras={linhas.map((l) => ({ id: l.cargoId, label: l.label, valor: l.subtotal, cor: corPorCargo(l.cargoId, cargos) }))}
+          formatarValor={formatarMoeda}
+        />
+        <BarChartHorizontal
+          titulo="Quantidade de Empregados por Cargo"
+          barras={linhas.map((l) => ({ id: l.cargoId, label: l.label, valor: l.quantidade, cor: corPorCargo(l.cargoId, cargos) }))}
+          formatarValor={(v) => String(v)}
+        />
+      </div>
     </div>
   );
 }
@@ -275,7 +324,7 @@ function EmpregadosPorCargoArvore({
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded border">
+    <div className="flex flex-col overflow-hidden rounded-lg border border-gray-100 bg-white shadow-sm">
       {[...grupos.entries()].map(([cargoId, empregadosDoCargo]) => {
         const aberto = expandidos.has(cargoId);
         const subtotal = empregadosDoCargo.reduce((soma, e) => soma + Number(e.custoTotalMensal), 0);
@@ -284,19 +333,20 @@ function EmpregadosPorCargoArvore({
             <button
               type="button"
               onClick={() => alternarExpandido(cargoId)}
-              className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-gray-50"
+              className="flex w-full items-center justify-between px-4 py-3 text-left text-sm hover:bg-slate-100"
             >
-              <span className="font-medium">
-                {aberto ? '▾' : '▸'} {cargoLabelPorId.get(cargoId) ?? 'Cargo não encontrado'}
+              <span className="font-medium text-slate-800">
+                <span className="mr-1.5 inline-block text-slate-400">{aberto ? '▾' : '▸'}</span>
+                {cargoLabelPorId.get(cargoId) ?? 'Cargo não encontrado'}
               </span>
-              <span className="text-xs text-gray-500">
+              <span className="text-xs tabular-nums text-gray-500">
                 {empregadosDoCargo.length} empregado(s) — {formatarMoeda(subtotal)}/mês
               </span>
             </button>
             {aberto && (
-              <ul className="divide-y border-t bg-gray-50">
+              <ul className="divide-y border-t bg-slate-50/60">
                 {empregadosDoCargo.map((empregado) => (
-                  <li key={empregado.id} className="flex items-center justify-between gap-2 px-6 py-2 text-sm">
+                  <li key={empregado.id} className="flex items-center justify-between gap-2 px-8 py-2.5 text-sm">
                     <div>
                       <span className="font-medium">{empregado.nome}</span>{' '}
                       <span className="text-xs text-gray-500">
@@ -309,7 +359,7 @@ function EmpregadosPorCargoArvore({
                         type="button"
                         onClick={() => onExcluir(empregado.id)}
                         disabled={pending}
-                        className="rounded border px-2 py-1 text-xs text-red-700 disabled:opacity-50"
+                        className="rounded-md border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50"
                       >
                         Excluir
                       </button>
@@ -355,8 +405,8 @@ function NovaQtdeEmpregadoForm({
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded border p-4">
-      <h4 className="text-sm font-medium">Novo Documento de Consolidação (Qtde. Empregado)</h4>
+    <div className="flex flex-col gap-3 rounded-lg border border-gray-100 bg-white p-4 shadow-sm md:p-5">
+      <h4 className="text-sm font-semibold text-slate-800">Novo Documento de Consolidação (Qtde. Empregado)</h4>
       <p className="text-xs text-gray-500">O Número do Documento é gerado automaticamente (formato C-XXX, sequencial por Proposta).</p>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <div>
@@ -423,9 +473,21 @@ export function EmpregadoPanel({
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 rounded-xl bg-slate-50 p-4 md:p-6">
+      <ResumoExecutivo
+        totalEmpregados={qtdeEmpregados.at(-1)?.quantidadeEmpregados ?? empregados.length}
+        totalMensal={totalMensal}
+        // Documento mais recente = último do array (não há ordenação explícita hoje; ver excluirDocumento abaixo).
+        valorTotalConsolidadoMaisRecente={qtdeEmpregados.at(-1)?.valorTotalConsolidado ?? null}
+      />
+
       <div className="flex flex-col gap-3">
-        <h3 className="font-medium">Empregados</h3>
+        <h3 className="flex items-center gap-2 font-semibold text-slate-800">
+          <span className="text-slate-400">
+            <IconePessoas />
+          </span>
+          Empregados
+        </h3>
         <NovoEmpregadoForm
           propostaId={propostaId}
           cargos={cargos}
@@ -450,36 +512,35 @@ export function EmpregadoPanel({
       </div>
 
       <div className="flex flex-col gap-3">
-        <h3 className="font-medium">Qtde. Empregado (Consolidação — somente leitura, gerada a partir dos Empregados lançados acima)</h3>
+        <h3 className="flex items-center gap-2 font-semibold text-slate-800">
+          <span className="text-slate-400">
+            <IconeCalendario />
+          </span>
+          Qtde. Empregado (Consolidação — somente leitura, gerada a partir dos Empregados lançados acima)
+        </h3>
         <p className="text-xs text-gray-500">
           Este documento resume, por período, quantos Empregados/Estagiários/Jovens Aprendizes ativos existem nesta Proposta. O
           lançamento de vagas/pessoas fica na seção Empregados, acima — os totais abaixo são calculados automaticamente, não digitados.
         </p>
-        <ResumoConsolidacao
-          empregados={empregados}
-          cargos={cargos}
-          totalMensal={totalMensal}
-          // Documento mais recente = último do array (não há ordenação explícita hoje; ver excluirDocumento acima).
-          valorTotalConsolidadoMaisRecente={qtdeEmpregados.at(-1)?.valorTotalConsolidado ?? null}
-          totalEmpregadosMaisRecente={qtdeEmpregados.at(-1)?.quantidadeEmpregados ?? null}
-        />
+        <ResumoConsolidacao empregados={empregados} cargos={cargos} totalMensal={totalMensal} />
         <NovaQtdeEmpregadoForm propostaId={propostaId} readOnly={readOnly} onCriado={(q) => setQtdeEmpregados((atual) => [...atual, q])} />
         {qtdeEmpregados.length === 0 ? (
           <p className="text-sm text-gray-500">Nenhum documento de consolidação cadastrado.</p>
         ) : (
-          <ul className="divide-y rounded border">
+          <ul className="divide-y overflow-hidden rounded-lg border border-gray-100 bg-white shadow-sm">
             {qtdeEmpregados.map((qtde) => (
-              <li key={qtde.id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
-                <span>
-                  {qtde.numeroDocumento} — {qtde.quantidadeEmpregados} empregado(s), {qtde.quantidadeEstagiarios} estagiário(s),{' '}
-                  {qtde.quantidadeJovemAprendiz} jovem(ns) aprendiz(es) — Valor Total do Período: {formatarMoeda(qtde.valorTotalConsolidado)}
+              <li key={qtde.id} className="flex items-center justify-between gap-2 px-4 py-2.5 text-sm hover:bg-slate-100">
+                <span className="tabular-nums">
+                  <span className="font-medium text-slate-800">{qtde.numeroDocumento}</span> — {qtde.quantidadeEmpregados} empregado(s),{' '}
+                  {qtde.quantidadeEstagiarios} estagiário(s), {qtde.quantidadeJovemAprendiz} jovem(ns) aprendiz(es) — Valor Total do
+                  Período: {formatarMoeda(qtde.valorTotalConsolidado)}
                 </span>
                 {!readOnly && (
                   <button
                     type="button"
                     onClick={() => excluirDocumento(qtde.id)}
                     disabled={pending}
-                    className="rounded border px-2 py-1 text-xs text-red-700 disabled:opacity-50"
+                    className="rounded-md border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50"
                   >
                     Excluir
                   </button>
