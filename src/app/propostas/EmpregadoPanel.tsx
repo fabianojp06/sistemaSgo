@@ -10,9 +10,15 @@ import {
   type EmpregadoResultado,
   type QtdeEmpregadoResultado,
 } from '@/app/plano-contas/actions';
+import { BarChartHorizontal } from './BarChartHorizontal';
 
 type CargoOpcao = { id: string; label: string };
 type EmpregadoListado = EmpregadoResultado & { categoria: 'EMPREGADO' | 'ESTAGIARIO' | 'JOVEM_APRENDIZ' };
+
+const formatadorMoeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+function formatarMoeda(valor: number | string): string {
+  return formatadorMoeda.format(Number(valor));
+}
 
 const LABEL_CATEGORIA: Record<EmpregadoListado['categoria'], string> = {
   EMPREGADO: 'Empregado',
@@ -123,7 +129,7 @@ function NovoEmpregadoForm({
         </div>
       </div>
       {erro && <p className="text-xs text-red-600">{erro}</p>}
-      {totalLote && <p className="text-xs text-gray-500">Total do lote: R$ {totalLote}/mês</p>}
+      {totalLote && <p className="text-xs text-gray-500">Total do lote: {formatarMoeda(totalLote)}/mês</p>}
       <div>
         <button
           type="button"
@@ -134,6 +140,106 @@ function NovoEmpregadoForm({
           {pending ? 'Salvando...' : 'Cadastrar'}
         </button>
       </div>
+    </div>
+  );
+}
+
+/** Agrupamento compartilhado — usado pela árvore e pela tabela "Por Cargo" do resumo visual. */
+function agruparPorCargo(empregados: EmpregadoListado[]): Map<string, EmpregadoListado[]> {
+  const grupos = new Map<string, EmpregadoListado[]>();
+  for (const empregado of empregados) {
+    const grupo = grupos.get(empregado.cargoId) ?? [];
+    grupo.push(empregado);
+    grupos.set(empregado.cargoId, grupo);
+  }
+  return grupos;
+}
+
+/** Resumo visual: cards de KPI + tabela "Por Cargo" — mesma fonte de dados da árvore, sem cálculo novo. */
+function ResumoConsolidacao({
+  empregados,
+  cargos,
+  totalMensal,
+  valorTotalConsolidadoMaisRecente,
+  totalEmpregadosMaisRecente,
+}: {
+  empregados: EmpregadoListado[];
+  cargos: CargoOpcao[];
+  totalMensal: number;
+  valorTotalConsolidadoMaisRecente: string | null;
+  totalEmpregadosMaisRecente: number | null;
+}) {
+  const cargoLabelPorId = new Map(cargos.map((c) => [c.id, c.label]));
+  const grupos = agruparPorCargo(empregados);
+  const linhas = [...grupos.entries()].map(([cargoId, empregadosDoCargo]) => {
+    const subtotal = empregadosDoCargo.reduce((soma, e) => soma + Number(e.custoTotalMensal), 0);
+    return {
+      cargoId,
+      label: cargoLabelPorId.get(cargoId) ?? 'Cargo não encontrado',
+      quantidade: empregadosDoCargo.length,
+      subtotal,
+      percentual: totalMensal > 0 ? (subtotal / totalMensal) * 100 : 0,
+    };
+  });
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <div className="rounded border p-4">
+          <p className="text-xs text-gray-500">Total de Empregados</p>
+          <p className="text-2xl font-semibold">{totalEmpregadosMaisRecente ?? empregados.length}</p>
+        </div>
+        <div className="rounded border p-4">
+          <p className="text-xs text-gray-500">Custo Mensal Total</p>
+          <p className="text-2xl font-semibold">{formatarMoeda(totalMensal)}/mês</p>
+        </div>
+        <div className="rounded border p-4">
+          <p className="text-xs text-gray-500">Valor Total do Período</p>
+          <p className="text-2xl font-semibold">
+            {valorTotalConsolidadoMaisRecente ? formatarMoeda(valorTotalConsolidadoMaisRecente) : '—'}
+          </p>
+        </div>
+      </div>
+
+      {linhas.length > 0 && (
+        <div className="overflow-x-auto rounded border">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-gray-50 text-left text-xs text-gray-500">
+                <th className="px-3 py-2 font-medium">Por Cargo</th>
+                <th className="px-3 py-2 font-medium">Qtde</th>
+                <th className="px-3 py-2 font-medium">R$/mês</th>
+                <th className="px-3 py-2 font-medium">%</th>
+              </tr>
+            </thead>
+            <tbody>
+              {linhas.map((linha) => (
+                <tr key={linha.cargoId} className="border-b last:border-0">
+                  <td className="px-3 py-2">{linha.label}</td>
+                  <td className="px-3 py-2">{linha.quantidade}</td>
+                  <td className="px-3 py-2">{formatarMoeda(linha.subtotal)}</td>
+                  <td className="px-3 py-2">{linha.percentual.toFixed(0)}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {linhas.length > 0 && (
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <BarChartHorizontal
+            titulo="Custo Mensal por Cargo"
+            barras={linhas.map((l) => ({ id: l.cargoId, label: l.label, valor: l.subtotal }))}
+            formatarValor={formatarMoeda}
+          />
+          <BarChartHorizontal
+            titulo="Quantidade de Empregados por Cargo"
+            barras={linhas.map((l) => ({ id: l.cargoId, label: l.label, valor: l.quantidade }))}
+            formatarValor={(v) => String(v)}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -157,12 +263,7 @@ function EmpregadosPorCargoArvore({
   const cargoLabelPorId = new Map(cargos.map((c) => [c.id, c.label]));
   const [expandidos, setExpandidos] = useState<Set<string>>(new Set());
 
-  const grupos = new Map<string, EmpregadoListado[]>();
-  for (const empregado of empregados) {
-    const grupo = grupos.get(empregado.cargoId) ?? [];
-    grupo.push(empregado);
-    grupos.set(empregado.cargoId, grupo);
-  }
+  const grupos = agruparPorCargo(empregados);
 
   function alternarExpandido(cargoId: string) {
     setExpandidos((atual) => {
@@ -189,7 +290,7 @@ function EmpregadosPorCargoArvore({
                 {aberto ? '▾' : '▸'} {cargoLabelPorId.get(cargoId) ?? 'Cargo não encontrado'}
               </span>
               <span className="text-xs text-gray-500">
-                {empregadosDoCargo.length} empregado(s) — R$ {subtotal.toFixed(2)}/mês
+                {empregadosDoCargo.length} empregado(s) — {formatarMoeda(subtotal)}/mês
               </span>
             </button>
             {aberto && (
@@ -199,7 +300,7 @@ function EmpregadosPorCargoArvore({
                     <div>
                       <span className="font-medium">{empregado.nome}</span>{' '}
                       <span className="text-xs text-gray-500">
-                        ({LABEL_CATEGORIA[empregado.categoria]} — {empregado.vinculoFuncionalHerdado} — R$ {empregado.custoTotalMensal}/mês —{' '}
+                        ({LABEL_CATEGORIA[empregado.categoria]} — {empregado.vinculoFuncionalHerdado} — {formatarMoeda(empregado.custoTotalMensal)}/mês —{' '}
                         {contaLabelPorId.get(empregado.contaId) ?? 'Conta não encontrada'})
                       </span>
                     </div>
@@ -344,9 +445,7 @@ export function EmpregadoPanel({
           />
         )}
         {empregados.length > 0 && (
-          <p className="text-xs text-gray-600">
-            Total mensal lançado nesta Proposta: R$ {totalMensal.toFixed(2)} — reflete na guia Semáforo (Valor Realizado por conta).
-          </p>
+          <p className="text-xs text-gray-500">Reflete na guia Semáforo (Valor Realizado por conta) — resumo completo abaixo, em Qtde. Empregado.</p>
         )}
       </div>
 
@@ -356,6 +455,14 @@ export function EmpregadoPanel({
           Este documento resume, por período, quantos Empregados/Estagiários/Jovens Aprendizes ativos existem nesta Proposta. O
           lançamento de vagas/pessoas fica na seção Empregados, acima — os totais abaixo são calculados automaticamente, não digitados.
         </p>
+        <ResumoConsolidacao
+          empregados={empregados}
+          cargos={cargos}
+          totalMensal={totalMensal}
+          // Documento mais recente = último do array (não há ordenação explícita hoje; ver excluirDocumento acima).
+          valorTotalConsolidadoMaisRecente={qtdeEmpregados.at(-1)?.valorTotalConsolidado ?? null}
+          totalEmpregadosMaisRecente={qtdeEmpregados.at(-1)?.quantidadeEmpregados ?? null}
+        />
         <NovaQtdeEmpregadoForm propostaId={propostaId} readOnly={readOnly} onCriado={(q) => setQtdeEmpregados((atual) => [...atual, q])} />
         {qtdeEmpregados.length === 0 ? (
           <p className="text-sm text-gray-500">Nenhum documento de consolidação cadastrado.</p>
@@ -365,7 +472,7 @@ export function EmpregadoPanel({
               <li key={qtde.id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
                 <span>
                   {qtde.numeroDocumento} — {qtde.quantidadeEmpregados} empregado(s), {qtde.quantidadeEstagiarios} estagiário(s),{' '}
-                  {qtde.quantidadeJovemAprendiz} jovem(ns) aprendiz(es) — Valor Total do Período: R$ {qtde.valorTotalConsolidado}
+                  {qtde.quantidadeJovemAprendiz} jovem(ns) aprendiz(es) — Valor Total do Período: {formatarMoeda(qtde.valorTotalConsolidado)}
                 </span>
                 {!readOnly && (
                   <button
