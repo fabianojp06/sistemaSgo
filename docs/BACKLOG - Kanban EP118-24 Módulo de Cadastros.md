@@ -31,15 +31,14 @@
 | ADR-027 | Todo custo vinculado a uma ContaContabil | Regra de negócio do usuário (2026-08-06): `Cargo.contaId` obrigatória (natureza da despesa, ex: Despesa com Pessoal), `EmpregadoHeadcount.contaId` herdado por snapshot, `RateioImpostoGrade.contaId` obrigatória; migration `NOT NULL` direto (0 registros em produção); `CalcularValorRealizadoUseCase` deixou de ter `parcial=true` fixo |
 | US-008a (UC03.02) | Badge do Semáforo Orçamentário | `CalcularValorRealizadoUseCase` soma Viagem/ItemPatrimonial/Empregado/RateioImpostoGrade por conta (agregação recursiva p/ contas sintéticas, mesmo padrão de `ValorOrcadoTotalizerService`); `BadgeSemaforoPanel.tsx` em `/plano-contas/[versaoId]` |
 | US-101a | Server Action/UI de Rateio de Impostos | `configurarRateioImposto` Server Action + `RateioImpostoPanel.tsx`; permissão `plano-contas.configurar-rateio-imposto` já seedada |
+| US-114 | Gerenciar Propostas (Listar, Cadastrar, Duplicar, Excluir Versão) | Novo módulo de menu "Propostas" (`propostas.visualizar` NAVEGAVEL + `propostas.criar`/`duplicar`/`excluir-versao` CONTEXTUAL, seed aplicado); tela `/propostas` |
+| US-115 (UC03.06) | Tela de Proposta com Guias Analíticas | `/propostas/{id}/[[...guia]]` — capa Read-only + 8 abas (Valor Orçado, Semáforo, Meta, Empregados+Qtde.Empregado, Viagens, Bens, Rateio de Impostos, Termo de Ajuste), deep-link por URL; `podeEditarVersao()` centraliza o enforcement client-side de read-only; Cargo/UnidadeFuncional ficam fora (ciclo de vida por Proposta, não por Versão) |
 
 ---
 
 ## 🔜 Próximo da Fila (priorizado)
 
-| Ordem | Item | Por que é o próximo | Esforço estimado |
-|---|---|---|---|
-| 1 | **US-114 — Gerenciar Propostas (Listar, Cadastrar, Duplicar, Excluir Versão)** | Nenhuma `Funcionalidade` navegável de "Propostas" existe no menu hoje — `CadastrarPropostaUseCase`/`DuplicarPropostaUseCase`/`ExcluirVersaoPropostaUseCase` já existem e testados, só falta UI. Bloqueia US-115. | G |
-| 2 | **US-115 — Tela de Proposta com Guias Analíticas (UC03.06)** | Todas as 7 guias analíticas (Valor Orçado, Meta, Empregados, Viagens, Bens, Rateio de Impostos, Termo de Ajuste) já existem ponta a ponta, hoje soltas em `/plano-contas/[versaoId]` sem navegação própria — esta US integra os painéis já existentes numa tela real com capa Read-only + abas. | G |
+Nenhum item priorizado no momento.
 
 ---
 

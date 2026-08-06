@@ -258,6 +258,60 @@ fora da lista original); (b) revisitar "Backlog Não Refinado"/"Fora de Escopo" 
 
 ---
 
+## 2026-08-06 (cont. 2) — registrada às 14:10 -03:00 — Frontend de Propostas: US-114 + US-115 (UC03.06)
+
+Continuação direta da sessão de hoje (registros acima, 09:15 e 13:40). Depois de fechar US-008a/
+ADR-027/US-101a, o usuário perguntou sobre o momento certo de começar o frontend "de verdade"
+(além dos formulários soltos que já existiam). Decisão: começar já, formalizando UC03.06 (que
+estava "Fora de Escopo") como US-114 + US-115.
+
+**O que foi feito, em ordem:**
+
+1. **AN/PO formaliza UC03.06** em duas US, após o usuário corrigir o escopo inicial (não é só
+   visualização — precisa cobrir Cadastrar/Duplicar/Excluir Versão também):
+   - US-114 — porta de entrada navegável de Propostas (lista + as 3 operações de escrita que já
+     existiam no backend sem UI).
+   - US-115 — tela de Proposta com capa Read-only + guias analíticas (as guias já existiam
+     ponta a ponta desde as sessões anteriores, só faltava a tela real). Commits `e3a7a1d`
+     (backlog).
+2. **US-114 implementada** (fullstack-dev): módulo de menu "Propostas" novo — `propostas.
+   visualizar` (NAVEGAVEL) + `propostas.criar`/`duplicar`/`excluir-versao` (CONTEXTUAL),
+   seed rodado contra o Supabase de desenvolvimento real. Tela `/propostas` com lista + form de
+   cadastro + ações por linha. `/propostas/[id]` nasceu como ponte temporária (redirect pro
+   host antigo `/plano-contas/[versaoId]`). Commit `673b5ea`.
+3. **Design rápido do Tech Lead para US-115**: decidiu 8 abas (não 7 — Semáforo entrou também),
+   Cargo/UnidadeFuncional ficam de fora (escopados por Proposta, não por Versão — ciclo de vida
+   diferente), roteamento por segmento de URL (`/propostas/{id}/[[...guia]]`, catch-all
+   opcional do App Router) e helper único `podeEditarVersao()` para o enforcement client-side
+   de read-only (backend já bloqueia, isso é só refletir no client antes do submit).
+4. **US-115 implementada** (fullstack-dev): achado no meio do caminho — as Server Actions de
+   Meta/Empregado/Viagem/ItemPatrimonial/QtdeEmpregado já existiam em `plano-contas/actions.ts`
+   desde sessões anteriores, só faltavam os componentes React. `/propostas/[id]/[[...guia]]`
+   substituiu a ponte; 4 painéis novos criados (Meta, Empregados+QtdeEmpregado, Viagens, Bens);
+   `ValorOrcadoContaForm`/`RateioImpostoPanel` ganharam prop `readOnly` opcional (default false,
+   sem quebrar a página antiga). `TermoAjustePanel` ficou sem `readOnly` nesta rodada (lógica de
+   aprovação própria, mais complexa) — gap conhecido, não bloqueante. Commit `f176e11`.
+5. Backlog atualizado: US-114 e US-115 movidas para "Concluído"; fila esvaziada de novo.
+
+**Estado do repositório ao final desta sessão:** tudo commitado e enviado a `origin/master`
+(`f176e11` + o commit do backlog logo em seguida). 221 testes passando, `tsc --noEmit` limpo,
+`next build` de produção ok. Nenhum teste em navegador real feito em nenhuma das rodadas desta
+sessão — Codespace sem `.env` de teste com Clerk/Supabase configurado (decisão aceita desde
+2026-07-25/26, ver blocos daquela época).
+
+**Gaps conhecidos, não bloqueantes:**
+- `TermoAjustePanel` sem prop `readOnly` (única aba sem o enforcement client-side).
+- `/propostas/[id]/[[...guia]]` não tem teste automatizado de UI ainda (só tsc/build).
+- Cargo/UnidadeFuncional (organograma) não têm tela própria ainda — decisão consciente de
+  deixar fora de US-115, mas UC03.19/ADR-016 nunca ganhou UI de fato, só Server Action.
+
+**Próximo passo combinado:** nenhum item priorizado na fila. Candidatos: (a) UI de Cargo/
+UnidadeFuncional (organograma) como US nova; (b) `readOnly` no `TermoAjustePanel`; (c) retomar
+a tradução EN-US da documentação (ver [[tarefa_traducao_docs_en_us_pendente]] na memória
+padrão).
+
+---
+
 ## Como usar este arquivo em sessões futuras
 
 No início de uma sessão, se o usuário perguntar "qual o contexto/status de X", leia este arquivo antes de assumir que a memória padrão (`~/.claude/.../memory/`) está atualizada — o ambiente deste projeto (Codespace) pode ter sido recriado desde a última sessão, apagando a memória padrão sem apagar o repositório.
