@@ -1,6 +1,7 @@
 'use server';
 
 import { z } from 'zod';
+import { Prisma } from '@prisma/client';
 import { auth } from '@clerk/nextjs/server';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/infrastructure/db/prisma';
@@ -23,6 +24,7 @@ import {
   getEditarMetaUseCase,
   getExcluirMetaUseCase,
   getCadastrarEmpregadoUseCase,
+  getCadastrarEmpregadosEmLoteUseCase,
   getEditarEmpregadoUseCase,
   getExcluirEmpregadoUseCase,
   getConfigurarBeneficiosCargoUseCase,
@@ -567,6 +569,65 @@ export async function cadastrarEmpregado(input: {
         nome: empregado.nome,
         vinculoFuncionalHerdado: empregado.vinculoFuncionalHerdado,
         custoTotalMensal: empregado.custoTotalMensal.toString(),
+      },
+    };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+export type EmpregadosLoteResultado = {
+  empregados: EmpregadoResultado[];
+  quantidade: number;
+  custoTotalMensal: string;
+  totalLote: string;
+};
+
+const CadastrarEmpregadosEmLoteSchema = z.object({
+  propostaId: z.string().min(1),
+  cargoId: z.string().min(1),
+  quantidade: z.coerce.number().int().positive(),
+  categoria: CategoriaEmpregadoSchema,
+  periodoInicio: z.coerce.date(),
+  periodoFim: z.coerce.date().nullable().optional(),
+});
+
+/** US-108b — Lançamento em Lote de Vagas por Cargo (Quantidade). */
+export async function cadastrarEmpregadosEmLote(input: {
+  propostaId: string;
+  cargoId: string;
+  quantidade: number;
+  categoria: 'EMPREGADO' | 'ESTAGIARIO' | 'JOVEM_APRENDIZ';
+  periodoInicio: string;
+  periodoFim?: string | null;
+}): Promise<ActionResultComDados<EmpregadosLoteResultado>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const entrada = CadastrarEmpregadosEmLoteSchema.safeParse(input);
+  if (!entrada.success) {
+    return { sucesso: false, mensagem: 'Selecione um Cargo e informe uma quantidade válida antes de salvar.' };
+  }
+
+  try {
+    const empregados = await getCadastrarEmpregadosEmLoteUseCase().execute({ ...contexto, ...entrada.data });
+    revalidatePath('/plano-contas');
+
+    const custoTotalMensal = empregados[0]?.custoTotalMensal.toString() ?? '0';
+    const totalLote = empregados.reduce((soma, e) => soma.plus(e.custoTotalMensal), new Prisma.Decimal(0)).toString();
+
+    return {
+      sucesso: true,
+      dados: {
+        empregados: empregados.map((e) => ({
+          id: e.id,
+          nome: e.nome,
+          vinculoFuncionalHerdado: e.vinculoFuncionalHerdado,
+          custoTotalMensal: e.custoTotalMensal.toString(),
+        })),
+        quantidade: empregados.length,
+        custoTotalMensal,
+        totalLote,
       },
     };
   } catch (erro) {

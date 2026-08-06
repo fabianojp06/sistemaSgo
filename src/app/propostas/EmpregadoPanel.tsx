@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import {
   cadastrarEmpregado,
+  cadastrarEmpregadosEmLote,
   excluirEmpregado,
   cadastrarQtdeEmpregado,
   excluirQtdeEmpregado,
@@ -28,36 +29,60 @@ function NovoEmpregadoForm({
   propostaId: string;
   cargos: CargoOpcao[];
   readOnly?: boolean;
-  onCriado: (resultado: EmpregadoResultado & { categoria: EmpregadoListado['categoria'] }) => void;
+  onCriado: (resultados: (EmpregadoResultado & { categoria: EmpregadoListado['categoria'] })[]) => void;
 }) {
   const hoje = new Date().toISOString().slice(0, 10);
   const [cargoId, setCargoId] = useState(cargos[0]?.id ?? '');
   const [nome, setNome] = useState('');
+  const [quantidade, setQuantidade] = useState('1');
   const [categoria, setCategoria] = useState<EmpregadoListado['categoria']>('EMPREGADO');
   const [periodoInicio, setPeriodoInicio] = useState(hoje);
   const [erro, setErro] = useState<string | null>(null);
+  const [totalLote, setTotalLote] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   if (readOnly) return null;
   if (cargos.length === 0) return <p className="text-sm text-gray-500">Nenhum Cargo cadastrado nesta Proposta ainda.</p>;
 
+  const temNome = nome.trim().length > 0;
+
   function salvar() {
     setErro(null);
+    setTotalLote(null);
     startTransition(async () => {
-      const resposta = await cadastrarEmpregado({ propostaId, cargoId, nome: nome || null, categoria, periodoInicio });
+      // US-108b — nome preenchido é sempre 1 pessoa nomeada; quantidade > 1 só
+      // faz sentido para vagas "A CONTRATAR" (RN0249), lançadas em lote.
+      if (temNome) {
+        const resposta = await cadastrarEmpregado({ propostaId, cargoId, nome, categoria, periodoInicio });
+        if (!resposta.sucesso) {
+          setErro(resposta.mensagem);
+          return;
+        }
+        setNome('');
+        onCriado([{ ...resposta.dados, categoria }]);
+        return;
+      }
+
+      const resposta = await cadastrarEmpregadosEmLote({
+        propostaId,
+        cargoId,
+        quantidade: Number(quantidade),
+        categoria,
+        periodoInicio,
+      });
       if (!resposta.sucesso) {
         setErro(resposta.mensagem);
         return;
       }
-      setNome('');
-      onCriado({ ...resposta.dados, categoria });
+      setTotalLote(resposta.dados.totalLote);
+      onCriado(resposta.dados.empregados.map((e) => ({ ...e, categoria })));
     });
   }
 
   return (
     <div className="flex flex-col gap-3 rounded border p-4">
       <h4 className="text-sm font-medium">Novo Empregado</h4>
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-600">Cargo</label>
           <select value={cargoId} onChange={(e) => setCargoId(e.target.value)} className="w-full rounded border px-2 py-1 text-sm">
@@ -73,6 +98,18 @@ function NovoEmpregadoForm({
           <input type="text" value={nome} onChange={(e) => setNome(e.target.value)} className="w-full rounded border px-2 py-1 text-sm" />
         </div>
         <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">Quantidade</label>
+          <input
+            type="number"
+            min={1}
+            step={1}
+            value={temNome ? '1' : quantidade}
+            onChange={(e) => setQuantidade(e.target.value)}
+            disabled={temNome}
+            className="w-full rounded border px-2 py-1 text-sm disabled:opacity-50"
+          />
+        </div>
+        <div>
           <label className="mb-1 block text-xs font-medium text-gray-600">Categoria</label>
           <select value={categoria} onChange={(e) => setCategoria(e.target.value as EmpregadoListado['categoria'])} className="w-full rounded border px-2 py-1 text-sm">
             <option value="EMPREGADO">Empregado</option>
@@ -86,8 +123,14 @@ function NovoEmpregadoForm({
         </div>
       </div>
       {erro && <p className="text-xs text-red-600">{erro}</p>}
+      {totalLote && <p className="text-xs text-gray-500">Total do lote: R$ {totalLote}/mês</p>}
       <div>
-        <button type="button" onClick={salvar} disabled={pending || !cargoId} className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white disabled:opacity-50">
+        <button
+          type="button"
+          onClick={salvar}
+          disabled={pending || !cargoId || (!temNome && (!Number.isInteger(Number(quantidade)) || Number(quantidade) <= 0))}
+          className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white disabled:opacity-50"
+        >
           {pending ? 'Salvando...' : 'Cadastrar'}
         </button>
       </div>
@@ -194,7 +237,12 @@ export function EmpregadoPanel({
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3">
         <h3 className="font-medium">Empregados</h3>
-        <NovoEmpregadoForm propostaId={propostaId} cargos={cargos} readOnly={readOnly} onCriado={(e) => setEmpregados((atual) => [...atual, e])} />
+        <NovoEmpregadoForm
+          propostaId={propostaId}
+          cargos={cargos}
+          readOnly={readOnly}
+          onCriado={(novos) => setEmpregados((atual) => [...atual, ...novos])}
+        />
         {empregados.length === 0 ? (
           <p className="text-sm text-gray-500">Nenhum Empregado cadastrado.</p>
         ) : (
@@ -224,7 +272,11 @@ export function EmpregadoPanel({
       </div>
 
       <div className="flex flex-col gap-3">
-        <h3 className="font-medium">Qtde. Empregado (consolidação)</h3>
+        <h3 className="font-medium">Qtde. Empregado (Consolidação — somente leitura, gerada a partir dos Empregados lançados acima)</h3>
+        <p className="text-xs text-gray-500">
+          Este documento resume, por período, quantos Empregados/Estagiários/Jovens Aprendizes ativos existem nesta Proposta. O
+          lançamento de vagas/pessoas fica na seção Empregados, acima — os totais abaixo são calculados automaticamente, não digitados.
+        </p>
         <NovaQtdeEmpregadoForm propostaId={propostaId} readOnly={readOnly} onCriado={(q) => setQtdeEmpregados((atual) => [...atual, q])} />
         {qtdeEmpregados.length === 0 ? (
           <p className="text-sm text-gray-500">Nenhum documento de consolidação cadastrado.</p>

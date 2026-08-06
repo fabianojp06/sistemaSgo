@@ -273,3 +273,85 @@ export async function configurarBeneficiosCargo(
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
   }
 }
+
+const SalvarCargoCompletoSchema = CargoDadosSchema.extend({ cargoId: z.string().optional() }).merge(
+  BeneficiosCargoSchema.omit({ propostaId: true, cargoId: true }),
+);
+
+export type SalvarCargoCompletoResultado =
+  | { sucesso: true; dados: CargoResultado }
+  | { sucesso: false; mensagem: string; cargoSalvo?: CargoResultado };
+
+/**
+ * ADR-028 — orquestra Cadastrar/Editar Cargo + Configurar Benefícios em uma
+ * única ação para a UI (um clique, um botão), sem fundir os use cases de
+ * domínio (que continuam separados e testados isoladamente). Não é atômico
+ * entre as duas escritas: se Cargo salvar e Benefícios falhar, o Cargo NÃO
+ * sofre rollback — é um estado válido (benefícios zerados é o default de um
+ * Cargo recém-criado) — e o resultado sinaliza sucesso parcial.
+ */
+export async function salvarCargoCompleto(input: z.input<typeof SalvarCargoCompletoSchema>): Promise<SalvarCargoCompletoResultado> {
+  const entrada = SalvarCargoCompletoSchema.safeParse(input);
+  if (!entrada.success) {
+    return { sucesso: false, mensagem: 'Preencha todos os campos obrigatórios do Cargo.' };
+  }
+
+  const {
+    cargoId,
+    encargosSociaisPct,
+    vaAtivo,
+    vaValorUnitario,
+    vrAtivo,
+    vrValorUnitario,
+    planoSaudeAtivo,
+    planoSaudeFaixa,
+    planoSaudeValor,
+    planoOdontoAtivo,
+    planoOdontoValor,
+    seguroVidaAtivo,
+    seguroVidaValor,
+    auxilioCrecheAtivo,
+    auxilioCrecheValor,
+    transporteAtivo,
+    transporteValorUnitario,
+    ...dadosCargo
+  } = entrada.data;
+  const beneficios = {
+    encargosSociaisPct,
+    vaAtivo,
+    vaValorUnitario,
+    vrAtivo,
+    vrValorUnitario,
+    planoSaudeAtivo,
+    planoSaudeFaixa,
+    planoSaudeValor,
+    planoOdontoAtivo,
+    planoOdontoValor,
+    seguroVidaAtivo,
+    seguroVidaValor,
+    auxilioCrecheAtivo,
+    auxilioCrecheValor,
+    transporteAtivo,
+    transporteValorUnitario,
+  };
+
+  const respostaCargo = cargoId ? await editarCargo({ ...dadosCargo, cargoId }) : await cadastrarCargo(dadosCargo);
+  if (!respostaCargo.sucesso) {
+    return { sucesso: false, mensagem: respostaCargo.mensagem };
+  }
+
+  const respostaBeneficios = await configurarBeneficiosCargo({
+    propostaId: dadosCargo.propostaId,
+    cargoId: respostaCargo.dados.id,
+    ...beneficios,
+  });
+  if (!respostaBeneficios.sucesso) {
+    return {
+      sucesso: false,
+      mensagem: `Cargo salvo, mas os benefícios não foram salvos: ${respostaBeneficios.mensagem} Edite o Cargo para tentar novamente.`,
+      cargoSalvo: respostaCargo.dados,
+    };
+  }
+
+  return { sucesso: true, dados: respostaBeneficios.dados };
+}

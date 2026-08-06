@@ -1,13 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import {
-  cadastrarCargo,
-  editarCargo,
-  configurarBeneficiosCargo,
-  type CargoResultado,
-  type UnidadeFuncionalResultado,
-} from './estrutura-actions';
+import { salvarCargoCompleto, type CargoResultado, type UnidadeFuncionalResultado } from './estrutura-actions';
 
 type Alocacao = { unidadeFuncionalId: string; percentual: string };
 type CargoComAlocacoes = CargoResultado & { alocacoes: Alocacao[] };
@@ -16,6 +10,15 @@ const FONTES = [
   { value: 'MERCADO_MINIMO', label: 'Mercado Mínimo' },
   { value: 'MERCADO_MAXIMO', label: 'Mercado Máximo' },
   { value: 'RUBI', label: 'Rubi (Salário Real)' },
+] as const;
+
+const BENEFICIOS_SIMPLES = [
+  { ativo: 'vaAtivo', valor: 'vaValorUnitario', label: 'Vale Alimentação' },
+  { ativo: 'vrAtivo', valor: 'vrValorUnitario', label: 'Vale Refeição' },
+  { ativo: 'planoOdontoAtivo', valor: 'planoOdontoValor', label: 'Plano Odontológico' },
+  { ativo: 'seguroVidaAtivo', valor: 'seguroVidaValor', label: 'Seguro de Vida' },
+  { ativo: 'auxilioCrecheAtivo', valor: 'auxilioCrecheValor', label: 'Auxílio Creche' },
+  { ativo: 'transporteAtivo', valor: 'transporteValorUnitario', label: 'Vale Transporte' },
 ] as const;
 
 function dadosVazios() {
@@ -27,10 +30,31 @@ function dadosVazios() {
     salarioMercadoMaximo: '',
     funcaoGratificada: '',
     periodoInicio: '',
+    encargosSociaisPct: '0',
+    vaAtivo: false,
+    vaValorUnitario: '0',
+    vrAtivo: false,
+    vrValorUnitario: '0',
+    planoSaudeAtivo: false,
+    planoSaudeFaixa: null as 'BASICO' | 'INTERMEDIARIO' | 'EXECUTIVO' | null,
+    planoSaudeValor: '0',
+    planoOdontoAtivo: false,
+    planoOdontoValor: '0',
+    seguroVidaAtivo: false,
+    seguroVidaValor: '0',
+    auxilioCrecheAtivo: false,
+    auxilioCrecheValor: '0',
+    transporteAtivo: false,
+    transporteValorUnitario: '0',
   };
 }
 
-/** US-117 (UC03.19, blocos A/B) — Gerenciar Cargos (dados de mercado, conta, rateio funcional). */
+/**
+ * US-117 (UC03.19, blocos A/B/C) — Gerenciar Cargos: dados de mercado, conta,
+ * rateio funcional e benefícios/encargos, tudo sob um único "Salvar Cargo"
+ * (ADR-028 — orquestrado por salvarCargoCompleto, que por baixo ainda chama
+ * os use cases de domínio separados de Cargo e de Benefícios).
+ */
 export function CargoPanel({
   propostaId,
   unidadesAnaliticas,
@@ -70,6 +94,22 @@ export function CargoPanel({
       salarioMercadoMaximo: cargo.salarioMercadoMaximo,
       funcaoGratificada: cargo.funcaoGratificada ?? '',
       periodoInicio: cargo.periodoInicio.slice(0, 10),
+      encargosSociaisPct: cargo.encargosSociaisPct,
+      vaAtivo: cargo.vaAtivo,
+      vaValorUnitario: cargo.vaValorUnitario,
+      vrAtivo: cargo.vrAtivo,
+      vrValorUnitario: cargo.vrValorUnitario,
+      planoSaudeAtivo: cargo.planoSaudeAtivo,
+      planoSaudeFaixa: cargo.planoSaudeFaixa,
+      planoSaudeValor: cargo.planoSaudeValor,
+      planoOdontoAtivo: cargo.planoOdontoAtivo,
+      planoOdontoValor: cargo.planoOdontoValor,
+      seguroVidaAtivo: cargo.seguroVidaAtivo,
+      seguroVidaValor: cargo.seguroVidaValor,
+      auxilioCrecheAtivo: cargo.auxilioCrecheAtivo,
+      auxilioCrecheValor: cargo.auxilioCrecheValor,
+      transporteAtivo: cargo.transporteAtivo,
+      transporteValorUnitario: cargo.transporteValorUnitario,
     });
     setAlocacoes(cargo.alocacoes);
   }
@@ -91,6 +131,7 @@ export function CargoPanel({
     setErro(null);
     const payload = {
       propostaId,
+      cargoId: cargoEmEdicaoId ?? undefined,
       alocacoes: alocacoes.map((a) => ({ unidadeFuncionalId: a.unidadeFuncionalId, percentual: Number(a.percentual) })),
       contaId: dados.contaId,
       nomeCargoMercado: dados.nomeCargoMercado,
@@ -99,16 +140,40 @@ export function CargoPanel({
       salarioMercadoMinimo: Number(dados.salarioMercadoMinimo),
       salarioMercadoMaximo: Number(dados.salarioMercadoMaximo),
       fonteAtiva: dados.fonteAtiva,
+      encargosSociaisPct: Number(dados.encargosSociaisPct),
+      vaAtivo: dados.vaAtivo,
+      vaValorUnitario: Number(dados.vaValorUnitario),
+      vrAtivo: dados.vrAtivo,
+      vrValorUnitario: Number(dados.vrValorUnitario),
+      planoSaudeAtivo: dados.planoSaudeAtivo,
+      planoSaudeFaixa: dados.planoSaudeFaixa,
+      planoSaudeValor: Number(dados.planoSaudeValor),
+      planoOdontoAtivo: dados.planoOdontoAtivo,
+      planoOdontoValor: Number(dados.planoOdontoValor),
+      seguroVidaAtivo: dados.seguroVidaAtivo,
+      seguroVidaValor: Number(dados.seguroVidaValor),
+      auxilioCrecheAtivo: dados.auxilioCrecheAtivo,
+      auxilioCrecheValor: Number(dados.auxilioCrecheValor),
+      transporteAtivo: dados.transporteAtivo,
+      transporteValorUnitario: Number(dados.transporteValorUnitario),
     };
 
     startTransition(async () => {
-      const resposta = cargoEmEdicaoId
-        ? await editarCargo({ ...payload, cargoId: cargoEmEdicaoId })
-        : await cadastrarCargo(payload);
+      const resposta = await salvarCargoCompleto(payload);
+
       if (!resposta.sucesso) {
         setErro(resposta.mensagem);
+        // Sucesso parcial (ADR-028): Cargo foi salvo mesmo com Benefícios falhando — reflete na lista.
+        if (resposta.cargoSalvo) {
+          const cargoSalvo: CargoComAlocacoes = { ...resposta.cargoSalvo, alocacoes };
+          setCargos((atual) => {
+            const existe = atual.some((c) => c.id === cargoSalvo.id);
+            return existe ? atual.map((c) => (c.id === cargoSalvo.id ? cargoSalvo : c)) : [...atual, cargoSalvo];
+          });
+        }
         return;
       }
+
       const cargoSalvo: CargoComAlocacoes = { ...resposta.dados, alocacoes };
       setCargos((atual) => {
         const existe = atual.some((c) => c.id === cargoSalvo.id);
@@ -170,7 +235,7 @@ export function CargoPanel({
       {erro && <p className="text-xs text-red-600">{erro}</p>}
 
       {!readOnly && (
-        <div className="flex flex-col gap-3 border-t pt-3">
+        <div className="flex flex-col gap-4 border-t pt-3">
           <p className="text-xs font-medium text-gray-600">{cargoEmEdicaoId ? 'Editar Cargo' : 'Novo Cargo'}</p>
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
@@ -289,6 +354,69 @@ export function CargoPanel({
             )}
           </div>
 
+          <div className="flex flex-col gap-3 border-t pt-3">
+            <p className="text-xs font-medium text-gray-600">Benefícios e Encargos</p>
+
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">Encargos Sociais (%)</label>
+              <input
+                type="number"
+                value={dados.encargosSociaisPct}
+                onChange={(e) => setDados((d) => ({ ...d, encargosSociaisPct: e.target.value }))}
+                className="w-32 rounded border px-2 py-1 text-sm"
+              />
+            </div>
+
+            {BENEFICIOS_SIMPLES.map((b) => (
+              <div key={b.ativo} className="flex items-center gap-3">
+                <label className="flex items-center gap-1 text-xs text-gray-600">
+                  <input
+                    type="checkbox"
+                    checked={dados[b.ativo]}
+                    onChange={(e) => setDados((d) => ({ ...d, [b.ativo]: e.target.checked }))}
+                  />
+                  {b.label}
+                </label>
+                <input
+                  type="number"
+                  value={dados[b.valor]}
+                  onChange={(e) => setDados((d) => ({ ...d, [b.valor]: e.target.value }))}
+                  disabled={!dados[b.ativo]}
+                  className="w-32 rounded border px-2 py-1 text-sm disabled:opacity-50"
+                />
+              </div>
+            ))}
+
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-1 text-xs text-gray-600">
+                <input
+                  type="checkbox"
+                  checked={dados.planoSaudeAtivo}
+                  onChange={(e) => setDados((d) => ({ ...d, planoSaudeAtivo: e.target.checked }))}
+                />
+                Plano de Saúde
+              </label>
+              <select
+                value={dados.planoSaudeFaixa ?? ''}
+                onChange={(e) => setDados((d) => ({ ...d, planoSaudeFaixa: (e.target.value || null) as typeof d.planoSaudeFaixa }))}
+                disabled={!dados.planoSaudeAtivo}
+                className="rounded border px-2 py-1 text-sm disabled:opacity-50"
+              >
+                <option value="">Faixa...</option>
+                <option value="BASICO">Básico</option>
+                <option value="INTERMEDIARIO">Intermediário</option>
+                <option value="EXECUTIVO">Executivo</option>
+              </select>
+              <input
+                type="number"
+                value={dados.planoSaudeValor}
+                onChange={(e) => setDados((d) => ({ ...d, planoSaudeValor: e.target.value }))}
+                disabled={!dados.planoSaudeAtivo}
+                className="w-32 rounded border px-2 py-1 text-sm disabled:opacity-50"
+              />
+            </div>
+          </div>
+
           <div>
             <button
               type="button"
@@ -296,7 +424,7 @@ export function CargoPanel({
               disabled={pending || !podeSalvar}
               className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white disabled:opacity-50"
             >
-              {pending ? 'Salvando...' : cargoEmEdicaoId ? 'Salvar Cargo' : 'Cadastrar Cargo'}
+              {pending ? 'Salvando...' : 'Salvar Cargo'}
             </button>
             {cargoEmEdicaoId && (
               <button type="button" onClick={() => iniciarEdicao(null)} className="ml-2 text-sm text-gray-500 hover:underline">
@@ -304,169 +432,8 @@ export function CargoPanel({
               </button>
             )}
           </div>
-
-          {cargoEmEdicaoId && (
-            <BeneficiosForm
-              propostaId={propostaId}
-              cargo={cargos.find((c) => c.id === cargoEmEdicaoId) ?? null}
-              onSalvo={(atualizado) =>
-                setCargos((atual) => atual.map((c) => (c.id === atualizado.id ? { ...atualizado, alocacoes: c.alocacoes } : c)))
-              }
-            />
-          )}
         </div>
       )}
-    </div>
-  );
-}
-
-function BeneficiosForm({
-  propostaId,
-  cargo,
-  onSalvo,
-}: {
-  propostaId: string;
-  cargo: CargoComAlocacoes | null;
-  onSalvo: (cargo: CargoResultado) => void;
-}) {
-  const [dados, setDados] = useState(() => ({
-    encargosSociaisPct: cargo?.encargosSociaisPct ?? '0',
-    vaAtivo: cargo?.vaAtivo ?? false,
-    vaValorUnitario: cargo?.vaValorUnitario ?? '0',
-    vrAtivo: cargo?.vrAtivo ?? false,
-    vrValorUnitario: cargo?.vrValorUnitario ?? '0',
-    planoSaudeAtivo: cargo?.planoSaudeAtivo ?? false,
-    planoSaudeFaixa: cargo?.planoSaudeFaixa ?? null,
-    planoSaudeValor: cargo?.planoSaudeValor ?? '0',
-    planoOdontoAtivo: cargo?.planoOdontoAtivo ?? false,
-    planoOdontoValor: cargo?.planoOdontoValor ?? '0',
-    seguroVidaAtivo: cargo?.seguroVidaAtivo ?? false,
-    seguroVidaValor: cargo?.seguroVidaValor ?? '0',
-    auxilioCrecheAtivo: cargo?.auxilioCrecheAtivo ?? false,
-    auxilioCrecheValor: cargo?.auxilioCrecheValor ?? '0',
-    transporteAtivo: cargo?.transporteAtivo ?? false,
-    transporteValorUnitario: cargo?.transporteValorUnitario ?? '0',
-  }));
-  const [erro, setErro] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
-
-  if (!cargo) return null;
-
-  function salvar() {
-    setErro(null);
-    startTransition(async () => {
-      const resposta = await configurarBeneficiosCargo({
-        propostaId,
-        cargoId: cargo!.id,
-        encargosSociaisPct: Number(dados.encargosSociaisPct),
-        vaAtivo: dados.vaAtivo,
-        vaValorUnitario: Number(dados.vaValorUnitario),
-        vrAtivo: dados.vrAtivo,
-        vrValorUnitario: Number(dados.vrValorUnitario),
-        planoSaudeAtivo: dados.planoSaudeAtivo,
-        planoSaudeFaixa: dados.planoSaudeFaixa,
-        planoSaudeValor: Number(dados.planoSaudeValor),
-        planoOdontoAtivo: dados.planoOdontoAtivo,
-        planoOdontoValor: Number(dados.planoOdontoValor),
-        seguroVidaAtivo: dados.seguroVidaAtivo,
-        seguroVidaValor: Number(dados.seguroVidaValor),
-        auxilioCrecheAtivo: dados.auxilioCrecheAtivo,
-        auxilioCrecheValor: Number(dados.auxilioCrecheValor),
-        transporteAtivo: dados.transporteAtivo,
-        transporteValorUnitario: Number(dados.transporteValorUnitario),
-      });
-      if (!resposta.sucesso) {
-        setErro(resposta.mensagem);
-        return;
-      }
-      onSalvo(resposta.dados);
-    });
-  }
-
-  return (
-    <div className="flex flex-col gap-3 border-t pt-3">
-      <p className="text-xs font-medium text-gray-600">Benefícios e Encargos — {cargo.codigoCargo}</p>
-
-      <div>
-        <label className="mb-1 block text-xs font-medium text-gray-600">Encargos Sociais (%)</label>
-        <input
-          type="number"
-          value={dados.encargosSociaisPct}
-          onChange={(e) => setDados((d) => ({ ...d, encargosSociaisPct: e.target.value }))}
-          className="w-32 rounded border px-2 py-1 text-sm"
-        />
-      </div>
-
-      {(
-        [
-          { ativo: 'vaAtivo', valor: 'vaValorUnitario', label: 'Vale Alimentação' },
-          { ativo: 'vrAtivo', valor: 'vrValorUnitario', label: 'Vale Refeição' },
-          { ativo: 'planoOdontoAtivo', valor: 'planoOdontoValor', label: 'Plano Odontológico' },
-          { ativo: 'seguroVidaAtivo', valor: 'seguroVidaValor', label: 'Seguro de Vida' },
-          { ativo: 'auxilioCrecheAtivo', valor: 'auxilioCrecheValor', label: 'Auxílio Creche' },
-          { ativo: 'transporteAtivo', valor: 'transporteValorUnitario', label: 'Vale Transporte' },
-        ] as const
-      ).map((b) => (
-        <div key={b.ativo} className="flex items-center gap-3">
-          <label className="flex items-center gap-1 text-xs text-gray-600">
-            <input
-              type="checkbox"
-              checked={dados[b.ativo]}
-              onChange={(e) => setDados((d) => ({ ...d, [b.ativo]: e.target.checked }))}
-            />
-            {b.label}
-          </label>
-          <input
-            type="number"
-            value={dados[b.valor]}
-            onChange={(e) => setDados((d) => ({ ...d, [b.valor]: e.target.value }))}
-            disabled={!dados[b.ativo]}
-            className="w-32 rounded border px-2 py-1 text-sm disabled:opacity-50"
-          />
-        </div>
-      ))}
-
-      <div className="flex items-center gap-3">
-        <label className="flex items-center gap-1 text-xs text-gray-600">
-          <input
-            type="checkbox"
-            checked={dados.planoSaudeAtivo}
-            onChange={(e) => setDados((d) => ({ ...d, planoSaudeAtivo: e.target.checked }))}
-          />
-          Plano de Saúde
-        </label>
-        <select
-          value={dados.planoSaudeFaixa ?? ''}
-          onChange={(e) => setDados((d) => ({ ...d, planoSaudeFaixa: (e.target.value || null) as typeof d.planoSaudeFaixa }))}
-          disabled={!dados.planoSaudeAtivo}
-          className="rounded border px-2 py-1 text-sm disabled:opacity-50"
-        >
-          <option value="">Faixa...</option>
-          <option value="BASICO">Básico</option>
-          <option value="INTERMEDIARIO">Intermediário</option>
-          <option value="EXECUTIVO">Executivo</option>
-        </select>
-        <input
-          type="number"
-          value={dados.planoSaudeValor}
-          onChange={(e) => setDados((d) => ({ ...d, planoSaudeValor: e.target.value }))}
-          disabled={!dados.planoSaudeAtivo}
-          className="w-32 rounded border px-2 py-1 text-sm disabled:opacity-50"
-        />
-      </div>
-
-      {erro && <p className="text-xs text-red-600">{erro}</p>}
-
-      <div>
-        <button
-          type="button"
-          onClick={salvar}
-          disabled={pending}
-          className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white disabled:opacity-50"
-        >
-          {pending ? 'Salvando...' : 'Salvar Benefícios'}
-        </button>
-      </div>
     </div>
   );
 }

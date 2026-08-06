@@ -26,6 +26,7 @@ import { CadastrarMetaUseCase } from './CadastrarMetaUseCase';
 import { EditarMetaUseCase } from './EditarMetaUseCase';
 import { ExcluirMetaUseCase } from './ExcluirMetaUseCase';
 import { CadastrarEmpregadoUseCase } from './CadastrarEmpregadoUseCase';
+import { CadastrarEmpregadosEmLoteUseCase } from './CadastrarEmpregadosEmLoteUseCase';
 import { EditarEmpregadoUseCase } from './EditarEmpregadoUseCase';
 import { ExcluirEmpregadoUseCase } from './ExcluirEmpregadoUseCase';
 import { ConfigurarBeneficiosCargoUseCase } from './ConfigurarBeneficiosCargoUseCase';
@@ -140,6 +141,10 @@ export function getExcluirMetaUseCase(): ExcluirMetaUseCase {
 
 export function getCadastrarEmpregadoUseCase(): CadastrarEmpregadoUseCase {
   return new CadastrarEmpregadoUseCase(prisma);
+}
+
+export function getCadastrarEmpregadosEmLoteUseCase(): CadastrarEmpregadosEmLoteUseCase {
+  return new CadastrarEmpregadosEmLoteUseCase(prisma);
 }
 
 export function getEditarEmpregadoUseCase(): EditarEmpregadoUseCase {

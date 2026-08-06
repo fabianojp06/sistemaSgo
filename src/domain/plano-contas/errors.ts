@@ -369,6 +369,14 @@ export class PeriodoInicialRetroativoError extends Error {
   }
 }
 
+// US-108b — quantidade do lançamento em lote deve ser um inteiro maior que zero.
+export class QuantidadeEmpregadoLoteInvalidaError extends Error {
+  constructor() {
+    super('Informe uma quantidade inteira maior que zero.');
+    this.name = 'QuantidadeEmpregadoLoteInvalidaError';
+  }
+}
+
 // US-108 — Empregado referenciado não existe (ou não pertence ao tenant).
 export class EmpregadoNaoEncontradoError extends Error {
   constructor() {
