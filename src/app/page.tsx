@@ -14,6 +14,7 @@ import { getTenantId } from '@/infrastructure/tenant';
 const ROTA_POR_FUNCIONALIDADE: Record<string, string> = {
   'plano-contas.visualizar': '/plano-contas',
   'plano-contas.sincronizar': '/plano-contas',
+  'propostas.visualizar': '/propostas',
 };
 
 /**

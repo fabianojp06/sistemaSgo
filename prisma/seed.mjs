@@ -67,6 +67,33 @@ async function seedModuloPlanoContas() {
     update: {},
     create: { moduloId: modulo.id, chave: 'termo-ajuste.homologar-gestor-master', nome: 'Homologar Termo de Ajuste (Gestor Master)', tipo: 'CONTEXTUAL' },
   });
+
+  // US-114 (UC03.06, porta de entrada) — NAVEGAVEL: ganha link próprio no menu, rota /propostas.
+  await prisma.funcionalidade.upsert({
+    where: { moduloId_chave: { moduloId: modulo.id, chave: 'propostas.visualizar' } },
+    update: {},
+    create: { moduloId: modulo.id, chave: 'propostas.visualizar', nome: 'Visualizar Propostas' },
+  });
+
+  // US-114 — Cadastrar/Duplicar/Excluir Versão de Proposta. [ADR-021] CONTEXTUAL: ações
+  // vivem dentro de /propostas, sem rota/link próprio no menu.
+  await prisma.funcionalidade.upsert({
+    where: { moduloId_chave: { moduloId: modulo.id, chave: 'propostas.criar' } },
+    update: {},
+    create: { moduloId: modulo.id, chave: 'propostas.criar', nome: 'Cadastrar Proposta', tipo: 'CONTEXTUAL' },
+  });
+
+  await prisma.funcionalidade.upsert({
+    where: { moduloId_chave: { moduloId: modulo.id, chave: 'propostas.duplicar' } },
+    update: {},
+    create: { moduloId: modulo.id, chave: 'propostas.duplicar', nome: 'Duplicar Proposta', tipo: 'CONTEXTUAL' },
+  });
+
+  await prisma.funcionalidade.upsert({
+    where: { moduloId_chave: { moduloId: modulo.id, chave: 'propostas.excluir-versao' } },
+    update: {},
+    create: { moduloId: modulo.id, chave: 'propostas.excluir-versao', nome: 'Excluir Versão da Proposta', tipo: 'CONTEXTUAL' },
+  });
 }
 
 // US-111 (ADR-025) — "Gestor Master" nasce como uma linha de Perfil por tenant, sem
