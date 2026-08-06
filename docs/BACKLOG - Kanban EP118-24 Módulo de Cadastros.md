@@ -35,7 +35,8 @@
 
 | Ordem | Item | Por que é o próximo | Esforço estimado |
 |---|---|---|---|
-| 1 | **US-008a — Badge do Semáforo (MVP)** | Empregados, Viagens e Bens já no ar — decisão de produto ainda pendente sobre liberar com Rateio de Impostos parcialmente coberto | P (aguarda decisão de produto) |
+| 1 | **US-008a — Badge do Semáforo (MVP)** | Pronta para dev — decisão de produto tomada em 2026-08-06: liberar com `valorRealizado` calculado sem a parcela de Rateio de Impostos (marcado visualmente como parcial), sem esperar Server Action/UI de US-101 | M |
+| 2 | **US-101a — Server Action/UI de Rateio de Impostos** | Fecha a lacuna deixada em aberto pela decisão de US-008a; remove o indicador de "parcial" do badge quando pronta | P |
 
 ---
 
@@ -51,7 +52,8 @@
 
 | US/UC | Bloqueio | Condição de desbloqueio |
 |---|---|---|
-| **US-008a — Badge do Semáforo Orçamentário** (UC03.02) | Depende de `valorRealizado`, que vem da agregação dos módulos de custo (Empregados, Viagens, Bens, Rateio já parcialmente coberto) — não de execução orçamentária pública como se pensava inicialmente | Ao menos Empregados (item 1 da fila) implementado — decisão de produto pendente sobre liberar com dado parcial |
+
+Nenhum item bloqueado no momento (US-008a desbloqueada em 2026-08-06, ver "Próximo da Fila").
 
 ---
 
