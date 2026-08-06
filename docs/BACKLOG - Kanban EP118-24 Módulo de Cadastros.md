@@ -17,9 +17,9 @@
 | US-102 (UC03.05) | Cadastrar Proposta | Cria Proposta + Versão 1 atomicamente; código auto-gerado `PROP-{ano}-{seq}` |
 | US-103 (UC03.07 = UC03.11) | Excluir Versão da Proposta | Soft delete; UC03.07 e UC03.11 são a mesma especificação duplicada na Minuta |
 | US-104 (UC03.08) | Duplicar Proposta | Sempre nasce RASCUNHO/Versão 1, mesmo duplicando origem Oficializada |
-| US-105 (UC03.10, parcial) | Controle de Concorrência (Optimistic Locking) | Cobre `ValorOrcadoConta`/`RateioImpostoGrade`; resto do UC03.10 seguirá quando novas guias existirem |
-| US-106 (UC03.18, parcial) | Estrutura Funcional (Organograma) | `UnidadeFuncional` escopada por Proposta (ADR-015); RN_EST_01/03/05 pendentes até `Cargo` existir |
-| US-107 (UC03.19, blocos A/B) | Cargos e Salários | `Cargo` (ADR-016), vínculo 1:1 com `UnidadeFuncional` Analítica, `CargoRubiFixtureProvider`; Server Action + migration aplicada |
+| US-105 (UC03.10) | Controle de Concorrência (Optimistic Locking) | Completo — estendido (2026-08-06) de `ValorOrcadoConta`/`RateioImpostoGrade`/`TermoAjuste` para `Meta`/`Viagem`/`ItemPatrimonial`/`EmpregadoHeadcount`/`QtdeEmpregado`; todas as guias analíticas agora cobertas |
+| US-106 (UC03.18) | Estrutura Funcional (Organograma) | Completo — `UnidadeFuncional` escopada por Proposta (ADR-015); RN_EST_03 fechada via ADR-026 (2026-08-06): `Cargo`→`UnidadeFuncional` virou N:M com rateio percentual (`CargoAlocacaoPercentual`), somando 100%; RN_EST_01 já era satisfeita por construção; RN_EST_05 (saneamento na importação Rubi) fica para quando existir integração real (mesmo padrão do sincronismo do Plano de Contas) |
+| US-107 (UC03.19, blocos A/B) | Cargos e Salários | `Cargo` (ADR-016), vínculo com `UnidadeFuncional` Analítica — originalmente 1:1, migrado para N:M com rateio percentual via ADR-026 (`CargoAlocacaoPercentual`, RN_EST_03, 2026-08-06); `CargoRubiFixtureProvider`; Server Action + migration aplicada |
 | US-112 (UC03.14-17) | Manter Meta | `Meta` 1:1 opcional por `VersaoProposta` (ADR-017, revisado); valorGlobal sempre espelhado de SUM(ValorOrcadoConta); migration aplicada |
 | US-108 (UC03.24-27, blocos CRUD) | Empregados | `EmpregadoHeadcount` (ADR-018), só Proposta CONSOLIDADA; snapshot congelado de custo/vínculo do Cargo; migration aplicada |
 | US-107a (bloco C sem numeração do UC03.19) | Tabela Mestre de Benefícios e Encargos do Cargo | `Cargo.custoTotalCargo` (ADR-019); `diasUteisPadrao` em `ParametroSistema`; `EmpregadoHeadcount` agora herda `custoTotalCargo`; migration aplicada |

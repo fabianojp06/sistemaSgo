@@ -167,6 +167,45 @@ ver [[tarefa_traducao_docs_en_us_pendente]] na memória padrão).
 
 ---
 
+## 2026-08-06 — registrada às 09:15 -03:00 — US-111 implementada (ADR-025) + ADR-026 fecha gaps de US-105/US-106
+
+Continuação da sessão de 2026-08-04 18:08 (US-111 desbloqueada via ADR-025, sem código ainda).
+
+**O que foi feito, em ordem:**
+
+1. **Tradução EN-US**: US-103, US-104 e US-105 traduzidas, avançando de 12/21 para 15/21.
+   Commit `764d68b`.
+2. **US-111 — Termo de Ajuste entre Contas Analíticas (UC03.13)**: implementada ponta a ponta
+   seguindo o desenho da ADR-025 (model `TermoAjuste`, aprovação em duas etapas
+   `PENDENTE_APROVACAO_N1 → PENDENTE_APROVACAO_GESTOR_MASTER → HOMOLOGADO | REJEITADO`, linha de
+   dado para perfil "Gestor Master", sem migration em `Perfil`). Commit `d2597b0`.
+3. Ajuste de formatação do cabeçalho em `CA_UC01_ajustado_Clerk.md`. Commit `9e53700`.
+4. **ADR-026 — fecha 2 gaps remanescentes de US-105 e US-106**:
+   - **US-105 (UC03.10)**: Optimistic Locking (`tokenConcorrencia`/`updatedAt`,
+     `ConflitoConcorrenciaError`) estendido de `ValorOrcadoConta`/`RateioImpostoGrade`/
+     `TermoAjuste` para as guias analíticas restantes — `Meta`, `Viagem`, `ItemPatrimonial`,
+     `Empregado`, `QtdeEmpregado`. US-105 fica **completa** (antes só parcial).
+   - **US-106 (UC03.18, RN_EST_03)**: `Cargo↔UnidadeFuncional` migrado de vínculo 1:1 (ADR-016)
+     para **N:M com rateio percentual** via nova tabela `CargoAlocacaoPercentual` (soma sempre
+     100%). Migration em 2 passos (cria+backfill, depois drop da coluna antiga).
+     `EmpregadoHeadcount.vinculoFuncionalHerdado` passou a refletir múltiplas alocações.
+     RN_EST_01 já era satisfeita por construção; RN_EST_05 (saneamento na importação Rubi) fica
+     para quando existir integração real. US-106 fica **completa**.
+   - 215 testes passando, `tsc --noEmit` limpo. Commit `92f48b0`.
+5. `docs/BACKLOG - Kanban EP118-24 Módulo de Cadastros.md` atualizado para refletir US-105 e
+   US-106 como completas e US-107 com o novo vínculo N:M (ADR-026).
+
+**Estado do repositório ao final desta sessão:** commit do backlog kanban + registro desta
+sessão em `CONTEXTO_SESSOES.md` feitos juntos, após `92f48b0`. Ver hash do commit deste registro
+no histórico do git (`git log --oneline -1`).
+
+**Próximo passo combinado:** nenhuma US refinada e bloqueada pendente de decisão de produto no
+momento (US-008a segue como único item bloqueado, aguardando decisão sobre `valorRealizado`
+parcial no semáforo). Continuar a tradução EN-US (US-106 em diante, mais US-111 e US-113 que
+ficaram fora da lista original de 21) é o item de menor esforço disponível.
+
+---
+
 ## Como usar este arquivo em sessões futuras
 
 No início de uma sessão, se o usuário perguntar "qual o contexto/status de X", leia este arquivo antes de assumir que a memória padrão (`~/.claude/.../memory/`) está atualizada — o ambiente deste projeto (Codespace) pode ter sido recriado desde a última sessão, apagando a memória padrão sem apagar o repositório.
