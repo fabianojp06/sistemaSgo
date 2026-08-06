@@ -300,14 +300,19 @@ sessão — Codespace sem `.env` de teste com Clerk/Supabase configurado (decis�
 2026-07-25/26, ver blocos daquela época).
 
 **Gaps conhecidos, não bloqueantes:**
-- `TermoAjustePanel` sem prop `readOnly` (única aba sem o enforcement client-side).
 - `/propostas/[id]/[[...guia]]` não tem teste automatizado de UI ainda (só tsc/build).
 - Cargo/UnidadeFuncional (organograma) não têm tela própria ainda — decisão consciente de
   deixar fora de US-115, mas UC03.19/ADR-016 nunca ganhou UI de fato, só Server Action.
 
+**Falso gap, investigado e descartado (2026-08-06, mesma sessão):** `TermoAjustePanel` sem prop
+`readOnly` **não é** um gap — é comportamento correto. `SolicitarTermoAjusteUseCase` não bloqueia
+por status da versão de propósito: o Termo de Ajuste (UC03.13/ADR-025) existe justamente para
+redistribuir saldo depois que a Proposta já está Oficializada, ao contrário das outras 7 guias.
+Aplicar `podeEditarVersao()` ali bloquearia uma operação legítima. Não reabrir esse item.
+
 **Próximo passo combinado:** nenhum item priorizado na fila. Candidatos: (a) UI de Cargo/
-UnidadeFuncional (organograma) como US nova; (b) `readOnly` no `TermoAjustePanel`; (c) retomar
-a tradução EN-US da documentação (ver [[tarefa_traducao_docs_en_us_pendente]] na memória
+UnidadeFuncional (organograma) como US nova — próximo item a refinar; (b) retomar a tradução
+EN-US da documentação (ver [[tarefa_traducao_docs_en_us_pendente]] na memória
 padrão).
 
 ---
