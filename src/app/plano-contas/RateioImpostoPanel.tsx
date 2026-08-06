@@ -15,10 +15,12 @@ export function RateioImpostoPanel({
   versaoId,
   contasAnaliticas,
   aliquotas,
+  readOnly,
 }: {
   versaoId: string;
   contasAnaliticas: ContaOpcao[];
   aliquotas: AliquotaOpcao[];
+  readOnly?: boolean;
 }) {
   const hoje = new Date().toISOString().slice(0, 10);
   const [aliquotaParametroId, setAliquotaParametroId] = useState(aliquotas[0]?.id ?? '');
@@ -65,7 +67,8 @@ export function RateioImpostoPanel({
           <select
             value={aliquotaParametroId}
             onChange={(e) => setAliquotaParametroId(e.target.value)}
-            className="w-full rounded border px-2 py-1 text-sm"
+            disabled={readOnly}
+            className="w-full rounded border px-2 py-1 text-sm disabled:opacity-50"
           >
             {aliquotas.map((a) => (
               <option key={a.id} value={a.id}>
@@ -77,7 +80,7 @@ export function RateioImpostoPanel({
 
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-600">Conta Analítica</label>
-          <select value={contaId} onChange={(e) => setContaId(e.target.value)} className="w-full rounded border px-2 py-1 text-sm">
+          <select value={contaId} onChange={(e) => setContaId(e.target.value)} disabled={readOnly} className="w-full rounded border px-2 py-1 text-sm disabled:opacity-50">
             {contasAnaliticas.map((conta) => (
               <option key={conta.id} value={conta.id}>
                 {conta.label}
@@ -92,7 +95,8 @@ export function RateioImpostoPanel({
             type="date"
             value={competencia}
             onChange={(e) => setCompetencia(e.target.value)}
-            className="w-full rounded border px-2 py-1 text-sm"
+            disabled={readOnly}
+            className="w-full rounded border px-2 py-1 text-sm disabled:opacity-50"
           />
         </div>
 
@@ -104,7 +108,8 @@ export function RateioImpostoPanel({
             value={valorDeclarado}
             onChange={(e) => setValorDeclarado(e.target.value)}
             placeholder="0,00"
-            className="w-full rounded border px-2 py-1 text-sm"
+            disabled={readOnly}
+            className="w-full rounded border px-2 py-1 text-sm disabled:opacity-50"
           />
         </div>
       </div>
@@ -117,16 +122,18 @@ export function RateioImpostoPanel({
         </div>
       )}
 
-      <div>
-        <button
-          type="button"
-          onClick={salvar}
-          disabled={pending || valorDeclarado.trim().length === 0}
-          className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white disabled:opacity-50"
-        >
-          {pending ? 'Salvando...' : 'Salvar'}
-        </button>
-      </div>
+      {!readOnly && (
+        <div>
+          <button
+            type="button"
+            onClick={salvar}
+            disabled={pending || valorDeclarado.trim().length === 0}
+            className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white disabled:opacity-50"
+          >
+            {pending ? 'Salvando...' : 'Salvar'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

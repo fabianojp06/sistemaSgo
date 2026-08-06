@@ -10,7 +10,15 @@ type ContaOpcao = { id: string; label: string };
  * Interação mínima (uma conta por vez): não é a grade completa da Central de
  * Cálculos (US-101/UC03.01), que fica para quando essa frente for implementada.
  */
-export function ValorOrcadoContaForm({ versaoId, contasAnaliticas }: { versaoId: string; contasAnaliticas: ContaOpcao[] }) {
+export function ValorOrcadoContaForm({
+  versaoId,
+  contasAnaliticas,
+  readOnly,
+}: {
+  versaoId: string;
+  contasAnaliticas: ContaOpcao[];
+  readOnly?: boolean;
+}) {
   const anoAtual = new Date().getFullYear();
   const [contaId, setContaId] = useState(contasAnaliticas[0]?.id ?? '');
   const [exercicio, setExercicio] = useState(anoAtual);
@@ -46,7 +54,8 @@ export function ValorOrcadoContaForm({ versaoId, contasAnaliticas }: { versaoId:
           <select
             value={contaId}
             onChange={(e) => setContaId(e.target.value)}
-            className="w-full rounded border px-2 py-1 text-sm"
+            disabled={readOnly}
+            className="w-full rounded border px-2 py-1 text-sm disabled:opacity-50"
           >
             {contasAnaliticas.map((conta) => (
               <option key={conta.id} value={conta.id}>
@@ -62,7 +71,8 @@ export function ValorOrcadoContaForm({ versaoId, contasAnaliticas }: { versaoId:
             type="number"
             value={exercicio}
             onChange={(e) => setExercicio(Number(e.target.value))}
-            className="w-full rounded border px-2 py-1 text-sm"
+            disabled={readOnly}
+            className="w-full rounded border px-2 py-1 text-sm disabled:opacity-50"
           />
         </div>
 
@@ -74,7 +84,8 @@ export function ValorOrcadoContaForm({ versaoId, contasAnaliticas }: { versaoId:
             value={valor}
             onChange={(e) => setValor(e.target.value)}
             placeholder="0,00"
-            className="w-full rounded border px-2 py-1 text-sm"
+            disabled={readOnly}
+            className="w-full rounded border px-2 py-1 text-sm disabled:opacity-50"
           />
         </div>
       </div>
@@ -94,16 +105,18 @@ export function ValorOrcadoContaForm({ versaoId, contasAnaliticas }: { versaoId:
         </div>
       )}
 
-      <div>
-        <button
-          type="button"
-          onClick={salvar}
-          disabled={pending || valor.trim().length === 0}
-          className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white disabled:opacity-50"
-        >
-          {pending ? 'Salvando...' : 'Salvar'}
-        </button>
-      </div>
+      {!readOnly && (
+        <div>
+          <button
+            type="button"
+            onClick={salvar}
+            disabled={pending || valor.trim().length === 0}
+            className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white disabled:opacity-50"
+          >
+            {pending ? 'Salvando...' : 'Salvar'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
