@@ -36,7 +36,10 @@
 
 ## 🔜 Próximo da Fila (priorizado)
 
-Nenhum item priorizado no momento — ver "Backlog Não Refinado" e "Fora de Escopo" abaixo para candidatos futuros.
+| Ordem | Item | Por que é o próximo | Esforço estimado |
+|---|---|---|---|
+| 1 | **US-114 — Gerenciar Propostas (Listar, Cadastrar, Duplicar, Excluir Versão)** | Nenhuma `Funcionalidade` navegável de "Propostas" existe no menu hoje — `CadastrarPropostaUseCase`/`DuplicarPropostaUseCase`/`ExcluirVersaoPropostaUseCase` já existem e testados, só falta UI. Bloqueia US-115. | G |
+| 2 | **US-115 — Tela de Proposta com Guias Analíticas (UC03.06)** | Todas as 7 guias analíticas (Valor Orçado, Meta, Empregados, Viagens, Bens, Rateio de Impostos, Termo de Ajuste) já existem ponta a ponta, hoje soltas em `/plano-contas/[versaoId]` sem navegação própria — esta US integra os painéis já existentes numa tela real com capa Read-only + abas. | G |
 
 ---
 
@@ -61,7 +64,6 @@ Nenhum item bloqueado no momento (US-008a implementada em 2026-08-06, ver "Concl
 
 | UC | Título | Por que não vira US agora |
 |---|---|---|
-| UC03.06 | Alterar Proposta | Campos de capa são sempre Read-only nesta tela; toda edição real acontece nas guias analíticas (Metas, Empregados, Bens) que ainda não existem. Não há nada testável para implementar isoladamente — revisitar quando ao menos uma guia existir. |
 | UC03.09 | "Criar Nova Versão da Proposta" (título) | **Corpo do texto não corresponde ao título** — o conteúdo real é um workflow de validação/homologação de lançamentos de RH e Viagens (Operador → Validador → Disponibilizado/Rejeitado), não criação de versão. `CriarVersaoPropostaUseCase` (US-007) já resolve "criar versão" por necessidade própria, sem se basear neste UC. O workflow de validação real deste UC depende de Empregados/Viagens existirem — revisitar junto com o item 1/2 da fila, tratando-o como um UC novo de homologação, não como "criar versão". |
 | UC03.12 | Criar Termo Aditivo | Wizard de 4 fases (Cronograma de Desembolso, Premissas, Recursos, Pessoal) sobre Proposta Oficializada, com aprovação por um ator "Gestor Master" inexistente no sistema de perfis atual, integração externa `RubiIntegrationController` nunca mencionada em outro lugar, e tabela de custódia `SolicitacaoAditivo` inexistente. Nenhuma das 7 peças que este UC orquestra existe hoje — não é uma US "bloqueada com cenários prontos", é um módulo inteiro sem fundação. Revisitar somente depois que Recursos (tetos financeiros por exercício, mais próximo de `ValorOrcadoConta` já existente) e ao menos Empregados existirem; papel "Gestor Master" exige uma ADR própria de RBAC hierárquico antes de qualquer código. |
 
