@@ -46,6 +46,7 @@ function criarPrismaMock(qtde: QtdeMock, proposta: PropostaMock, headcounts: Hea
       count: vi.fn(({ where }: { where: { categoria: string; metaId?: string } }) =>
         Promise.resolve(headcounts.filter((h) => h.categoria === where.categoria && (where.metaId === undefined || h.metaId === where.metaId)).length),
       ),
+      findMany: vi.fn(() => Promise.resolve([])),
     },
     historicoOperacao: { create: vi.fn().mockResolvedValue({}) },
     $transaction: vi.fn((fn: (tx: unknown) => Promise<unknown>) => fn(base)),

@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 import { CadastrarQtdeEmpregadoUseCase } from './CadastrarQtdeEmpregadoUseCase';
 import {
@@ -10,7 +11,16 @@ import {
 type PropostaMock = { id: string; tenantId: string; categoria: string; status: string; dataInicio: Date; dataFim: Date };
 type VersaoMock = { id: string; tenantId: string; propostaId: string; vigente: boolean; ativa: boolean };
 type MetaMock = { id: string; tenantId: string; versaoId: string; ativo: boolean };
-type HeadcountMock = { tenantId: string; propostaId: string; metaId: string | null; categoria: string; ativo: boolean };
+type HeadcountMock = {
+  tenantId: string;
+  propostaId: string;
+  metaId: string | null;
+  categoria: string;
+  ativo: boolean;
+  periodoInicio?: Date;
+  periodoFim?: Date | null;
+  custoTotalMensal?: Prisma.Decimal;
+};
 type QtdeMock = { id: string; tenantId: string; propostaId: string; periodoInicio: Date; periodoFim: Date; ativo: boolean };
 
 function criarPrismaMock(
@@ -53,6 +63,23 @@ function criarPrismaMock(
               h.categoria === where.categoria &&
               (where.metaId === undefined || h.metaId === where.metaId),
           ).length,
+        ),
+      ),
+      findMany: vi.fn(({ where }: { where: { tenantId: string; propostaId: string; ativo: boolean; metaId?: string } }) =>
+        Promise.resolve(
+          headcounts
+            .filter(
+              (h) =>
+                h.tenantId === where.tenantId &&
+                h.propostaId === where.propostaId &&
+                h.ativo === where.ativo &&
+                (where.metaId === undefined || h.metaId === where.metaId),
+            )
+            .map((h) => ({
+              periodoInicio: h.periodoInicio ?? new Date('2026-01-01'),
+              periodoFim: h.periodoFim ?? null,
+              custoTotalMensal: h.custoTotalMensal ?? new Prisma.Decimal(0),
+            })),
         ),
       ),
     },
@@ -169,5 +196,38 @@ describe('CadastrarQtdeEmpregadoUseCase [US-113]', () => {
     const useCase = new CadastrarQtdeEmpregadoUseCase(prisma as never);
 
     await expect(useCase.execute({ ...inputBase, propostaId: 'p2' })).rejects.toThrow(MetaNaoEncontradaError);
+  });
+
+  it('calcula valorTotalConsolidado por overlap de período [US-113b]', async () => {
+    const headcounts: HeadcountMock[] = [
+      // Dentro do período do documento (jan-jun/2026), sem periodoFim (usa dataFim da Proposta) — 6 meses de overlap.
+      {
+        tenantId: 't1',
+        propostaId: 'p1',
+        metaId: null,
+        categoria: 'EMPREGADO',
+        ativo: true,
+        periodoInicio: new Date('2026-01-01'),
+        periodoFim: null,
+        custoTotalMensal: new Prisma.Decimal(6550),
+      },
+      // Fora do período do documento (começa depois do fim do documento) — não contribui.
+      {
+        tenantId: 't1',
+        propostaId: 'p1',
+        metaId: null,
+        categoria: 'EMPREGADO',
+        ativo: true,
+        periodoInicio: new Date('2026-08-01'),
+        periodoFim: null,
+        custoTotalMensal: new Prisma.Decimal(5000),
+      },
+    ];
+    const prisma = criarPrismaMock([propostaConsolidada], [], [], headcounts);
+    const useCase = new CadastrarQtdeEmpregadoUseCase(prisma as never);
+
+    const qtde = await useCase.execute(inputBase);
+
+    expect(qtde.valorTotalConsolidado.toString()).toBe('39300'); // 6550 * 6 meses (jan-jun)
   });
 });

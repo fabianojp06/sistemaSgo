@@ -531,6 +531,7 @@ export type EmpregadoResultado = {
   nome: string;
   vinculoFuncionalHerdado: string;
   custoTotalMensal: string;
+  contaId: string;
 };
 
 const CadastrarEmpregadoSchema = z.object({
@@ -569,6 +570,7 @@ export async function cadastrarEmpregado(input: {
         nome: empregado.nome,
         vinculoFuncionalHerdado: empregado.vinculoFuncionalHerdado,
         custoTotalMensal: empregado.custoTotalMensal.toString(),
+        contaId: empregado.contaId,
       },
     };
   } catch (erro) {
@@ -624,6 +626,7 @@ export async function cadastrarEmpregadosEmLote(input: {
           nome: e.nome,
           vinculoFuncionalHerdado: e.vinculoFuncionalHerdado,
           custoTotalMensal: e.custoTotalMensal.toString(),
+          contaId: e.contaId,
         })),
         quantidade: empregados.length,
         custoTotalMensal,
@@ -673,6 +676,7 @@ export async function editarEmpregado(input: {
         nome: empregado.nome,
         vinculoFuncionalHerdado: empregado.vinculoFuncionalHerdado,
         custoTotalMensal: empregado.custoTotalMensal.toString(),
+        contaId: empregado.contaId,
       },
     };
   } catch (erro) {
@@ -1021,6 +1025,7 @@ export type QtdeEmpregadoResultado = {
   quantidadeEmpregados: number;
   quantidadeEstagiarios: number;
   quantidadeJovemAprendiz: number;
+  valorTotalConsolidado: string;
 };
 
 const CadastrarQtdeEmpregadoSchema = z.object({
@@ -1056,6 +1061,7 @@ export async function cadastrarQtdeEmpregado(input: {
         quantidadeEmpregados: qtdeEmpregado.quantidadeEmpregados,
         quantidadeEstagiarios: qtdeEmpregado.quantidadeEstagiarios,
         quantidadeJovemAprendiz: qtdeEmpregado.quantidadeJovemAprendiz,
+        valorTotalConsolidado: qtdeEmpregado.valorTotalConsolidado.toString(),
       },
     };
   } catch (erro) {
@@ -1098,6 +1104,7 @@ export async function editarQtdeEmpregado(input: {
         quantidadeEmpregados: qtdeEmpregado.quantidadeEmpregados,
         quantidadeEstagiarios: qtdeEmpregado.quantidadeEstagiarios,
         quantidadeJovemAprendiz: qtdeEmpregado.quantidadeJovemAprendiz,
+        valorTotalConsolidado: qtdeEmpregado.valorTotalConsolidado.toString(),
       },
     };
   } catch (erro) {

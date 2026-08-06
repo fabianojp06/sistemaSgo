@@ -7,6 +7,7 @@ import {
   QtdeEmpregadoPropostaImutavelError,
   SobreposicaoPeriodoQtdeEmpregadoError,
 } from '@/domain/plano-contas/errors';
+import { calcularValorTotalConsolidado } from '@/domain/plano-contas/calcularValorTotalConsolidado';
 
 type EditarQtdeEmpregadoInput = {
   tenantId: string;
@@ -65,11 +66,17 @@ export class EditarQtdeEmpregadoUseCase {
       ativo: true,
       ...(atual.metaId ? { metaId: atual.metaId } : {}),
     };
-    const [quantidadeEmpregados, quantidadeEstagiarios, quantidadeJovemAprendiz] = await Promise.all([
+    const [quantidadeEmpregados, quantidadeEstagiarios, quantidadeJovemAprendiz, empregadosDoEscopo] = await Promise.all([
       this.prisma.empregadoHeadcount.count({ where: { ...escopoContagem, categoria: 'EMPREGADO' } }),
       this.prisma.empregadoHeadcount.count({ where: { ...escopoContagem, categoria: 'ESTAGIARIO' } }),
       this.prisma.empregadoHeadcount.count({ where: { ...escopoContagem, categoria: 'JOVEM_APRENDIZ' } }),
+      this.prisma.empregadoHeadcount.findMany({
+        where: escopoContagem,
+        select: { periodoInicio: true, periodoFim: true, custoTotalMensal: true },
+      }),
     ]);
+
+    const valorTotalConsolidado = calcularValorTotalConsolidado(empregadosDoEscopo, input.periodoInicio, input.periodoFim, proposta.dataFim);
 
     // US-105 — se o cliente informou o token e ele já diverge do estado lido, nem tenta:
     // conflito é certo. Evita abrir transação para uma escrita que vamos rejeitar de qualquer forma.
@@ -89,6 +96,7 @@ export class EditarQtdeEmpregadoUseCase {
           quantidadeEmpregados,
           quantidadeEstagiarios,
           quantidadeJovemAprendiz,
+          valorTotalConsolidado,
         },
       });
       if (resultado.count === 0) {
@@ -106,6 +114,7 @@ export class EditarQtdeEmpregadoUseCase {
             qtdeEmpregadoId: qtdeEmpregado.id,
             quantidadeEmpregadosAnterior: atual.quantidadeEmpregados,
             quantidadeEmpregadosNovo: quantidadeEmpregados,
+            valorTotalConsolidado: valorTotalConsolidado.toString(),
           },
         },
       });

@@ -201,23 +201,30 @@ function NovaQtdeEmpregadoForm({
   );
 }
 
-/** US-108/US-113/US-115 — Empregados + Qtde. Empregado (sub-seção da mesma aba, mesmo domínio RH). */
+/** US-108/US-113/US-113b/US-115 — Empregados + Qtde. Empregado (sub-seção da mesma aba, mesmo domínio RH). */
 export function EmpregadoPanel({
   propostaId,
   cargos,
   empregadosIniciais,
   qtdeEmpregadosIniciais,
+  contasAnaliticas,
   readOnly,
 }: {
   propostaId: string;
   cargos: CargoOpcao[];
   empregadosIniciais: EmpregadoListado[];
   qtdeEmpregadosIniciais: QtdeEmpregadoResultado[];
+  contasAnaliticas: { id: string; label: string }[];
   readOnly?: boolean;
 }) {
   const [empregados, setEmpregados] = useState(empregadosIniciais);
   const [qtdeEmpregados, setQtdeEmpregados] = useState(qtdeEmpregadosIniciais);
   const [pending, startTransition] = useTransition();
+
+  const contaLabelPorId = new Map(contasAnaliticas.map((c) => [c.id, c.label]));
+  // Item 2 do feedback de teste HML — total mensal corrente lançado (sem multiplicar por
+  // duração; distinto de valorTotalConsolidado, que é o total do período de um documento).
+  const totalMensal = empregados.reduce((soma, e) => soma + Number(e.custoTotalMensal), 0);
 
   function excluir(empregadoId: string) {
     startTransition(async () => {
@@ -252,7 +259,8 @@ export function EmpregadoPanel({
                 <div>
                   <span className="font-medium">{empregado.nome}</span>{' '}
                   <span className="text-xs text-gray-500">
-                    ({LABEL_CATEGORIA[empregado.categoria]} — {empregado.vinculoFuncionalHerdado} — R$ {empregado.custoTotalMensal}/mês)
+                    ({LABEL_CATEGORIA[empregado.categoria]} — {empregado.vinculoFuncionalHerdado} — R$ {empregado.custoTotalMensal}/mês —{' '}
+                    {contaLabelPorId.get(empregado.contaId) ?? 'Conta não encontrada'})
                   </span>
                 </div>
                 {!readOnly && (
@@ -268,6 +276,11 @@ export function EmpregadoPanel({
               </li>
             ))}
           </ul>
+        )}
+        {empregados.length > 0 && (
+          <p className="text-xs text-gray-600">
+            Total mensal lançado nesta Proposta: R$ {totalMensal.toFixed(2)} — reflete na guia Semáforo (Valor Realizado por conta).
+          </p>
         )}
       </div>
 
@@ -286,7 +299,7 @@ export function EmpregadoPanel({
               <li key={qtde.id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
                 <span>
                   {qtde.numeroDocumento} — {qtde.quantidadeEmpregados} empregado(s), {qtde.quantidadeEstagiarios} estagiário(s),{' '}
-                  {qtde.quantidadeJovemAprendiz} jovem(ns) aprendiz(es)
+                  {qtde.quantidadeJovemAprendiz} jovem(ns) aprendiz(es) — Valor Total do Período: R$ {qtde.valorTotalConsolidado}
                 </span>
                 {!readOnly && (
                   <button

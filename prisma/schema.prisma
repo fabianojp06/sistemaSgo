@@ -794,6 +794,12 @@ model QtdeEmpregado {
   quantidadeEstagiarios   Int
   quantidadeJovemAprendiz Int
 
+  // US-113b — snapshot do custo total do período consolidado (overlap entre
+  // o período de cada EmpregadoHeadcount e o período deste documento).
+  // Nunca recalculado retroativamente: é o valor "fotografado" no momento da
+  // consolidação, mesmo que o custoTotalCargo do Cargo mude depois.
+  valorTotalConsolidado Decimal @default(0) @db.Decimal(15, 2)
+
   ativo     Boolean  @default(true) // soft delete
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

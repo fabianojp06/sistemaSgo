@@ -81,7 +81,7 @@ export default async function PropostaDetalhePage({
       }),
       prisma.empregadoHeadcount.findMany({
         where: { tenantId, propostaId: id, ativo: true },
-        select: { id: true, nome: true, categoria: true, vinculoFuncionalHerdado: true, custoTotalMensal: true },
+        select: { id: true, nome: true, categoria: true, vinculoFuncionalHerdado: true, custoTotalMensal: true, contaId: true },
       }),
       prisma.qtdeEmpregado.findMany({
         where: { tenantId, propostaId: id, ativo: true },
@@ -91,6 +91,7 @@ export default async function PropostaDetalhePage({
           quantidadeEmpregados: true,
           quantidadeEstagiarios: true,
           quantidadeJovemAprendiz: true,
+          valorTotalConsolidado: true,
         },
       }),
     ]);
@@ -101,8 +102,9 @@ export default async function PropostaDetalhePage({
       categoria: e.categoria,
       vinculoFuncionalHerdado: e.vinculoFuncionalHerdado,
       custoTotalMensal: e.custoTotalMensal.toString(),
+      contaId: e.contaId,
     }));
-    qtdeEmpregados = qtdeDb;
+    qtdeEmpregados = qtdeDb.map((q) => ({ ...q, valorTotalConsolidado: q.valorTotalConsolidado.toString() }));
   }
 
   let viagensIniciais: import('@/app/plano-contas/actions').ViagemResultado[] = [];
@@ -163,6 +165,7 @@ export default async function PropostaDetalhePage({
             cargos={cargos}
             empregadosIniciais={empregados}
             qtdeEmpregadosIniciais={qtdeEmpregados}
+            contasAnaliticas={contasAnaliticas}
             readOnly={readOnly}
           />
         )}

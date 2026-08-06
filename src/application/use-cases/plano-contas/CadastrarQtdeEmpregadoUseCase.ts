@@ -7,6 +7,7 @@ import {
   SobreposicaoPeriodoQtdeEmpregadoError,
   VersaoPropostaInvalidaError,
 } from '@/domain/plano-contas/errors';
+import { calcularValorTotalConsolidado } from '@/domain/plano-contas/calcularValorTotalConsolidado';
 
 type CadastrarQtdeEmpregadoInput = {
   tenantId: string;
@@ -72,11 +73,23 @@ export class CadastrarQtdeEmpregadoUseCase {
     }
 
     const escopoContagem = { tenantId: input.tenantId, propostaId: input.propostaId, ativo: true, ...(metaId ? { metaId } : {}) };
-    const [quantidadeEmpregados, quantidadeEstagiarios, quantidadeJovemAprendiz] = await Promise.all([
+    const [quantidadeEmpregados, quantidadeEstagiarios, quantidadeJovemAprendiz, empregadosDoEscopo] = await Promise.all([
       this.prisma.empregadoHeadcount.count({ where: { ...escopoContagem, categoria: 'EMPREGADO' } }),
       this.prisma.empregadoHeadcount.count({ where: { ...escopoContagem, categoria: 'ESTAGIARIO' } }),
       this.prisma.empregadoHeadcount.count({ where: { ...escopoContagem, categoria: 'JOVEM_APRENDIZ' } }),
+      this.prisma.empregadoHeadcount.findMany({
+        where: escopoContagem,
+        select: { periodoInicio: true, periodoFim: true, custoTotalMensal: true },
+      }),
     ]);
+
+    // US-113b — snapshot do custo total do período consolidado (overlap por Empregado).
+    const valorTotalConsolidado = calcularValorTotalConsolidado(
+      empregadosDoEscopo,
+      input.periodoInicio,
+      input.periodoFim,
+      proposta.dataFim,
+    );
 
     return this.prisma.$transaction(async (tx) => {
       const qtdeEmpregado = await tx.qtdeEmpregado.create({
@@ -90,6 +103,7 @@ export class CadastrarQtdeEmpregadoUseCase {
           quantidadeEmpregados,
           quantidadeEstagiarios,
           quantidadeJovemAprendiz,
+          valorTotalConsolidado,
         },
       });
 
@@ -105,6 +119,7 @@ export class CadastrarQtdeEmpregadoUseCase {
             quantidadeEmpregados,
             quantidadeEstagiarios,
             quantidadeJovemAprendiz,
+            valorTotalConsolidado: valorTotalConsolidado.toString(),
           },
         },
       });
