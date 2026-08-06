@@ -15,6 +15,7 @@ import {
   getConfigurarValorOrcadoContaUseCase,
   getCriarVersaoPropostaUseCase,
   getConfigurarSemaforoContaUseCase,
+  getCalcularValorRealizadoUseCase,
   getCadastrarCargoUseCase,
   getEditarCargoUseCase,
   getCadastrarMetaUseCase,
@@ -1148,6 +1149,47 @@ export async function rejeitarTermoAjuste(
     });
     revalidatePath('/plano-contas');
     return { sucesso: true, dados: { id: termoAjuste.id, status: termoAjuste.status, valor: '' } };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+export type BadgeSemaforoContaResultado = {
+  contaId: string;
+  valorOrcado: string;
+  valorRealizado: string;
+  percentual: number | null;
+  cor: 'VERDE' | 'AMARELO' | 'LARANJA' | 'VERMELHO' | null;
+  /**
+   * US-008a — true enquanto valorRealizado não incluir Empregados nem Rateio
+   * de Impostos (ambos sem vínculo com ContaContabil no schema atual; ver
+   * CalcularValorRealizadoUseCase). Sinaliza ao usuário que o badge é
+   * aproximado, não uma promessa de "logo será resolvido automaticamente".
+   */
+  parcial: boolean;
+};
+
+/** US-008a — Badge do Semáforo Orçamentário (valorRealizado por conta, na Versão). */
+export async function obterBadgesSemaforo(
+  versaoId: string,
+  contaIds: string[],
+): Promise<ActionResultComDados<BadgeSemaforoContaResultado[]>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  try {
+    const badges = await getCalcularValorRealizadoUseCase().execute(contexto.tenantId, versaoId, contaIds);
+    return {
+      sucesso: true,
+      dados: Array.from(badges.values()).map((b) => ({
+        contaId: b.contaId,
+        valorOrcado: b.valorOrcado.toString(),
+        valorRealizado: b.valorRealizado.toString(),
+        percentual: b.percentual,
+        cor: b.cor,
+        parcial: b.parcial,
+      })),
+    };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
   }
