@@ -56,14 +56,8 @@ export class InativarUnidadeFuncionalUseCase {
     ]);
   }
 
-  /**
-   * RN_EST_04 — bloqueia inativação se houver Cargo vinculado. Retorna sempre
-   * 0 hoje porque `Cargo` (UC03.19/UC03.24-27) ainda não existe no projeto —
-   * trocar por uma consulta real (`this.prisma.cargo.count(...)`) quando esse
-   * model existir. Mantido como método isolado de propósito, para que essa
-   * troca não exija reabrir o resto do use-case.
-   */
-  private async contarCargosVinculados(_unidadeId: string): Promise<number> {
-    return 0;
+  /** RN_EST_04 — bloqueia inativação se houver Cargo vinculado (via rateio ADR-026). */
+  private async contarCargosVinculados(unidadeId: string): Promise<number> {
+    return this.prisma.cargoAlocacaoPercentual.count({ where: { unidadeFuncionalId: unidadeId } });
   }
 }

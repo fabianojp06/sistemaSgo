@@ -27,6 +27,9 @@ function criarPrismaMock(propostas: PropostaMock[], unidades: UnidadeMock[]) {
         return Promise.resolve(p && p.tenantId === where.tenantId ? p : null);
       }),
     },
+    cargoAlocacaoPercentual: {
+      count: vi.fn().mockResolvedValue(0),
+    },
     historicoOperacao: { create: vi.fn().mockResolvedValue({}) },
     $transaction: vi.fn((ops: Promise<unknown>[]) => Promise.all(ops)),
   };

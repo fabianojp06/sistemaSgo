@@ -94,6 +94,19 @@ async function seedModuloPlanoContas() {
     update: {},
     create: { moduloId: modulo.id, chave: 'propostas.excluir-versao', nome: 'Excluir Versão da Proposta', tipo: 'CONTEXTUAL' },
   });
+
+  // US-116/US-117 (UC03.18/UC03.19) — Estrutura Funcional (Organograma) + Cargos. [ADR-021]
+  // CONTEXTUAL: acessada a partir de um link dentro de /propostas/{id}, sem entrada própria no menu.
+  await prisma.funcionalidade.upsert({
+    where: { moduloId_chave: { moduloId: modulo.id, chave: 'propostas.gerenciar-estrutura' } },
+    update: {},
+    create: {
+      moduloId: modulo.id,
+      chave: 'propostas.gerenciar-estrutura',
+      nome: 'Gerenciar Estrutura Funcional e Cargos',
+      tipo: 'CONTEXTUAL',
+    },
+  });
 }
 
 // US-111 (ADR-025) — "Gestor Master" nasce como uma linha de Perfil por tenant, sem

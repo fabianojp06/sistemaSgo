@@ -1,5 +1,6 @@
 import { auth } from '@clerk/nextjs/server';
 import { redirect, notFound } from 'next/navigation';
+import Link from 'next/link';
 import { prisma } from '@/infrastructure/db/prisma';
 import { getTenantId } from '@/infrastructure/tenant';
 import { podeEditarVersao } from '@/domain/plano-contas/podeEditarVersao';
@@ -125,7 +126,12 @@ export default async function PropostaDetalhePage({
   return (
     <main className="flex min-h-screen flex-col gap-6 p-6">
       <header>
-        <h1 className="text-xl font-semibold">{proposta.nome}</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-semibold">{proposta.nome}</h1>
+          <Link href={`/propostas/${id}/estrutura`} className="text-xs text-blue-700 hover:underline">
+            Estrutura Funcional e Cargos &rarr;
+          </Link>
+        </div>
         <p className="text-sm text-gray-500">
           {proposta.codigo} — Versão {versao.numeroVersao} ({versao.status}) — {proposta.tipo === 'CONTRATO' ? 'Contrato' : 'Termo de Parceria'} —{' '}
           {proposta.categoria === 'CONSOLIDADA' ? 'Consolidada' : 'Por Meta'}
