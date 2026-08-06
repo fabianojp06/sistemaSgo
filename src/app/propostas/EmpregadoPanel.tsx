@@ -138,6 +138,92 @@ function NovoEmpregadoForm({
   );
 }
 
+/** Agrupador em árvore: 1 nó por Cargo, desmembrável para ver os Empregados daquele Cargo. */
+function EmpregadosPorCargoArvore({
+  empregados,
+  cargos,
+  contaLabelPorId,
+  readOnly,
+  pending,
+  onExcluir,
+}: {
+  empregados: EmpregadoListado[];
+  cargos: CargoOpcao[];
+  contaLabelPorId: Map<string, string>;
+  readOnly?: boolean;
+  pending: boolean;
+  onExcluir: (empregadoId: string) => void;
+}) {
+  const cargoLabelPorId = new Map(cargos.map((c) => [c.id, c.label]));
+  const [expandidos, setExpandidos] = useState<Set<string>>(new Set());
+
+  const grupos = new Map<string, EmpregadoListado[]>();
+  for (const empregado of empregados) {
+    const grupo = grupos.get(empregado.cargoId) ?? [];
+    grupo.push(empregado);
+    grupos.set(empregado.cargoId, grupo);
+  }
+
+  function alternarExpandido(cargoId: string) {
+    setExpandidos((atual) => {
+      const novo = new Set(atual);
+      if (novo.has(cargoId)) novo.delete(cargoId);
+      else novo.add(cargoId);
+      return novo;
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-2 rounded border">
+      {[...grupos.entries()].map(([cargoId, empregadosDoCargo]) => {
+        const aberto = expandidos.has(cargoId);
+        const subtotal = empregadosDoCargo.reduce((soma, e) => soma + Number(e.custoTotalMensal), 0);
+        return (
+          <div key={cargoId} className="border-b last:border-0">
+            <button
+              type="button"
+              onClick={() => alternarExpandido(cargoId)}
+              className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-gray-50"
+            >
+              <span className="font-medium">
+                {aberto ? '▾' : '▸'} {cargoLabelPorId.get(cargoId) ?? 'Cargo não encontrado'}
+              </span>
+              <span className="text-xs text-gray-500">
+                {empregadosDoCargo.length} empregado(s) — R$ {subtotal.toFixed(2)}/mês
+              </span>
+            </button>
+            {aberto && (
+              <ul className="divide-y border-t bg-gray-50">
+                {empregadosDoCargo.map((empregado) => (
+                  <li key={empregado.id} className="flex items-center justify-between gap-2 px-6 py-2 text-sm">
+                    <div>
+                      <span className="font-medium">{empregado.nome}</span>{' '}
+                      <span className="text-xs text-gray-500">
+                        ({LABEL_CATEGORIA[empregado.categoria]} — {empregado.vinculoFuncionalHerdado} — R$ {empregado.custoTotalMensal}/mês —{' '}
+                        {contaLabelPorId.get(empregado.contaId) ?? 'Conta não encontrada'})
+                      </span>
+                    </div>
+                    {!readOnly && (
+                      <button
+                        type="button"
+                        onClick={() => onExcluir(empregado.id)}
+                        disabled={pending}
+                        className="rounded border px-2 py-1 text-xs text-red-700 disabled:opacity-50"
+                      >
+                        Excluir
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function NovaQtdeEmpregadoForm({
   propostaId,
   readOnly,
@@ -150,7 +236,6 @@ function NovaQtdeEmpregadoForm({
   const hoje = new Date().toISOString().slice(0, 10);
   const [periodoInicio, setPeriodoInicio] = useState(hoje);
   const [periodoFim, setPeriodoFim] = useState(hoje);
-  const [numeroDocumento, setNumeroDocumento] = useState('');
   const [erro, setErro] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -159,12 +244,11 @@ function NovaQtdeEmpregadoForm({
   function salvar() {
     setErro(null);
     startTransition(async () => {
-      const resposta = await cadastrarQtdeEmpregado({ propostaId, periodoInicio, periodoFim, numeroDocumento });
+      const resposta = await cadastrarQtdeEmpregado({ propostaId, periodoInicio, periodoFim });
       if (!resposta.sucesso) {
         setErro(resposta.mensagem);
         return;
       }
-      setNumeroDocumento('');
       onCriado(resposta.dados);
     });
   }
@@ -172,7 +256,8 @@ function NovaQtdeEmpregadoForm({
   return (
     <div className="flex flex-col gap-3 rounded border p-4">
       <h4 className="text-sm font-medium">Novo Documento de Consolidação (Qtde. Empregado)</h4>
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+      <p className="text-xs text-gray-500">O Número do Documento é gerado automaticamente (formato C-XXX, sequencial por Proposta).</p>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-600">Período Início</label>
           <input type="date" value={periodoInicio} onChange={(e) => setPeriodoInicio(e.target.value)} className="w-full rounded border px-2 py-1 text-sm" />
@@ -181,17 +266,13 @@ function NovaQtdeEmpregadoForm({
           <label className="mb-1 block text-xs font-medium text-gray-600">Período Fim</label>
           <input type="date" value={periodoFim} onChange={(e) => setPeriodoFim(e.target.value)} className="w-full rounded border px-2 py-1 text-sm" />
         </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">Número do Documento</label>
-          <input type="text" value={numeroDocumento} onChange={(e) => setNumeroDocumento(e.target.value)} className="w-full rounded border px-2 py-1 text-sm" />
-        </div>
       </div>
       {erro && <p className="text-xs text-red-600">{erro}</p>}
       <div>
         <button
           type="button"
           onClick={salvar}
-          disabled={pending || numeroDocumento.trim().length === 0}
+          disabled={pending}
           className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white disabled:opacity-50"
         >
           {pending ? 'Salvando...' : 'Consolidar'}
@@ -253,29 +334,14 @@ export function EmpregadoPanel({
         {empregados.length === 0 ? (
           <p className="text-sm text-gray-500">Nenhum Empregado cadastrado.</p>
         ) : (
-          <ul className="divide-y rounded border">
-            {empregados.map((empregado) => (
-              <li key={empregado.id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
-                <div>
-                  <span className="font-medium">{empregado.nome}</span>{' '}
-                  <span className="text-xs text-gray-500">
-                    ({LABEL_CATEGORIA[empregado.categoria]} — {empregado.vinculoFuncionalHerdado} — R$ {empregado.custoTotalMensal}/mês —{' '}
-                    {contaLabelPorId.get(empregado.contaId) ?? 'Conta não encontrada'})
-                  </span>
-                </div>
-                {!readOnly && (
-                  <button
-                    type="button"
-                    onClick={() => excluir(empregado.id)}
-                    disabled={pending}
-                    className="rounded border px-2 py-1 text-xs text-red-700 disabled:opacity-50"
-                  >
-                    Excluir
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
+          <EmpregadosPorCargoArvore
+            empregados={empregados}
+            cargos={cargos}
+            contaLabelPorId={contaLabelPorId}
+            readOnly={readOnly}
+            pending={pending}
+            onExcluir={excluir}
+          />
         )}
         {empregados.length > 0 && (
           <p className="text-xs text-gray-600">

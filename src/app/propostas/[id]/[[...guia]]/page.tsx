@@ -81,7 +81,7 @@ export default async function PropostaDetalhePage({
       }),
       prisma.empregadoHeadcount.findMany({
         where: { tenantId, propostaId: id, ativo: true },
-        select: { id: true, nome: true, categoria: true, vinculoFuncionalHerdado: true, custoTotalMensal: true, contaId: true },
+        select: { id: true, nome: true, categoria: true, vinculoFuncionalHerdado: true, custoTotalMensal: true, contaId: true, cargoId: true },
       }),
       prisma.qtdeEmpregado.findMany({
         where: { tenantId, propostaId: id, ativo: true },
@@ -103,6 +103,7 @@ export default async function PropostaDetalhePage({
       vinculoFuncionalHerdado: e.vinculoFuncionalHerdado,
       custoTotalMensal: e.custoTotalMensal.toString(),
       contaId: e.contaId,
+      cargoId: e.cargoId,
     }));
     qtdeEmpregados = qtdeDb.map((q) => ({ ...q, valorTotalConsolidado: q.valorTotalConsolidado.toString() }));
   }

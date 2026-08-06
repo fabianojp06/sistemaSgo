@@ -804,6 +804,7 @@ model QtdeEmpregado {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([tenantId, propostaId, numeroDocumento])
   @@index([tenantId, propostaId])
   @@index([tenantId, metaId])
 }

@@ -516,8 +516,16 @@ export class ItemPatrimonialNaoEncontradoError extends Error {
 // US-113, Cenário 4, RN0153 — campos obrigatórios do cadastro/alteração de Qtde. Empregado.
 export class CamposObrigatoriosQtdeEmpregadoError extends Error {
   constructor() {
-    super('Período Inicial, Período Final e Número do Documento são obrigatórios.');
+    super('Período Inicial e Período Final são obrigatórios.');
     this.name = 'CamposObrigatoriosQtdeEmpregadoError';
+  }
+}
+
+// US-113 — geração automática do Número do Documento (formato "C-XXX") esgotou as tentativas de retry.
+export class NumeroDocumentoGeracaoFalhouError extends Error {
+  constructor() {
+    super('Não foi possível gerar um Número do Documento único. Tente novamente.');
+    this.name = 'NumeroDocumentoGeracaoFalhouError';
   }
 }
 

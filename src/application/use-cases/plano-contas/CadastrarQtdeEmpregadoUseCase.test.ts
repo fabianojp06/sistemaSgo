@@ -21,7 +21,15 @@ type HeadcountMock = {
   periodoFim?: Date | null;
   custoTotalMensal?: Prisma.Decimal;
 };
-type QtdeMock = { id: string; tenantId: string; propostaId: string; periodoInicio: Date; periodoFim: Date; ativo: boolean };
+type QtdeMock = {
+  id: string;
+  tenantId: string;
+  propostaId: string;
+  periodoInicio: Date;
+  periodoFim: Date;
+  ativo: boolean;
+  numeroDocumento?: string;
+};
 
 function criarPrismaMock(
   propostas: PropostaMock[],
@@ -31,6 +39,7 @@ function criarPrismaMock(
   existentes: QtdeMock[] = [],
 ) {
   let idSeq = 1;
+  const todosDocumentos: QtdeMock[] = existentes.map((e) => ({ ...e }));
 
   const base = {
     proposta: {
@@ -85,9 +94,32 @@ function criarPrismaMock(
     },
     qtdeEmpregado: {
       findMany: vi.fn(({ where }: { where: { tenantId: string; propostaId: string; ativo: boolean } }) =>
-        Promise.resolve(existentes.filter((e) => e.tenantId === where.tenantId && e.propostaId === where.propostaId && e.ativo === where.ativo)),
+        Promise.resolve(todosDocumentos.filter((e) => e.tenantId === where.tenantId && e.propostaId === where.propostaId && e.ativo === where.ativo)),
       ),
-      create: vi.fn(({ data }: { data: Record<string, unknown> }) => Promise.resolve({ id: `q${idSeq++}`, ativo: true, ...data })),
+      findFirst: vi.fn(
+        ({
+          where,
+          orderBy,
+        }: {
+          where: { tenantId: string; propostaId: string; numeroDocumento: { startsWith: string } };
+          orderBy: { numeroDocumento: 'desc' };
+        }) => {
+          const candidatos = todosDocumentos
+            .filter(
+              (e) =>
+                e.tenantId === where.tenantId &&
+                e.propostaId === where.propostaId &&
+                e.numeroDocumento?.startsWith(where.numeroDocumento.startsWith),
+            )
+            .sort((a, b) => (orderBy.numeroDocumento === 'desc' ? b.numeroDocumento!.localeCompare(a.numeroDocumento!) : 0));
+          return Promise.resolve(candidatos[0] ?? null);
+        },
+      ),
+      create: vi.fn(({ data }: { data: Record<string, unknown> & { numeroDocumento: string } }) => {
+        const novo = { id: `q${idSeq++}`, ativo: true, ...data } as QtdeMock;
+        todosDocumentos.push(novo);
+        return Promise.resolve(novo);
+      }),
     },
     historicoOperacao: { create: vi.fn().mockResolvedValue({}) },
     $transaction: vi.fn((fn: (tx: unknown) => Promise<unknown>) => fn(base)),
@@ -120,7 +152,6 @@ const inputBase = {
   propostaId: 'p1',
   periodoInicio: new Date('2026-01-01'),
   periodoFim: new Date('2026-06-30'),
-  numeroDocumento: 'APOST-2026-014',
 };
 
 describe('CadastrarQtdeEmpregadoUseCase [US-113]', () => {
@@ -139,6 +170,7 @@ describe('CadastrarQtdeEmpregadoUseCase [US-113]', () => {
     expect(qtde.quantidadeEstagiarios).toBe(1);
     expect(qtde.quantidadeJovemAprendiz).toBe(0);
     expect(qtde.metaId).toBeNull();
+    expect(qtde.numeroDocumento).toBe('C-001');
     expect(prisma.historicoOperacao.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ tipoOperacao: 'QTDE_EMPREGADO_CADASTRADA' }) }),
     );
@@ -169,7 +201,22 @@ describe('CadastrarQtdeEmpregadoUseCase [US-113]', () => {
     const prisma = criarPrismaMock([propostaConsolidada]);
     const useCase = new CadastrarQtdeEmpregadoUseCase(prisma as never);
 
-    await expect(useCase.execute({ ...inputBase, numeroDocumento: '' })).rejects.toThrow(CamposObrigatoriosQtdeEmpregadoError);
+    await expect(useCase.execute({ ...inputBase, periodoInicio: undefined as unknown as Date })).rejects.toThrow(
+      CamposObrigatoriosQtdeEmpregadoError,
+    );
+  });
+
+  it('gera Número do Documento sequencial "C-XXX" por Proposta', async () => {
+    const existentes: QtdeMock[] = [
+      { id: 'q0', tenantId: 't1', propostaId: 'p1', periodoInicio: new Date('2025-01-01'), periodoFim: new Date('2025-06-30'), ativo: true, numeroDocumento: 'C-001' },
+      { id: 'q0b', tenantId: 't1', propostaId: 'p1', periodoInicio: new Date('2025-07-01'), periodoFim: new Date('2025-12-31'), ativo: false, numeroDocumento: 'C-002' },
+    ];
+    const prisma = criarPrismaMock([propostaConsolidada], [], [], [], existentes);
+    const useCase = new CadastrarQtdeEmpregadoUseCase(prisma as never);
+
+    const qtde = await useCase.execute(inputBase);
+
+    expect(qtde.numeroDocumento).toBe('C-003'); // continua a sequência mesmo considerando documento inativo (nunca reutiliza número)
   });
 
   it('agrupa contagem apenas pelos headcounts da Meta vinculada [Cenário 8]', async () => {

@@ -2,12 +2,17 @@ import type { PrismaClient, QtdeEmpregado } from '@prisma/client';
 import {
   CamposObrigatoriosQtdeEmpregadoError,
   MetaNaoEncontradaError,
+  NumeroDocumentoGeracaoFalhouError,
   PeriodoQtdeEmpregadoForaDaVigenciaError,
   PropostaNaoEncontradaError,
   SobreposicaoPeriodoQtdeEmpregadoError,
   VersaoPropostaInvalidaError,
 } from '@/domain/plano-contas/errors';
 import { calcularValorTotalConsolidado } from '@/domain/plano-contas/calcularValorTotalConsolidado';
+import { gerarProximoNumeroDocumentoQtdeEmpregado } from '@/domain/plano-contas/gerarNumeroDocumentoQtdeEmpregado';
+import { isUniqueConstraintError } from '@/domain/plano-contas/gerarCodigoProposta';
+
+const MAX_TENTATIVAS_NUMERO_DOCUMENTO = 5;
 
 type CadastrarQtdeEmpregadoInput = {
   tenantId: string;
@@ -15,7 +20,6 @@ type CadastrarQtdeEmpregadoInput = {
   propostaId: string;
   periodoInicio: Date;
   periodoFim: Date;
-  numeroDocumento: string;
 };
 
 /**
@@ -24,13 +28,14 @@ type CadastrarQtdeEmpregadoInput = {
  * CadastrarEmpregadoUseCase, ADR-024) — obrigatório só em Proposta POR_META.
  * Quantitativos são ORIGEM BLINDADA: COUNT sobre EmpregadoHeadcount ativo,
  * escopado por propostaId (+ metaId quando POR_META), nunca input direto.
+ * numeroDocumento é gerado automaticamente no formato "C-{sequencial}" (3
+ * dígitos, por Proposta) — nunca input do usuário.
  */
 export class CadastrarQtdeEmpregadoUseCase {
   constructor(private readonly prisma: PrismaClient) {}
 
   async execute(input: CadastrarQtdeEmpregadoInput): Promise<QtdeEmpregado> {
-    const numeroDocumento = input.numeroDocumento?.trim() ?? '';
-    if (!input.periodoInicio || !input.periodoFim || numeroDocumento.length === 0) {
+    if (!input.periodoInicio || !input.periodoFim) {
       throw new CamposObrigatoriosQtdeEmpregadoError();
     }
 
@@ -91,40 +96,51 @@ export class CadastrarQtdeEmpregadoUseCase {
       proposta.dataFim,
     );
 
-    return this.prisma.$transaction(async (tx) => {
-      const qtdeEmpregado = await tx.qtdeEmpregado.create({
-        data: {
-          tenantId: input.tenantId,
-          propostaId: input.propostaId,
-          metaId,
-          periodoInicio: input.periodoInicio,
-          periodoFim: input.periodoFim,
-          numeroDocumento,
-          quantidadeEmpregados,
-          quantidadeEstagiarios,
-          quantidadeJovemAprendiz,
-          valorTotalConsolidado,
-        },
-      });
+    for (let tentativa = 0; tentativa < MAX_TENTATIVAS_NUMERO_DOCUMENTO; tentativa++) {
+      const numeroDocumento = await gerarProximoNumeroDocumentoQtdeEmpregado(this.prisma, input.tenantId, input.propostaId);
 
-      await tx.historicoOperacao.create({
-        data: {
-          tenantId: input.tenantId,
-          usuarioId: input.usuarioId,
-          tipoOperacao: 'QTDE_EMPREGADO_CADASTRADA',
-          descricao: `Qtde. Empregado "${numeroDocumento}" cadastrada para a Proposta ${input.propostaId}`,
-          dadosSerializados: {
-            qtdeEmpregadoId: qtdeEmpregado.id,
-            propostaId: input.propostaId,
-            quantidadeEmpregados,
-            quantidadeEstagiarios,
-            quantidadeJovemAprendiz,
-            valorTotalConsolidado: valorTotalConsolidado.toString(),
-          },
-        },
-      });
+      try {
+        return await this.prisma.$transaction(async (tx) => {
+          const qtdeEmpregado = await tx.qtdeEmpregado.create({
+            data: {
+              tenantId: input.tenantId,
+              propostaId: input.propostaId,
+              metaId,
+              periodoInicio: input.periodoInicio,
+              periodoFim: input.periodoFim,
+              numeroDocumento,
+              quantidadeEmpregados,
+              quantidadeEstagiarios,
+              quantidadeJovemAprendiz,
+              valorTotalConsolidado,
+            },
+          });
 
-      return qtdeEmpregado;
-    });
+          await tx.historicoOperacao.create({
+            data: {
+              tenantId: input.tenantId,
+              usuarioId: input.usuarioId,
+              tipoOperacao: 'QTDE_EMPREGADO_CADASTRADA',
+              descricao: `Qtde. Empregado "${numeroDocumento}" cadastrada para a Proposta ${input.propostaId}`,
+              dadosSerializados: {
+                qtdeEmpregadoId: qtdeEmpregado.id,
+                propostaId: input.propostaId,
+                quantidadeEmpregados,
+                quantidadeEstagiarios,
+                quantidadeJovemAprendiz,
+                valorTotalConsolidado: valorTotalConsolidado.toString(),
+              },
+            },
+          });
+
+          return qtdeEmpregado;
+        });
+      } catch (erro) {
+        if (isUniqueConstraintError(erro)) continue; // colisão de número — recalcula e tenta de novo
+        throw erro;
+      }
+    }
+
+    throw new NumeroDocumentoGeracaoFalhouError();
   }
 }

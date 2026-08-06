@@ -532,6 +532,7 @@ export type EmpregadoResultado = {
   vinculoFuncionalHerdado: string;
   custoTotalMensal: string;
   contaId: string;
+  cargoId: string;
 };
 
 const CadastrarEmpregadoSchema = z.object({
@@ -571,6 +572,7 @@ export async function cadastrarEmpregado(input: {
         vinculoFuncionalHerdado: empregado.vinculoFuncionalHerdado,
         custoTotalMensal: empregado.custoTotalMensal.toString(),
         contaId: empregado.contaId,
+        cargoId: empregado.cargoId,
       },
     };
   } catch (erro) {
@@ -627,6 +629,7 @@ export async function cadastrarEmpregadosEmLote(input: {
           vinculoFuncionalHerdado: e.vinculoFuncionalHerdado,
           custoTotalMensal: e.custoTotalMensal.toString(),
           contaId: e.contaId,
+          cargoId: e.cargoId,
         })),
         quantidade: empregados.length,
         custoTotalMensal,
@@ -677,6 +680,7 @@ export async function editarEmpregado(input: {
         vinculoFuncionalHerdado: empregado.vinculoFuncionalHerdado,
         custoTotalMensal: empregado.custoTotalMensal.toString(),
         contaId: empregado.contaId,
+        cargoId: empregado.cargoId,
       },
     };
   } catch (erro) {
@@ -1032,22 +1036,20 @@ const CadastrarQtdeEmpregadoSchema = z.object({
   propostaId: z.string().min(1),
   periodoInicio: z.coerce.date(),
   periodoFim: z.coerce.date(),
-  numeroDocumento: z.string().trim().min(1),
 });
 
-/** US-113, Cenários 1/2/3/4/8 — Cadastrar Qtde. Empregado (quantitativos calculados por COUNT). */
+/** US-113, Cenários 1/2/3/4/8 — Cadastrar Qtde. Empregado (quantitativos calculados por COUNT, numeroDocumento gerado automaticamente). */
 export async function cadastrarQtdeEmpregado(input: {
   propostaId: string;
   periodoInicio: Date | string;
   periodoFim: Date | string;
-  numeroDocumento: string;
 }): Promise<ActionResultComDados<QtdeEmpregadoResultado>> {
   const contexto = await usuarioAtual();
   if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
 
   const entrada = CadastrarQtdeEmpregadoSchema.safeParse(input);
   if (!entrada.success) {
-    return { sucesso: false, mensagem: 'Período Inicial, Período Final e Número do Documento são obrigatórios.' };
+    return { sucesso: false, mensagem: 'Período Inicial e Período Final são obrigatórios.' };
   }
 
   try {
