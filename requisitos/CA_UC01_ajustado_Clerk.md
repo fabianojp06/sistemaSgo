@@ -1,6 +1,6 @@
 # Critérios de Aceite Ajustados — UC01.01, UC01.02, UC01.05 (Clerk + Banco Próprio)
 
-**Módulo:** Autenticação e Tela Principal (EP084/24)
+**Módulo:** Autenticação e Tela Principal (EP084/24)  
 **Documento fonte:** CA_UC01_01, CA_UC01_02, CA_UC01_05 (docs/) + [[RN_AUTH_Clerk_BancoProprio]]
 **Formato:** BDD — Dado / Quando / Então
 **Status:** Proposto — substitui, para fins de implementação, os critérios abaixo listados nos documentos originais em `docs/`. Critérios não listados aqui (ex: fluxo A1 "Esqueci minha senha", troca de senha obrigatória, tela principal) permanecem regidos pelos documentos originais até serem revisados em adendo próprio.
