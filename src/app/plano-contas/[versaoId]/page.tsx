@@ -6,6 +6,8 @@ import { usuarioTemFuncionalidade } from '@/application/use-cases/plano-contas/v
 import { getListarTermosAjusteUseCase } from '@/application/use-cases/plano-contas/container';
 import { ValorOrcadoContaForm } from '../ValorOrcadoContaForm';
 import { TermoAjustePanel } from '../TermoAjustePanel';
+import { RateioImpostoPanel } from '../RateioImpostoPanel';
+import { BadgeSemaforoPanel } from '../BadgeSemaforoPanel';
 
 /**
  * Host mínimo para os formulários escopados por Versão de Proposta (US-007, US-111)
@@ -29,8 +31,17 @@ export default async function VersaoPropostaPage({ params }: { params: Promise<{
   });
   if (!versao) notFound();
 
-  const [podeConfigurarValorOrcado, podeAprovarN1, podeHomologarGestorMaster, contas, termosAjuste] = await Promise.all([
+  const [
+    podeConfigurarValorOrcado,
+    podeConfigurarRateioImposto,
+    podeAprovarN1,
+    podeHomologarGestorMaster,
+    contas,
+    aliquotas,
+    termosAjuste,
+  ] = await Promise.all([
     usuarioTemFuncionalidade(prisma, tenantId, usuario.id, 'plano-contas.configurar-valor-orcado'),
+    usuarioTemFuncionalidade(prisma, tenantId, usuario.id, 'plano-contas.configurar-rateio-imposto'),
     usuarioTemFuncionalidade(prisma, tenantId, usuario.id, 'termo-ajuste.aprovar-n1'),
     usuarioTemFuncionalidade(prisma, tenantId, usuario.id, 'termo-ajuste.homologar-gestor-master'),
     prisma.contaContabil.findMany({
@@ -38,10 +49,16 @@ export default async function VersaoPropostaPage({ params }: { params: Promise<{
       orderBy: { codigoErp: 'asc' },
       select: { id: true, codigoErp: true, nomeConta: true },
     }),
+    prisma.aliquotaImpostoParametro.findMany({
+      where: { tenantId },
+      orderBy: { nome: 'asc' },
+      select: { id: true, nome: true, aliquotaPct: true },
+    }),
     getListarTermosAjusteUseCase().execute(tenantId, versaoId),
   ]);
 
   const contasAnaliticas = contas.map((c) => ({ id: c.id, label: `${c.codigoErp} — ${c.nomeConta}` }));
+  const aliquotasOpcoes = aliquotas.map((a) => ({ id: a.id, label: `${a.nome} (${a.aliquotaPct.toString()}%)` }));
 
   return (
     <main className="flex min-h-screen flex-col gap-6 p-6">
@@ -56,6 +73,18 @@ export default async function VersaoPropostaPage({ params }: { params: Promise<{
         <section>
           <h2 className="mb-2 text-sm font-medium text-gray-500">Valor Orçado por Conta</h2>
           <ValorOrcadoContaForm versaoId={versao.id} contasAnaliticas={contasAnaliticas} />
+        </section>
+      )}
+
+      <section>
+        <h2 className="mb-2 text-sm font-medium text-gray-500">Semáforo Orçamentário</h2>
+        <BadgeSemaforoPanel tenantId={tenantId} versaoId={versao.id} contasAnaliticas={contasAnaliticas} />
+      </section>
+
+      {podeConfigurarRateioImposto && (
+        <section>
+          <h2 className="mb-2 text-sm font-medium text-gray-500">Rateio de Impostos</h2>
+          <RateioImpostoPanel versaoId={versao.id} contasAnaliticas={contasAnaliticas} aliquotas={aliquotasOpcoes} />
         </section>
       )}
 

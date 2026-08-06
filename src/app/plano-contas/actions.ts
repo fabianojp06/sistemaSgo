@@ -16,6 +16,7 @@ import {
   getCriarVersaoPropostaUseCase,
   getConfigurarSemaforoContaUseCase,
   getCalcularValorRealizadoUseCase,
+  getConfigurarRateioImpostoUseCase,
   getCadastrarCargoUseCase,
   getEditarCargoUseCase,
   getCadastrarMetaUseCase,
@@ -184,6 +185,60 @@ export async function configurarValorOrcadoConta(
         exercicio: resultado.exercicio,
         valor: resultado.valor.toString(),
         totaisAncestrais: resultado.totaisAncestrais.map((t) => ({ contaId: t.contaId, total: t.total.toString() })),
+      },
+    };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+const ConfigurarRateioImpostoSchema = z.object({
+  versaoId: z.string().min(1),
+  aliquotaParametroId: z.string().min(1),
+  contaId: z.string().min(1),
+  competencia: z.coerce.date(),
+  valorDeclarado: z.string().min(1),
+  tokenConcorrencia: z.coerce.date().optional(),
+});
+
+export type RateioImpostoResultado = {
+  valorDeclarado: string;
+  aliquotaAplicadaSnapshot: string;
+};
+
+/** US-101/US-101a — Parametrizar Impostos em Proposta (Rateio de Impostos por conta, ADR-027). */
+export async function configurarRateioImposto(input: {
+  versaoId: string;
+  aliquotaParametroId: string;
+  contaId: string;
+  competencia: string;
+  valorDeclarado: string;
+  tokenConcorrencia?: string;
+}): Promise<ActionResultComDados<RateioImpostoResultado>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const entrada = ConfigurarRateioImpostoSchema.safeParse(input);
+  if (!entrada.success) {
+    return { sucesso: false, mensagem: 'Preencha todos os campos obrigatórios do rateio de imposto.' };
+  }
+
+  const temPermissao = await usuarioTemFuncionalidade(
+    prisma,
+    contexto.tenantId,
+    contexto.usuarioId,
+    'plano-contas.configurar-rateio-imposto',
+  );
+  if (!temPermissao) return { sucesso: false, mensagem: 'Perfil sem permissão para parametrizar impostos.' };
+
+  try {
+    const resultado = await getConfigurarRateioImpostoUseCase().execute({ ...contexto, ...entrada.data });
+    revalidatePath('/plano-contas/[versaoId]', 'page');
+    return {
+      sucesso: true,
+      dados: {
+        valorDeclarado: resultado.valorDeclarado.toString(),
+        aliquotaAplicadaSnapshot: resultado.aliquotaAplicadaSnapshot.toString(),
       },
     };
   } catch (erro) {
