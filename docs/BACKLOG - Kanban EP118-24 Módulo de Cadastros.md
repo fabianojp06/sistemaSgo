@@ -28,15 +28,15 @@
 | US-110 (UC03.34-36) | Bens, Serviços e Equipamentos | `ItemPatrimonial` (ADR-023), `metaId` opcional (diferente de Viagem); migration aplicada |
 | US-113 (UC03.20-23) | Qtde. Empregado | `EmpregadoHeadcount` ganhou `metaId`, `Empregado` liberado p/ POR_META, model `QtdeEmpregado` (ADR-024); migration aplicada |
 | US-111 (UC03.13) | Criar Termo de Ajuste entre Contas Analíticas | Desbloqueada via ADR-025; nova tabela `TermoAjuste` com aprovação em 2 etapas (N1 → Gestor Master), débito/crédito atômico em `ValorOrcadoConta`, optimistic locking (padrão US-105); Perfil "Gestor Master" + 2 `Funcionalidade` seedadas; migration aplicada |
+| ADR-027 | Todo custo vinculado a uma ContaContabil | Regra de negócio do usuário (2026-08-06): `Cargo.contaId` obrigatória (natureza da despesa, ex: Despesa com Pessoal), `EmpregadoHeadcount.contaId` herdado por snapshot, `RateioImpostoGrade.contaId` obrigatória; migration `NOT NULL` direto (0 registros em produção); `CalcularValorRealizadoUseCase` deixou de ter `parcial=true` fixo |
+| US-008a (UC03.02) | Badge do Semáforo Orçamentário | `CalcularValorRealizadoUseCase` soma Viagem/ItemPatrimonial/Empregado/RateioImpostoGrade por conta (agregação recursiva p/ contas sintéticas, mesmo padrão de `ValorOrcadoTotalizerService`); `BadgeSemaforoPanel.tsx` em `/plano-contas/[versaoId]` |
+| US-101a | Server Action/UI de Rateio de Impostos | `configurarRateioImposto` Server Action + `RateioImpostoPanel.tsx`; permissão `plano-contas.configurar-rateio-imposto` já seedada |
 
 ---
 
 ## 🔜 Próximo da Fila (priorizado)
 
-| Ordem | Item | Por que é o próximo | Esforço estimado |
-|---|---|---|---|
-| 1 | **US-008a — Badge do Semáforo (MVP)** | Pronta para dev — decisão de produto tomada em 2026-08-06: liberar com `valorRealizado` calculado sem a parcela de Rateio de Impostos (marcado visualmente como parcial), sem esperar Server Action/UI de US-101 | M |
-| 2 | **US-101a — Server Action/UI de Rateio de Impostos** | Fecha a lacuna deixada em aberto pela decisão de US-008a; remove o indicador de "parcial" do badge quando pronta | P |
+Nenhum item priorizado no momento — ver "Backlog Não Refinado" e "Fora de Escopo" abaixo para candidatos futuros.
 
 ---
 
@@ -53,7 +53,7 @@
 | US/UC | Bloqueio | Condição de desbloqueio |
 |---|---|---|
 
-Nenhum item bloqueado no momento (US-008a desbloqueada em 2026-08-06, ver "Próximo da Fila").
+Nenhum item bloqueado no momento (US-008a implementada em 2026-08-06, ver "Concluído").
 
 ---
 

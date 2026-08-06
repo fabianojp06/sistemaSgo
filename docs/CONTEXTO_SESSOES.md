@@ -206,6 +206,58 @@ ficaram fora da lista original de 21) é o item de menor esforço disponível.
 
 ---
 
+## 2026-08-06 (cont.) — registrada às 13:40 -03:00 — US-008a implementada, ADR-027, US-101a
+
+Continuação direta da sessão de hoje (registro acima, 09:15). Após o commit `2775f25` do backlog
+(US-008a movida para "Próximo da Fila"), a sessão seguiu com implementação real.
+
+**O que foi feito, em ordem:**
+
+1. **US-008a — Badge do Semáforo (1ª rodada)**: `CalcularValorRealizadoUseCase` criado somando
+   Viagem+ItemPatrimonial por conta (achado: Empregado/RateioImpostoGrade não tinham `contaId`
+   no schema). Commit `c2355cd`.
+2. **Achado levado ao usuário**: o usuário respondeu com uma regra de negócio nova e
+   retroativa — "todo custo, todo lançamento no sistema deverá estar associado a uma conta".
+   Esclareceu que a conta reflete a *natureza da despesa* (ex: "Despesa com Pessoal"), não o
+   organograma — validando a Opção A do Tech Lead (`Cargo.contaId` fixo, independente do rateio
+   percentual `CargoAlocacaoPercentual` de ADR-026).
+3. **ADR-027 (Tech Lead)**: decide `Cargo.contaId` obrigatório, `EmpregadoHeadcount.contaId`
+   como snapshot herdado do Cargo (mesmo padrão de `vinculoFuncionalHerdado`), e
+   `RateioImpostoGrade.contaId` obrigatório. Confirmado via `prisma.count()` real no Supabase
+   que as 3 tabelas tinham 0 registros em produção — migration `NOT NULL` direto, sem backfill.
+4. **ADR-027 implementada**: schema + migration + `CadastrarCargoUseCase`/`EditarCargoUseCase`
+   (validação de conta analítica) + `CadastrarEmpregadoUseCase`/`EditarEmpregadoUseCase`
+   (herança do snapshot) + `ConfigurarRateioImpostoUseCase` (novo campo obrigatório) +
+   `DuplicarPropostaUseCase` (propaga `contaId` do Rateio duplicado) + `actions.ts`
+   (`cadastrarCargo`/`editarCargo`). `CalcularValorRealizadoUseCase` passou a somar as 4 fontes
+   e `parcial` deixou de ser `true` fixo (agora via constante extensível
+   `HA_FONTE_DE_CUSTO_SEM_CONTA_CONHECIDA`, hoje `false`). 221 testes passando, `tsc` limpo.
+   Commit `2775f25`.
+5. **US-101a — Server Action/UI de Rateio de Impostos**: `configurarRateioImposto` (Server
+   Action) + `RateioImpostoPanel.tsx` (form mínimo: tributo/conta/competência/valor), usando a
+   permissão já seedada `plano-contas.configurar-rateio-imposto`.
+6. **UI do badge (US-008a, 2ª rodada)**: `BadgeSemaforoPanel.tsx` (Server Component, lê
+   `CalcularValorRealizadoUseCase` direto) mostrando percentual/cor por conta analítica, com
+   indicador "aproximado" quando `parcial=true`. Ambos os painéis plugados em
+   `/plano-contas/[versaoId]/page.tsx` — única tela hoje escopada por Versão de Proposta (a
+   árvore global em `/plano-contas` não tem `versaoId`, por isso o badge não cabe lá). `next
+   build` de produção rodado como validação (sem `.env` de teste real neste Codespace para
+   `next dev` com sessão Clerk — ver decisão de 2026-07-26). Commit `065361c`.
+7. Backlog kanban atualizado: US-008a, ADR-027 e US-101a movidos para "Concluído"; fila
+   "Próximo da Fila" esvaziada (nenhum item priorizado pendente no momento).
+
+**Estado do repositório ao final desta sessão:** tudo commitado e enviado a `origin/master`
+(`065361c`, mais o commit do backlog logo em seguida). 221 testes passando, `tsc --noEmit`
+limpo, `next build` ok.
+
+**Próximo passo combinado:** nenhum item priorizado na fila. Candidatos a avaliar na próxima
+sessão: (a) retomar a tradução EN-US da documentação (ver
+[[tarefa_traducao_docs_en_us_pendente]] na memória padrão, estava em 15/21 mais US-111/US-113
+fora da lista original); (b) revisitar "Backlog Não Refinado"/"Fora de Escopo" do kanban
+(UC03.06, UC03.09, UC03.12, UC03.38) para ver se algum já tem fundação suficiente.
+
+---
+
 ## Como usar este arquivo em sessões futuras
 
 No início de uma sessão, se o usuário perguntar "qual o contexto/status de X", leia este arquivo antes de assumir que a memória padrão (`~/.claude/.../memory/`) está atualizada — o ambiente deste projeto (Codespace) pode ter sido recriado desde a última sessão, apagando a memória padrão sem apagar o repositório.
