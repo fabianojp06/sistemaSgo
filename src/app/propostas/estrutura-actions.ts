@@ -63,7 +63,7 @@ export async function criarUnidadeFuncional(input: {
 
   try {
     const unidade = await getCriarUnidadeFuncionalUseCase().execute({ ...contexto, ...entrada.data });
-    revalidatePath(`/propostas/${entrada.data.propostaId}/estrutura`);
+    revalidatePath('/', 'layout'); // invalida toda a árvore de /propostas (não há layout.tsx aninhado ali) — dropdown de Cargo em Empregados, etc.
     return { sucesso: true, dados: { id: unidade.id, nome: unidade.nome, tipoNivel: unidade.tipoNivel, idPai: unidade.idPai } };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
@@ -81,7 +81,7 @@ export async function inativarUnidadeFuncional(propostaId: string, unidadeId: st
 
   try {
     await getInativarUnidadeFuncionalUseCase().execute({ ...contexto, unidadeId });
-    revalidatePath(`/propostas/${propostaId}/estrutura`);
+    revalidatePath('/', 'layout'); // invalida toda a árvore de /propostas (não há layout.tsx aninhado ali) — dropdown de Cargo em Empregados, etc.
     return { sucesso: true };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
@@ -188,7 +188,7 @@ export async function cadastrarCargo(input: z.input<typeof CargoDadosSchema>): P
       ...entrada.data,
       funcaoGratificada: entrada.data.funcaoGratificada ?? null,
     });
-    revalidatePath(`/propostas/${entrada.data.propostaId}/estrutura`);
+    revalidatePath('/', 'layout'); // invalida toda a árvore de /propostas (não há layout.tsx aninhado ali) — dropdown de Cargo em Empregados, etc.
     return { sucesso: true, dados: serializarCargo(cargo) };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
@@ -214,14 +214,14 @@ export async function editarCargo(input: z.input<typeof EditarCargoSchema>): Pro
   if (!temPermissao) return { sucesso: false, mensagem: 'Perfil sem permissão para gerenciar Cargos.' };
 
   try {
-    const { propostaId, cargoId, ...dados } = entrada.data;
+    const { cargoId, ...dados } = entrada.data;
     const cargo = await getEditarCargoUseCase().execute({
       ...contexto,
       cargoId,
       ...dados,
       funcaoGratificada: dados.funcaoGratificada ?? null,
     });
-    revalidatePath(`/propostas/${propostaId}/estrutura`);
+    revalidatePath('/', 'layout'); // invalida toda a árvore de /propostas (não há layout.tsx aninhado ali) — dropdown de Cargo em Empregados, etc.
     return { sucesso: true, dados: serializarCargo(cargo) };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
@@ -265,9 +265,9 @@ export async function configurarBeneficiosCargo(
   if (!temPermissao) return { sucesso: false, mensagem: 'Perfil sem permissão para gerenciar Cargos.' };
 
   try {
-    const { propostaId, ...dados } = entrada.data;
+    const dados = entrada.data;
     const cargo = await getConfigurarBeneficiosCargoUseCase().execute({ ...contexto, ...dados, planoSaudeFaixa: dados.planoSaudeFaixa ?? null });
-    revalidatePath(`/propostas/${propostaId}/estrutura`);
+    revalidatePath('/', 'layout'); // invalida toda a árvore de /propostas (não há layout.tsx aninhado ali) — dropdown de Cargo em Empregados, etc.
     return { sucesso: true, dados: serializarCargo(cargo) };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };

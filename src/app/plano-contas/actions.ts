@@ -73,7 +73,7 @@ export async function sincronizarPlanoContas(): Promise<ActionResult> {
 
   try {
     await getSincronizarPlanoContasUseCase().execute({ ...contexto, temPermissaoAdministrativa });
-    revalidatePath('/plano-contas');
+    revalidatePath('/', 'layout');
     return { sucesso: true };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
@@ -86,7 +86,7 @@ export async function criarAgrupador(nome: string, contaIds: string[]): Promise<
 
   try {
     await getCriarAgrupadorUseCase().execute({ ...contexto, nome, contaIds });
-    revalidatePath('/plano-contas');
+    revalidatePath('/', 'layout');
     return { sucesso: true };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
@@ -99,7 +99,7 @@ export async function editarAgrupador(agrupadorId: string, nome: string, contaId
 
   try {
     await getEditarAgrupadorUseCase().execute({ ...contexto, agrupadorId, nome, contaIds });
-    revalidatePath('/plano-contas');
+    revalidatePath('/', 'layout');
     return { sucesso: true };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
@@ -120,7 +120,7 @@ export async function atribuirNaturezaConta(contaId: string, natureza: 'OPEX' | 
 
   try {
     await getAtribuirNaturezaContaUseCase().execute({ ...contexto, contaId, natureza });
-    revalidatePath('/plano-contas');
+    revalidatePath('/', 'layout');
     return { sucesso: true };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
@@ -133,7 +133,7 @@ export async function excluirAgrupador(agrupadorId: string): Promise<ActionResul
 
   try {
     await getExcluirAgrupadorUseCase().execute({ ...contexto, agrupadorId });
-    revalidatePath('/plano-contas');
+    revalidatePath('/', 'layout');
     return { sucesso: true };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
@@ -179,7 +179,7 @@ export async function configurarValorOrcadoConta(
 
   try {
     const resultado = await getConfigurarValorOrcadoContaUseCase().execute({ ...contexto, ...entrada.data });
-    revalidatePath('/plano-contas');
+    revalidatePath('/', 'layout');
     return {
       sucesso: true,
       dados: {
@@ -235,7 +235,7 @@ export async function configurarRateioImposto(input: {
 
   try {
     const resultado = await getConfigurarRateioImpostoUseCase().execute({ ...contexto, ...entrada.data });
-    revalidatePath('/plano-contas/[versaoId]', 'page');
+    revalidatePath('/', 'layout');
     return {
       sucesso: true,
       dados: {
@@ -282,7 +282,7 @@ export async function configurarSemaforoConta(
 
   try {
     await getConfigurarSemaforoContaUseCase().execute({ ...contexto, ...entrada.data });
-    revalidatePath('/plano-contas');
+    revalidatePath('/', 'layout');
     return { sucesso: true };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
@@ -311,7 +311,7 @@ export async function criarVersaoProposta(
 
   try {
     const novaVersao = await getCriarVersaoPropostaUseCase().execute({ ...contexto, ...entrada.data });
-    revalidatePath('/plano-contas');
+    revalidatePath('/', 'layout');
     return { sucesso: true, dados: { id: novaVersao.id, numeroVersao: novaVersao.numeroVersao } };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
@@ -369,7 +369,7 @@ export async function cadastrarCargo(input: {
 
   try {
     const cargo = await getCadastrarCargoUseCase().execute({ ...contexto, ...entrada.data });
-    revalidatePath('/plano-contas');
+    revalidatePath('/', 'layout');
     return {
       sucesso: true,
       dados: {
@@ -425,7 +425,7 @@ export async function editarCargo(input: {
 
   try {
     const cargo = await getEditarCargoUseCase().execute({ ...contexto, ...entrada.data });
-    revalidatePath('/plano-contas');
+    revalidatePath('/', 'layout');
     return {
       sucesso: true,
       dados: {
@@ -470,7 +470,7 @@ export async function cadastrarMeta(input: {
 
   try {
     const meta = await getCadastrarMetaUseCase().execute({ ...contexto, ...entrada.data });
-    revalidatePath('/plano-contas');
+    revalidatePath('/', 'layout');
     return { sucesso: true, dados: { id: meta.id, nome: meta.nome, valorGlobal: meta.valorGlobal.toString(), status: meta.status } };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
@@ -503,7 +503,7 @@ export async function editarMeta(input: {
 
   try {
     const meta = await getEditarMetaUseCase().execute({ ...contexto, ...entrada.data });
-    revalidatePath('/plano-contas');
+    revalidatePath('/', 'layout');
     return { sucesso: true, dados: { id: meta.id, nome: meta.nome, valorGlobal: meta.valorGlobal.toString(), status: meta.status } };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
@@ -517,7 +517,7 @@ export async function excluirMeta(metaId: string): Promise<ActionResult> {
 
   try {
     await getExcluirMetaUseCase().execute({ ...contexto, metaId });
-    revalidatePath('/plano-contas');
+    revalidatePath('/', 'layout');
     return { sucesso: true };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
@@ -563,7 +563,7 @@ export async function cadastrarEmpregado(input: {
 
   try {
     const empregado = await getCadastrarEmpregadoUseCase().execute({ ...contexto, ...entrada.data });
-    revalidatePath('/plano-contas');
+    revalidatePath('/', 'layout');
     return {
       sucesso: true,
       dados: {
@@ -615,7 +615,7 @@ export async function cadastrarEmpregadosEmLote(input: {
 
   try {
     const empregados = await getCadastrarEmpregadosEmLoteUseCase().execute({ ...contexto, ...entrada.data });
-    revalidatePath('/plano-contas');
+    revalidatePath('/', 'layout');
 
     const custoTotalMensal = empregados[0]?.custoTotalMensal.toString() ?? '0';
     const totalLote = empregados.reduce((soma, e) => soma.plus(e.custoTotalMensal), new Prisma.Decimal(0)).toString();
@@ -671,7 +671,7 @@ export async function editarEmpregado(input: {
 
   try {
     const empregado = await getEditarEmpregadoUseCase().execute({ ...contexto, ...entrada.data });
-    revalidatePath('/plano-contas');
+    revalidatePath('/', 'layout');
     return {
       sucesso: true,
       dados: {
@@ -695,7 +695,7 @@ export async function excluirEmpregado(empregadoId: string): Promise<ActionResul
 
   try {
     await getExcluirEmpregadoUseCase().execute({ ...contexto, empregadoId });
-    revalidatePath('/plano-contas');
+    revalidatePath('/', 'layout');
     return { sucesso: true };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
@@ -756,7 +756,7 @@ export async function configurarBeneficiosCargo(input: {
 
   try {
     const cargo = await getConfigurarBeneficiosCargoUseCase().execute({ ...contexto, ...entrada.data });
-    revalidatePath('/plano-contas');
+    revalidatePath('/', 'layout');
     return { sucesso: true, dados: { id: cargo.id, custoTotalCargo: cargo.custoTotalCargo.toString() } };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
@@ -805,7 +805,7 @@ export async function cadastrarViagem(input: {
 
   try {
     const viagem = await getCadastrarViagemUseCase().execute({ ...contexto, ...entrada.data });
-    revalidatePath('/plano-contas');
+    revalidatePath('/', 'layout');
     return { sucesso: true, dados: { id: viagem.id, descricao: viagem.descricao, custoEstimado: viagem.custoEstimado.toString() } };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
@@ -850,7 +850,7 @@ export async function editarViagem(input: {
 
   try {
     const viagem = await getEditarViagemUseCase().execute({ ...contexto, ...entrada.data });
-    revalidatePath('/plano-contas');
+    revalidatePath('/', 'layout');
     return { sucesso: true, dados: { id: viagem.id, descricao: viagem.descricao, custoEstimado: viagem.custoEstimado.toString() } };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
@@ -864,7 +864,7 @@ export async function excluirViagem(viagemId: string): Promise<ActionResult> {
 
   try {
     await getExcluirViagemUseCase().execute({ ...contexto, viagemId });
-    revalidatePath('/plano-contas');
+    revalidatePath('/', 'layout');
     return { sucesso: true };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
@@ -916,7 +916,7 @@ export async function configurarElegibilidadeBeneficio(input: {
 
   try {
     const elegibilidade = await getConfigurarElegibilidadeBeneficioUseCase().execute({ ...contexto, ...entrada.data });
-    revalidatePath('/plano-contas');
+    revalidatePath('/', 'layout');
     return {
       sucesso: true,
       dados: {
@@ -965,7 +965,7 @@ export async function cadastrarItemPatrimonial(input: {
 
   try {
     const item = await getCadastrarItemPatrimonialUseCase().execute({ ...contexto, ...entrada.data });
-    revalidatePath('/plano-contas');
+    revalidatePath('/', 'layout');
     return { sucesso: true, dados: { id: item.id, descricao: item.descricao, valorTotal: item.valorTotal.toString() } };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
@@ -1002,7 +1002,7 @@ export async function editarItemPatrimonial(input: {
 
   try {
     const item = await getEditarItemPatrimonialUseCase().execute({ ...contexto, ...entrada.data });
-    revalidatePath('/plano-contas');
+    revalidatePath('/', 'layout');
     return { sucesso: true, dados: { id: item.id, descricao: item.descricao, valorTotal: item.valorTotal.toString() } };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
@@ -1016,7 +1016,7 @@ export async function excluirItemPatrimonial(itemPatrimonialId: string): Promise
 
   try {
     await getExcluirItemPatrimonialUseCase().execute({ ...contexto, itemPatrimonialId });
-    revalidatePath('/plano-contas');
+    revalidatePath('/', 'layout');
     return { sucesso: true };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
@@ -1054,7 +1054,7 @@ export async function cadastrarQtdeEmpregado(input: {
 
   try {
     const qtdeEmpregado = await getCadastrarQtdeEmpregadoUseCase().execute({ ...contexto, ...entrada.data });
-    revalidatePath('/plano-contas');
+    revalidatePath('/', 'layout');
     return {
       sucesso: true,
       dados: {
@@ -1097,7 +1097,7 @@ export async function editarQtdeEmpregado(input: {
 
   try {
     const qtdeEmpregado = await getEditarQtdeEmpregadoUseCase().execute({ ...contexto, ...entrada.data });
-    revalidatePath('/plano-contas');
+    revalidatePath('/', 'layout');
     return {
       sucesso: true,
       dados: {
@@ -1121,7 +1121,7 @@ export async function excluirQtdeEmpregado(qtdeEmpregadoId: string): Promise<Act
 
   try {
     await getExcluirQtdeEmpregadoUseCase().execute({ ...contexto, qtdeEmpregadoId });
-    revalidatePath('/plano-contas');
+    revalidatePath('/', 'layout');
     return { sucesso: true };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
@@ -1156,7 +1156,7 @@ export async function solicitarTermoAjuste(input: {
 
   try {
     const termoAjuste = await getSolicitarTermoAjusteUseCase().execute({ ...contexto, ...entrada.data });
-    revalidatePath('/plano-contas');
+    revalidatePath('/', 'layout');
     return { sucesso: true, dados: { id: termoAjuste.id, status: termoAjuste.status, valor: termoAjuste.valor.toString() } };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
@@ -1185,7 +1185,7 @@ export async function aprovarTermoAjusteN1(
       temPermissaoAprovarN1,
       tokenConcorrencia,
     });
-    revalidatePath('/plano-contas');
+    revalidatePath('/', 'layout');
     return { sucesso: true, dados: { id: termoAjuste.id, status: termoAjuste.status, valor: '' } };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
@@ -1214,7 +1214,7 @@ export async function homologarTermoAjuste(
       temPermissaoGestorMaster,
       tokenConcorrencia,
     });
-    revalidatePath('/plano-contas');
+    revalidatePath('/', 'layout');
     return { sucesso: true, dados: { id: termoAjuste.id, status: termoAjuste.status, valor: '' } };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
@@ -1276,7 +1276,7 @@ export async function rejeitarTermoAjuste(
       temPermissaoGestorMaster,
       tokenConcorrencia,
     });
-    revalidatePath('/plano-contas');
+    revalidatePath('/', 'layout');
     return { sucesso: true, dados: { id: termoAjuste.id, status: termoAjuste.status, valor: '' } };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
