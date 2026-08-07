@@ -16,6 +16,8 @@ import { MetaPanel } from '../../MetaPanel';
 import { EmpregadoPanel } from '../../EmpregadoPanel';
 import { ViagemPanel } from '../../ViagemPanel';
 import { ItemPatrimonialPanel } from '../../ItemPatrimonialPanel';
+import { CronogramaDesembolsoPanel } from '../../CronogramaDesembolsoPanel';
+import { montarCronogramaDesembolso } from '@/domain/plano-contas/montarCronogramaDesembolso';
 
 const GUIAS = [
   { slug: 'valor-orcado', label: 'Valor Orçado' },
@@ -27,6 +29,7 @@ const GUIAS = [
   { slug: 'bens', label: 'Bens/Serviços/Equipamentos' },
   { slug: 'rateio-impostos', label: 'Rateio de Impostos' },
   { slug: 'termo-ajuste', label: 'Termo de Ajuste' },
+  { slug: 'cronograma-desembolso', label: 'Cronograma de Desembolso' },
 ] as const;
 
 /** US-115 (UC03.06) — capa Read-only + guias analíticas por Versão de Proposta. */
@@ -187,6 +190,58 @@ export default async function PropostaDetalhePage({
     itensIniciais = itensDb.map((i) => ({ id: i.id, descricao: i.descricao, valorTotal: i.valorTotal.toString() }));
   }
 
+  let cronogramaLinhas: import('../../cronogramaTipos').LinhaCronogramaSerializada[] = [];
+  let metaNomeCronograma: string | null = null;
+  if (guiaAtiva === 'cronograma-desembolso') {
+    const [empregadosCronograma, viagensCronograma, itensCronograma, rateiosCronograma, metaCronograma] = await Promise.all([
+      prisma.empregadoHeadcount.findMany({
+        where: { tenantId, propostaId: id, ativo: true },
+        select: {
+          periodoInicio: true,
+          periodoFim: true,
+          valorSalarioSnapshot: true,
+          valorGratificacaoSnapshot: true,
+          valorEncargosSociaisSnapshot: true,
+          valorValeAlimentacaoSnapshot: true,
+          valorValeRefeicaoSnapshot: true,
+          valorValeTransporteSnapshot: true,
+          valorPlanoOdontologicoSnapshot: true,
+          valorSeguroVidaSnapshot: true,
+          valorPlanoSaudeSnapshot: true,
+          valorAuxilioCrecheSnapshot: true,
+        },
+      }),
+      prisma.viagem.findMany({ where: { tenantId, versaoId: versao.id, ativo: true }, select: { custoEstimado: true } }),
+      prisma.itemPatrimonial.findMany({ where: { tenantId, versaoId: versao.id, ativo: true }, select: { data: true, valorTotal: true } }),
+      prisma.rateioImpostoGrade.findMany({ where: { tenantId, versaoId: versao.id, ativo: true }, select: { competencia: true, valorDeclarado: true } }),
+      prisma.meta.findFirst({ where: { tenantId, versaoId: versao.id, ativo: true }, select: { nome: true } }),
+    ]);
+
+    metaNomeCronograma = metaCronograma?.nome ?? null;
+    // Cenário 8/US-122 — Proposta sem nenhum dado financeiro cadastrado bloqueia a
+    // grade inteira (não é "12 meses zerados", é "operação rejeitada").
+    const temDadosFinanceiros =
+      empregadosCronograma.length > 0 || viagensCronograma.length > 0 || itensCronograma.length > 0 || rateiosCronograma.length > 0;
+
+    if (temDadosFinanceiros) {
+      const linhas = montarCronogramaDesembolso(
+        { dataInicio: proposta.dataInicio, dataFim: proposta.dataFim },
+        empregadosCronograma,
+        viagensCronograma,
+        itensCronograma,
+        rateiosCronograma,
+      );
+      cronogramaLinhas = linhas.map((l) => ({
+        mes: l.mes,
+        competencia: l.competencia.toISOString(),
+        desembolsoMensal: l.desembolsoMensal.toString(),
+        desembolsoAcumulado: l.desembolsoAcumulado.toString(),
+        percentualFinanceiroAcumulado: l.percentualFinanceiroAcumulado.toString(),
+        valorRepassado12Meses: l.valorRepassado12Meses?.toString() ?? null,
+      }));
+    }
+  }
+
   return (
     <main className="flex min-h-screen flex-col gap-6 p-6">
       <header>
@@ -269,6 +324,16 @@ export default async function PropostaDetalhePage({
 
         {guiaAtiva === 'termo-ajuste' && (
           <TermoAjusteHost tenantId={tenantId} usuarioId={usuario.id} versaoId={versao.id} contasAnaliticas={contasAnaliticas} />
+        )}
+
+        {guiaAtiva === 'cronograma-desembolso' && (
+          <CronogramaDesembolsoPanel
+            nomeProposta={proposta.nome}
+            codigoProposta={proposta.codigo}
+            versaoNumero={versao.numeroVersao}
+            metaNome={metaNomeCronograma}
+            linhas={cronogramaLinhas}
+          />
         )}
       </section>
     </main>

@@ -622,9 +622,26 @@ Implementado:
 
 Ajuste visual rápido no header da Tela Principal (`src/app/page.tsx`), iterado 3x em sequência pelo usuário: (1) pedido inicial — título ao lado do nome do usuário; (2) "centralizado" — header virou grid de 3 colunas (`grid grid-cols-3`: usuário/data à esquerda, título ao centro, botões Ajuda/Sair à direita); (3) "aumente a fonte e em negrito" — `text-lg font-bold`, cor primária (`#1A1F29`/`#EBEDF2`) em vez de secundária.
 
-**Estado ao final:** `tsc --noEmit` limpo, servidor reiniciado com `.next/` limpo, `/` validado (307, sem erro). Puramente visual, sem impacto em lógica ou testes. Commit e push desta entrada a seguir.
+**Estado ao final:** `tsc --noEmit` limpo, servidor reiniciado com `.next/` limpo, `/` validado (307, sem erro). Puramente visual, sem impacto em lógica ou testes. Commitado e enviado a `origin/master` (`2e7c789`).
 
-**Próximo passo combinado:** nenhum item novo priorizado.
+## 2026-08-07 (cont. 11) — registrada às 20:50 UTC — Início do Módulo Orçamentário (EP48/26): memória absorvida, US-122 (Cronograma de Desembolso) implementada ponta a ponta
+
+Sessão longa iniciando o Módulo Orçamentário de verdade, além dos ajustes visuais anteriores.
+
+1. **Absorção da Minuta de Especificação (EP48/26, 16 UCs).** Usuário pediu para o time ler `docs/4 - Minuta da Especificação do Módulo Orçamentário-Rev (1).docx` (~150k caracteres). Lido por completo e resumido em memória persistente (`modulo_orcamentario_ep48_minuta.md`) para não precisar reler do zero em sessões futuras. **Achado crítico registrado:** o documento assume Conta Analítica=Nível 7/Sintética=Nível 6 em toda regra de negócio, mas o schema do SGO 2.0 só suporta 1-4 níveis — bloqueador sinalizado antes de qualquer código.
+2. **Refinamento de US-122 (UC04.01 — Cronograma de Desembolso).** Usuário anexou `docs/UC04.01 — Cronograma de Desembolso.md` (10 cenários Gherkin já prontos). AN/PO validou os 10 cenários contra o protocolo de precisão do projeto, identificou que o próprio documento já sinalizava um gap não resolvido (GAP-UC0401-003, formato de concatenação do "Anexo" no cabeçalho — sem entidade correspondente no schema) e formalizou 2 bloqueios: nível de conta (crítico) e o gap do Anexo.
+3. **Usuário resolveu os 2 bloqueios na hora:** (a) nível de conta continua 1-4, sem migration — "Nível 7" do documento é nomenclatura do cliente, não exigência de schema; (b) Cenário 3 (Anexo) fica de fora por enquanto; (c) pediu para resolver exportação PDF/XLSX, que não existia em NENHUMA tela do projeto até então.
+4. **[Tech Lead] ADR-037** — exportação 100% client-side (`jspdf`+`jspdf-autotable` para PDF, `exceljs` para XLSX), utilitário reutilizável `src/lib/export/exportarRelatorio.ts` (`exportarParaXLSX`/`exportarParaPDF`), evitando Puppeteer/Chromium headless (caro em ambiente serverless). Decisão pensada para servir as próximas ~15 UCs do módulo, não só esta.
+5. **[Full Stack Dev] Implementado:**
+   - `src/domain/plano-contas/montarCronogramaDesembolso.ts` + `.test.ts` (7 testes) — distribui o custo mês a mês reaproveitando as mesmas fontes de `ValorRealizadoService` (Empregado por sobreposição de período, ItemPatrimonial pelo campo `data`, RateioImpostoGrade por `competencia`). **Limitação conhecida e documentada**: `Viagem` não tem campo de data no schema — custo inteiro cai no primeiro mês da vigência (decisão explícita do Tech Lead, não é bug).
+   - Nova guia "Cronograma de Desembolso" dentro do detalhe da Proposta (`src/app/propostas/[id]/[[...guia]]/page.tsx`, mesmo padrão de guias já existente — não virou rota isolada), painel `CronogramaDesembolsoPanel.tsx`.
+   - `src/app/orcamentario/page.tsx` ganhou lista de Propostas com link direto "Ver Cronograma →" — usuário reportou que não havia como chegar na tela nova a partir do módulo Orçamentário; corrigido.
+   - **Auditoria (RN0232) ficou de fora desta entrega** — declarado, não esquecido; próximo passo natural.
+6. **Redesign do layout da tela**, pedido explicitamente ("implementar layout do que há de melhor no mundo corporativo"): faixa de KPIs (Custo Total, Duração, Ciclos Anuais Fechados, mesmo padrão dark de Empregados/Viagens), cabeçalho fixo (sticky) na tabela, zebra striping, colunas numéricas alinhadas à direita com `tabular-nums`, mini barra de progresso no %, linhas de fechamento anual com destaque azul (accent) em vez do âmbar genérico anterior, botões de exportação com hierarquia clara (PDF primário, XLSX secundário). **Usuário confirmou "deu certo".**
+
+**Estado ao final:** `tsc --noEmit` limpo em cada etapa. Suíte completa: 267/273 passando (mesmas 6 falhas pré-existentes do baseline da sessão, +7 testes novos verdes do Cronograma, 0 regressão). `npm install` de `jspdf`/`jspdf-autotable`/`exceljs` reportou 12 vulnerabilidades (`npm audit`) — não investigado a fundo, fica como próximo passo. Servidor reiniciado e validado sem erro de runtime em cada mudança (`/orcamentario`, `/propostas/.../cronograma-desembolso`).
+
+**Próximo passo combinado:** auditoria (RN0232) da consulta ao Cronograma; depois, seguir refinando as próximas UC04.xx (Premissas/Reajustes é a UC04.02 natural, já mapeada na memória). `npm audit` das libs de exportação vale uma olhada dedicada.
 
 ---
 
