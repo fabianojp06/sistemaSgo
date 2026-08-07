@@ -52,3 +52,42 @@ export function calcularCustoTotalCargo(
   const beneficios = calcularTotalBeneficios(cargo, diasUteisPadrao);
   return new Prisma.Decimal(salarioTotal).plus(encargos).plus(beneficios);
 }
+
+export type BreakdownComponenteCusto = {
+  gratificacao: Prisma.Decimal;
+  encargosSociais: Prisma.Decimal;
+  valeAlimentacao: Prisma.Decimal;
+  valeRefeicao: Prisma.Decimal;
+  valeTransporte: Prisma.Decimal;
+  planoOdontologico: Prisma.Decimal;
+  seguroVida: Prisma.Decimal;
+  planoSaude: Prisma.Decimal;
+  auxilioCreche: Prisma.Decimal;
+};
+
+/**
+ * ADR-029 — valor mensal de cada componente de custo do Cargo, já com o gate
+ * de "ativo" aplicado (benefício inativo = 0, mesmo com valor preenchido) e
+ * VA/VR/Transporte já multiplicados por diasUteisPadrao — os mesmos valores
+ * que somados dão calcularTotalBeneficios. Usado para o snapshot por conta em
+ * EmpregadoHeadcount (cada componente vai para sua própria conta analítica).
+ */
+export function calcularBreakdownComponenteCusto(
+  cargo: BeneficiosCargo & { funcaoGratificada?: Prisma.Decimal.Value | null },
+  salarioTotal: Prisma.Decimal.Value,
+  diasUteisPadrao: number,
+): BreakdownComponenteCusto {
+  return {
+    gratificacao: new Prisma.Decimal(cargo.funcaoGratificada ?? 0),
+    encargosSociais: calcularEncargosSociais(salarioTotal, cargo.encargosSociaisPct),
+    valeAlimentacao: cargo.vaAtivo ? new Prisma.Decimal(cargo.vaValorUnitario).times(diasUteisPadrao) : new Prisma.Decimal(0),
+    valeRefeicao: cargo.vrAtivo ? new Prisma.Decimal(cargo.vrValorUnitario).times(diasUteisPadrao) : new Prisma.Decimal(0),
+    valeTransporte: cargo.transporteAtivo
+      ? new Prisma.Decimal(cargo.transporteValorUnitario).times(diasUteisPadrao)
+      : new Prisma.Decimal(0),
+    planoOdontologico: cargo.planoOdontoAtivo ? new Prisma.Decimal(cargo.planoOdontoValor) : new Prisma.Decimal(0),
+    seguroVida: cargo.seguroVidaAtivo ? new Prisma.Decimal(cargo.seguroVidaValor) : new Prisma.Decimal(0),
+    planoSaude: cargo.planoSaudeAtivo ? new Prisma.Decimal(cargo.planoSaudeValor) : new Prisma.Decimal(0),
+    auxilioCreche: cargo.auxilioCrecheAtivo ? new Prisma.Decimal(cargo.auxilioCrecheValor) : new Prisma.Decimal(0),
+  };
+}

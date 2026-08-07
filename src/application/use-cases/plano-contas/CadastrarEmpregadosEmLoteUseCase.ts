@@ -9,6 +9,7 @@ import {
   VersaoPropostaInvalidaError,
 } from '@/domain/plano-contas/errors';
 import { formatarVinculoFuncionalHerdado } from '@/domain/plano-contas/formatarVinculoFuncionalHerdado';
+import { montarSnapshotComponenteCustoEmpregado } from '@/domain/plano-contas/montarSnapshotComponenteCustoEmpregado';
 
 type CadastrarEmpregadosEmLoteInput = {
   tenantId: string;
@@ -75,6 +76,9 @@ export class CadastrarEmpregadosEmLoteUseCase {
     }
 
     const vinculoFuncionalHerdado = formatarVinculoFuncionalHerdado(cargo.alocacoes);
+    const parametro = await this.prisma.parametroSistema.findUnique({ where: { tenantId: input.tenantId } });
+    const diasUteisPadrao = parametro?.diasUteisPadrao ?? 22;
+    const snapshotComponentes = montarSnapshotComponenteCustoEmpregado(cargo, diasUteisPadrao);
 
     return this.prisma.$transaction(async (tx) => {
       const empregados: EmpregadoHeadcount[] = [];
@@ -92,6 +96,7 @@ export class CadastrarEmpregadosEmLoteUseCase {
             vinculoFuncionalHerdado,
             custoTotalMensal: cargo.custoTotalCargo,
             contaId: cargo.contaId,
+            ...snapshotComponentes,
           },
         });
         empregados.push(empregado);

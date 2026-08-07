@@ -8,6 +8,10 @@ import {
   VersaoPropostaInvalidaError,
 } from '@/domain/plano-contas/errors';
 import { formatarVinculoFuncionalHerdado } from '@/domain/plano-contas/formatarVinculoFuncionalHerdado';
+import {
+  montarSnapshotComponenteCustoEmpregado,
+  type SnapshotComponenteCustoEmpregado,
+} from '@/domain/plano-contas/montarSnapshotComponenteCustoEmpregado';
 
 type EditarEmpregadoInput = {
   tenantId: string;
@@ -65,6 +69,28 @@ export class EditarEmpregadoUseCase {
     let custoTotalMensal = empregadoAtual.custoTotalMensal;
     let contaId = empregadoAtual.contaId;
     let codigoCargoParaAuditoria = input.cargoId;
+    // ADR-029 — snapshot dos 9 componentes, mesma regra de preservação/recálculo do resto.
+    let snapshotComponentes: SnapshotComponenteCustoEmpregado = {
+      valorSalarioSnapshot: empregadoAtual.valorSalarioSnapshot,
+      valorGratificacaoSnapshot: empregadoAtual.valorGratificacaoSnapshot,
+      contaGratificacaoId: empregadoAtual.contaGratificacaoId,
+      valorEncargosSociaisSnapshot: empregadoAtual.valorEncargosSociaisSnapshot,
+      contaEncargosSociaisId: empregadoAtual.contaEncargosSociaisId,
+      valorValeAlimentacaoSnapshot: empregadoAtual.valorValeAlimentacaoSnapshot,
+      contaValeAlimentacaoId: empregadoAtual.contaValeAlimentacaoId,
+      valorValeRefeicaoSnapshot: empregadoAtual.valorValeRefeicaoSnapshot,
+      contaValeRefeicaoId: empregadoAtual.contaValeRefeicaoId,
+      valorValeTransporteSnapshot: empregadoAtual.valorValeTransporteSnapshot,
+      contaValeTransporteId: empregadoAtual.contaValeTransporteId,
+      valorPlanoOdontologicoSnapshot: empregadoAtual.valorPlanoOdontologicoSnapshot,
+      contaPlanoOdontologicoId: empregadoAtual.contaPlanoOdontologicoId,
+      valorSeguroVidaSnapshot: empregadoAtual.valorSeguroVidaSnapshot,
+      contaSeguroVidaId: empregadoAtual.contaSeguroVidaId,
+      valorPlanoSaudeSnapshot: empregadoAtual.valorPlanoSaudeSnapshot,
+      contaPlanoSaudeId: empregadoAtual.contaPlanoSaudeId,
+      valorAuxilioCrecheSnapshot: empregadoAtual.valorAuxilioCrecheSnapshot,
+      contaAuxilioCrecheId: empregadoAtual.contaAuxilioCrecheId,
+    };
 
     if (input.cargoId !== empregadoAtual.cargoId) {
       const novoCargo = await this.prisma.cargo.findFirst({
@@ -78,6 +104,10 @@ export class EditarEmpregadoUseCase {
       custoTotalMensal = novoCargo.custoTotalCargo;
       contaId = novoCargo.contaId; // ADR-027 — snapshot recalculado só na troca de cargo
       codigoCargoParaAuditoria = novoCargo.codigoCargo;
+
+      const parametro = await this.prisma.parametroSistema.findUnique({ where: { tenantId: input.tenantId } });
+      const diasUteisPadrao = parametro?.diasUteisPadrao ?? 22;
+      snapshotComponentes = montarSnapshotComponenteCustoEmpregado(novoCargo, diasUteisPadrao);
     }
 
     // US-105 — se o cliente informou o token e ele já diverge do estado lido, nem tenta:
@@ -102,6 +132,7 @@ export class EditarEmpregadoUseCase {
           vinculoFuncionalHerdado,
           custoTotalMensal,
           contaId,
+          ...snapshotComponentes,
         },
       });
       if (resultado.count === 0) {

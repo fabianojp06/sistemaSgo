@@ -99,6 +99,7 @@ const CargoDadosSchema = z.object({
   contaId: z.string().min(1),
   nomeCargoMercado: z.string().trim().min(1),
   funcaoGratificada: z.coerce.number().nullable().optional(),
+  contaGratificacaoId: z.string().nullable().optional(),
   periodoInicio: z.coerce.date(),
   salarioMercadoMinimo: z.coerce.number(),
   salarioMercadoMaximo: z.coerce.number(),
@@ -114,26 +115,35 @@ export type CargoResultado = {
   salarioMercadoMinimo: string;
   salarioMercadoMaximo: string;
   funcaoGratificada: string | null;
+  contaGratificacaoId: string | null;
   periodoInicio: string;
   salarioReal: string | null;
   salarioTotal: string;
   custoTotalCargo: string;
   encargosSociaisPct: string;
+  contaEncargosSociaisId: string | null;
   vaAtivo: boolean;
   vaValorUnitario: string;
+  contaValeAlimentacaoId: string | null;
   vrAtivo: boolean;
   vrValorUnitario: string;
+  contaValeRefeicaoId: string | null;
   planoSaudeAtivo: boolean;
   planoSaudeFaixa: 'BASICO' | 'INTERMEDIARIO' | 'EXECUTIVO' | null;
   planoSaudeValor: string;
+  contaPlanoSaudeId: string | null;
   planoOdontoAtivo: boolean;
   planoOdontoValor: string;
+  contaPlanoOdontologicoId: string | null;
   seguroVidaAtivo: boolean;
   seguroVidaValor: string;
+  contaSeguroVidaId: string | null;
   auxilioCrecheAtivo: boolean;
   auxilioCrecheValor: string;
+  contaAuxilioCrecheId: string | null;
   transporteAtivo: boolean;
   transporteValorUnitario: string;
+  contaValeTransporteId: string | null;
 };
 
 function serializarCargo(cargo: Cargo): CargoResultado {
@@ -146,26 +156,35 @@ function serializarCargo(cargo: Cargo): CargoResultado {
     salarioMercadoMinimo: cargo.salarioMercadoMinimo.toString(),
     salarioMercadoMaximo: cargo.salarioMercadoMaximo.toString(),
     funcaoGratificada: cargo.funcaoGratificada?.toString() ?? null,
+    contaGratificacaoId: cargo.contaGratificacaoId,
     periodoInicio: cargo.periodoInicio.toISOString(),
     salarioReal: cargo.salarioReal?.toString() ?? null,
     salarioTotal: cargo.salarioTotal.toString(),
     custoTotalCargo: cargo.custoTotalCargo.toString(),
     encargosSociaisPct: cargo.encargosSociaisPct.toString(),
+    contaEncargosSociaisId: cargo.contaEncargosSociaisId,
     vaAtivo: cargo.vaAtivo,
     vaValorUnitario: cargo.vaValorUnitario.toString(),
+    contaValeAlimentacaoId: cargo.contaValeAlimentacaoId,
     vrAtivo: cargo.vrAtivo,
     vrValorUnitario: cargo.vrValorUnitario.toString(),
+    contaValeRefeicaoId: cargo.contaValeRefeicaoId,
     planoSaudeAtivo: cargo.planoSaudeAtivo,
     planoSaudeFaixa: cargo.planoSaudeFaixa,
     planoSaudeValor: cargo.planoSaudeValor.toString(),
+    contaPlanoSaudeId: cargo.contaPlanoSaudeId,
     planoOdontoAtivo: cargo.planoOdontoAtivo,
     planoOdontoValor: cargo.planoOdontoValor.toString(),
+    contaPlanoOdontologicoId: cargo.contaPlanoOdontologicoId,
     seguroVidaAtivo: cargo.seguroVidaAtivo,
     seguroVidaValor: cargo.seguroVidaValor.toString(),
+    contaSeguroVidaId: cargo.contaSeguroVidaId,
     auxilioCrecheAtivo: cargo.auxilioCrecheAtivo,
     auxilioCrecheValor: cargo.auxilioCrecheValor.toString(),
+    contaAuxilioCrecheId: cargo.contaAuxilioCrecheId,
     transporteAtivo: cargo.transporteAtivo,
     transporteValorUnitario: cargo.transporteValorUnitario.toString(),
+    contaValeTransporteId: cargo.contaValeTransporteId,
   };
 }
 
@@ -232,21 +251,29 @@ const BeneficiosCargoSchema = z.object({
   propostaId: z.string().min(1),
   cargoId: z.string().min(1),
   encargosSociaisPct: z.coerce.number(),
+  contaEncargosSociaisId: z.string().nullable().optional(),
   vaAtivo: z.boolean(),
   vaValorUnitario: z.coerce.number(),
+  contaValeAlimentacaoId: z.string().nullable().optional(),
   vrAtivo: z.boolean(),
   vrValorUnitario: z.coerce.number(),
+  contaValeRefeicaoId: z.string().nullable().optional(),
   planoSaudeAtivo: z.boolean(),
   planoSaudeFaixa: z.enum(['BASICO', 'INTERMEDIARIO', 'EXECUTIVO']).nullable().optional(),
   planoSaudeValor: z.coerce.number(),
+  contaPlanoSaudeId: z.string().nullable().optional(),
   planoOdontoAtivo: z.boolean(),
   planoOdontoValor: z.coerce.number(),
+  contaPlanoOdontologicoId: z.string().nullable().optional(),
   seguroVidaAtivo: z.boolean(),
   seguroVidaValor: z.coerce.number(),
+  contaSeguroVidaId: z.string().nullable().optional(),
   auxilioCrecheAtivo: z.boolean(),
   auxilioCrecheValor: z.coerce.number(),
+  contaAuxilioCrecheId: z.string().nullable().optional(),
   transporteAtivo: z.boolean(),
   transporteValorUnitario: z.coerce.number(),
+  contaValeTransporteId: z.string().nullable().optional(),
 });
 
 /** US-107a (bloco C do UC03.19) — Configurar Benefícios e Encargos do Cargo. */
@@ -299,40 +326,56 @@ export async function salvarCargoCompleto(input: z.input<typeof SalvarCargoCompl
   const {
     cargoId,
     encargosSociaisPct,
+    contaEncargosSociaisId,
     vaAtivo,
     vaValorUnitario,
+    contaValeAlimentacaoId,
     vrAtivo,
     vrValorUnitario,
+    contaValeRefeicaoId,
     planoSaudeAtivo,
     planoSaudeFaixa,
     planoSaudeValor,
+    contaPlanoSaudeId,
     planoOdontoAtivo,
     planoOdontoValor,
+    contaPlanoOdontologicoId,
     seguroVidaAtivo,
     seguroVidaValor,
+    contaSeguroVidaId,
     auxilioCrecheAtivo,
     auxilioCrecheValor,
+    contaAuxilioCrecheId,
     transporteAtivo,
     transporteValorUnitario,
+    contaValeTransporteId,
     ...dadosCargo
   } = entrada.data;
   const beneficios = {
     encargosSociaisPct,
+    contaEncargosSociaisId,
     vaAtivo,
     vaValorUnitario,
+    contaValeAlimentacaoId,
     vrAtivo,
     vrValorUnitario,
+    contaValeRefeicaoId,
     planoSaudeAtivo,
     planoSaudeFaixa,
     planoSaudeValor,
+    contaPlanoSaudeId,
     planoOdontoAtivo,
     planoOdontoValor,
+    contaPlanoOdontologicoId,
     seguroVidaAtivo,
     seguroVidaValor,
+    contaSeguroVidaId,
     auxilioCrecheAtivo,
     auxilioCrecheValor,
+    contaAuxilioCrecheId,
     transporteAtivo,
     transporteValorUnitario,
+    contaValeTransporteId,
   };
 
   const respostaCargo = cargoId ? await editarCargo({ ...dadosCargo, cargoId }) : await cadastrarCargo(dadosCargo);

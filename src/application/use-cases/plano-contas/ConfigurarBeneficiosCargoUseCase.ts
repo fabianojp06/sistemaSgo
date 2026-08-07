@@ -1,27 +1,37 @@
 import { Prisma, type Cargo, type FaixaPlanoSaude, type PrismaClient } from '@prisma/client';
 import { CargoNaoEncontradoError, EncargosSociaisPercentualInvalidoError, ValorBeneficioNegativoError } from '@/domain/plano-contas/errors';
 import { calcularCustoTotalCargo } from '@/domain/plano-contas/calcularCustoTotalCargo';
+import { validarContasComponenteCusto } from '@/domain/plano-contas/validarContasComponenteCusto';
 
 type ConfigurarBeneficiosCargoInput = {
   tenantId: string;
   usuarioId: string;
   cargoId: string;
   encargosSociaisPct: number;
+  /** ADR-029 — conta analítica de cada componente; null se ainda não configurada. */
+  contaEncargosSociaisId?: string | null;
   vaAtivo: boolean;
   vaValorUnitario: number;
+  contaValeAlimentacaoId?: string | null;
   vrAtivo: boolean;
   vrValorUnitario: number;
+  contaValeRefeicaoId?: string | null;
   planoSaudeAtivo: boolean;
   planoSaudeFaixa?: FaixaPlanoSaude | null;
   planoSaudeValor: number;
+  contaPlanoSaudeId?: string | null;
   planoOdontoAtivo: boolean;
   planoOdontoValor: number;
+  contaPlanoOdontologicoId?: string | null;
   seguroVidaAtivo: boolean;
   seguroVidaValor: number;
+  contaSeguroVidaId?: string | null;
   auxilioCrecheAtivo: boolean;
   auxilioCrecheValor: number;
+  contaAuxilioCrecheId?: string | null;
   transporteAtivo: boolean;
   transporteValorUnitario: number;
+  contaValeTransporteId?: string | null;
 };
 
 const CAMPOS_VALOR_NAO_NEGATIVO = [
@@ -58,26 +68,46 @@ export class ConfigurarBeneficiosCargoUseCase {
       throw new CargoNaoEncontradoError();
     }
 
+    // ADR-029 [TRAVA O ERRO] — contas informadas precisam ser analíticas.
+    await validarContasComponenteCusto(this.prisma, input.tenantId, {
+      encargosSociais: { id: input.contaEncargosSociaisId ?? null, label: 'Encargos Sociais' },
+      valeAlimentacao: { id: input.contaValeAlimentacaoId ?? null, label: 'Vale Alimentação' },
+      valeRefeicao: { id: input.contaValeRefeicaoId ?? null, label: 'Vale Refeição' },
+      planoSaude: { id: input.contaPlanoSaudeId ?? null, label: 'Plano de Saúde' },
+      planoOdonto: { id: input.contaPlanoOdontologicoId ?? null, label: 'Plano Odontológico' },
+      seguroVida: { id: input.contaSeguroVidaId ?? null, label: 'Seguro de Vida' },
+      auxilioCreche: { id: input.contaAuxilioCrecheId ?? null, label: 'Auxílio Creche' },
+      valeTransporte: { id: input.contaValeTransporteId ?? null, label: 'Vale Transporte' },
+    });
+
     const parametro = await this.prisma.parametroSistema.findUnique({ where: { tenantId: input.tenantId } });
     const diasUteisPadrao = parametro?.diasUteisPadrao ?? 22;
 
     const dadosBeneficios = {
       encargosSociaisPct: new Prisma.Decimal(input.encargosSociaisPct),
+      contaEncargosSociaisId: input.contaEncargosSociaisId ?? null,
       vaAtivo: input.vaAtivo,
       vaValorUnitario: new Prisma.Decimal(input.vaValorUnitario),
+      contaValeAlimentacaoId: input.contaValeAlimentacaoId ?? null,
       vrAtivo: input.vrAtivo,
       vrValorUnitario: new Prisma.Decimal(input.vrValorUnitario),
+      contaValeRefeicaoId: input.contaValeRefeicaoId ?? null,
       planoSaudeAtivo: input.planoSaudeAtivo,
       planoSaudeFaixa: input.planoSaudeFaixa ?? null,
       planoSaudeValor: new Prisma.Decimal(input.planoSaudeValor),
+      contaPlanoSaudeId: input.contaPlanoSaudeId ?? null,
       planoOdontoAtivo: input.planoOdontoAtivo,
       planoOdontoValor: new Prisma.Decimal(input.planoOdontoValor),
+      contaPlanoOdontologicoId: input.contaPlanoOdontologicoId ?? null,
       seguroVidaAtivo: input.seguroVidaAtivo,
       seguroVidaValor: new Prisma.Decimal(input.seguroVidaValor),
+      contaSeguroVidaId: input.contaSeguroVidaId ?? null,
       auxilioCrecheAtivo: input.auxilioCrecheAtivo,
       auxilioCrecheValor: new Prisma.Decimal(input.auxilioCrecheValor),
+      contaAuxilioCrecheId: input.contaAuxilioCrecheId ?? null,
       transporteAtivo: input.transporteAtivo,
       transporteValorUnitario: new Prisma.Decimal(input.transporteValorUnitario),
+      contaValeTransporteId: input.contaValeTransporteId ?? null,
     };
 
     const custoTotalCargo = calcularCustoTotalCargo(cargo.salarioTotal, dadosBeneficios, diasUteisPadrao);

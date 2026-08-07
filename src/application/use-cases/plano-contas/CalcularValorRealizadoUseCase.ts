@@ -151,10 +151,43 @@ export class CalcularValorRealizadoUseCase {
     if (versao) {
       const empregados = await this.prisma.empregadoHeadcount.findMany({
         where: { tenantId, propostaId: versao.propostaId, ativo: true },
-        select: { contaId: true, custoTotalMensal: true },
+        select: {
+          contaId: true,
+          valorSalarioSnapshot: true,
+          valorGratificacaoSnapshot: true,
+          contaGratificacaoId: true,
+          valorEncargosSociaisSnapshot: true,
+          contaEncargosSociaisId: true,
+          valorValeAlimentacaoSnapshot: true,
+          contaValeAlimentacaoId: true,
+          valorValeRefeicaoSnapshot: true,
+          contaValeRefeicaoId: true,
+          valorValeTransporteSnapshot: true,
+          contaValeTransporteId: true,
+          valorPlanoOdontologicoSnapshot: true,
+          contaPlanoOdontologicoId: true,
+          valorSeguroVidaSnapshot: true,
+          contaSeguroVidaId: true,
+          valorPlanoSaudeSnapshot: true,
+          contaPlanoSaudeId: true,
+          valorAuxilioCrecheSnapshot: true,
+          contaAuxilioCrecheId: true,
+        },
       });
+      // ADR-029 — cada componente vai para sua própria conta (snapshot); sem
+      // conta configurada, cai na conta de salário do próprio Empregado
+      // (nunca some, nunca duplica — valorSalarioSnapshot já é residual).
       for (const empregado of empregados) {
-        soma(empregado.contaId, empregado.custoTotalMensal);
+        soma(empregado.contaId, empregado.valorSalarioSnapshot);
+        soma(empregado.contaGratificacaoId ?? empregado.contaId, empregado.valorGratificacaoSnapshot);
+        soma(empregado.contaEncargosSociaisId ?? empregado.contaId, empregado.valorEncargosSociaisSnapshot);
+        soma(empregado.contaValeAlimentacaoId ?? empregado.contaId, empregado.valorValeAlimentacaoSnapshot);
+        soma(empregado.contaValeRefeicaoId ?? empregado.contaId, empregado.valorValeRefeicaoSnapshot);
+        soma(empregado.contaValeTransporteId ?? empregado.contaId, empregado.valorValeTransporteSnapshot);
+        soma(empregado.contaPlanoOdontologicoId ?? empregado.contaId, empregado.valorPlanoOdontologicoSnapshot);
+        soma(empregado.contaSeguroVidaId ?? empregado.contaId, empregado.valorSeguroVidaSnapshot);
+        soma(empregado.contaPlanoSaudeId ?? empregado.contaId, empregado.valorPlanoSaudeSnapshot);
+        soma(empregado.contaAuxilioCrecheId ?? empregado.contaId, empregado.valorAuxilioCrecheSnapshot);
       }
     }
 

@@ -4,6 +4,10 @@ import { useState } from 'react';
 
 type Coluna = { id: string; label: string; valor: number; cor: string };
 
+// Formatação fixa em pt-BR dentro do Client Component — BadgeSemaforoPanel (Server
+// Component) não pode passar uma função como prop através da fronteira server/client.
+const formatadorMoeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+
 /**
  * Gráfico de colunas verticais interativo (SVG puro, sem dependência nova) —
  * ranking de contas por Valor Realizado. Cor por coluna = status do semáforo
@@ -11,7 +15,7 @@ type Coluna = { id: string; label: string; valor: number; cor: string };
  * mesmas cores já usadas nos badges da lista abaixo — não é identidade
  * categórica (como em Empregados), é o mesmo status já calculado.
  */
-export function ColumnChartRanking({ titulo, colunas, formatarValor }: { titulo: string; colunas: Coluna[]; formatarValor: (valor: number) => string }) {
+export function ColumnChartRanking({ titulo, colunas }: { titulo: string; colunas: Coluna[] }) {
   const [ativoId, setAtivoId] = useState<string | null>(null);
 
   const ordenadas = [...colunas].sort((a, b) => b.valor - a.valor);
@@ -19,7 +23,7 @@ export function ColumnChartRanking({ titulo, colunas, formatarValor }: { titulo:
 
   const larguraColuna = 48;
   const espacamento = 24;
-  const alturaGrafico = 220;
+  const alturaGrafico = 360;
   const alturaEixoRotulos = 56;
   const larguraTotal = ordenadas.length * (larguraColuna + espacamento) + espacamento;
   const alturaTotal = alturaGrafico + alturaEixoRotulos;
@@ -27,7 +31,14 @@ export function ColumnChartRanking({ titulo, colunas, formatarValor }: { titulo:
   return (
     <div className="rounded-lg border border-gray-100 bg-white p-4 shadow-sm md:p-5">
       <h4 className="mb-3 text-sm font-semibold text-slate-800">{titulo}</h4>
-      <svg width="100%" viewBox={`0 0 ${larguraTotal} ${alturaTotal}`} role="img" aria-label={titulo}>
+      <svg
+        width="100%"
+        height={alturaTotal}
+        viewBox={`0 0 ${larguraTotal} ${alturaTotal}`}
+        preserveAspectRatio="xMinYMid meet"
+        role="img"
+        aria-label={titulo}
+      >
         {/* Gridlines horizontais recessivas */}
         {[0, 0.25, 0.5, 0.75, 1].map((fracao) => (
           <line
@@ -61,7 +72,7 @@ export function ColumnChartRanking({ titulo, colunas, formatarValor }: { titulo:
               <rect x={x - espacamento / 2} y={0} width={larguraColuna + espacamento} height={alturaTotal} fill="transparent" />
 
               <text x={x + larguraColuna / 2} y={y - 8} textAnchor="middle" fontSize={11} fontWeight={ativo ? 600 : 400} fill="#0b0b0b">
-                {formatarValor(coluna.valor)}
+                {formatadorMoeda.format(coluna.valor)}
               </text>
 
               <rect
@@ -87,7 +98,7 @@ export function ColumnChartRanking({ titulo, colunas, formatarValor }: { titulo:
 
               {ativo && (
                 <title>
-                  {coluna.label}: {formatarValor(coluna.valor)}
+                  {coluna.label}: {formatadorMoeda.format(coluna.valor)}
                 </title>
               )}
             </g>

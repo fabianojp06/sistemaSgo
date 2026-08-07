@@ -9,6 +9,7 @@ import {
   VinculoFuncionalObrigatorioError,
 } from '@/domain/plano-contas/errors';
 import { calcularSalarioTotalCargo } from '@/domain/plano-contas/calcularSalarioTotalCargo';
+import { validarContasComponenteCusto } from '@/domain/plano-contas/validarContasComponenteCusto';
 
 const TIPOS_ANALITICOS = ['ANALITICO_ASSESSOR', 'ANALITICO_COORDENADORIA', 'ANALITICO_SETOR'];
 
@@ -24,6 +25,8 @@ type EditarCargoInput = {
   contaId: string;
   nomeCargoMercado: string;
   funcaoGratificada?: number | null;
+  /** ADR-029 — conta analítica da Função Gratificada; null se o campo não estiver preenchido. */
+  contaGratificacaoId?: string | null;
   periodoInicio: Date;
   salarioMercadoMinimo: number;
   salarioMercadoMaximo: number;
@@ -91,6 +94,11 @@ export class EditarCargoUseCase {
       throw new ContaCargoNaoAnaliticaError();
     }
 
+    // ADR-029 [TRAVA O ERRO] — conta da Função Gratificada, se informada, precisa ser analítica.
+    await validarContasComponenteCusto(this.prisma, input.tenantId, {
+      gratificacao: { id: input.contaGratificacaoId ?? null, label: 'Função Gratificada' },
+    });
+
     // Cenário 4 — salarioReal do input é sempre descartado; usa-se o valor já
     // persistido (soberano do provider Rubi).
     const salarioTotal = calcularSalarioTotalCargo({
@@ -108,6 +116,7 @@ export class EditarCargoUseCase {
           nomeCargoMercado: nome,
           contaId: input.contaId,
           funcaoGratificada: input.funcaoGratificada ?? null,
+          contaGratificacaoId: input.contaGratificacaoId ?? null,
           periodoInicio: input.periodoInicio,
           salarioMercadoMinimo: input.salarioMercadoMinimo,
           salarioMercadoMaximo: input.salarioMercadoMaximo,

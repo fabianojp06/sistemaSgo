@@ -11,6 +11,7 @@ import {
 import { gerarProximoCodigoCargo } from '@/domain/plano-contas/gerarCodigoCargo';
 import { isUniqueConstraintError } from '@/domain/plano-contas/gerarCodigoProposta';
 import { calcularSalarioTotalCargo } from '@/domain/plano-contas/calcularSalarioTotalCargo';
+import { validarContasComponenteCusto } from '@/domain/plano-contas/validarContasComponenteCusto';
 import type { CargoRubiProvider } from '@/infrastructure/integrations/rubi/types';
 
 const MAX_TENTATIVAS_CODIGO = 5;
@@ -31,6 +32,8 @@ type CadastrarCargoInput = {
   contaId: string;
   nomeCargoMercado: string;
   funcaoGratificada?: number | null;
+  /** ADR-029 — conta analítica da Função Gratificada; null se o campo não estiver preenchido. */
+  contaGratificacaoId?: string | null;
   periodoInicio: Date;
   salarioMercadoMinimo: number;
   salarioMercadoMaximo: number;
@@ -92,6 +95,11 @@ export class CadastrarCargoUseCase {
       throw new ContaCargoNaoAnaliticaError();
     }
 
+    // ADR-029 [TRAVA O ERRO] — conta da Função Gratificada, se informada, precisa ser analítica.
+    await validarContasComponenteCusto(this.prisma, input.tenantId, {
+      gratificacao: { id: input.contaGratificacaoId ?? null, label: 'Função Gratificada' },
+    });
+
     // RN_CAR_03 — Salário Real vem exclusivamente do provider Rubi (fixture por ora).
     const salarioReal = await this.rubiProvider.buscarSalarioReal(nome);
 
@@ -118,6 +126,7 @@ export class CadastrarCargoUseCase {
               nomeCargoMercado: nome,
               codigoCargo,
               funcaoGratificada: input.funcaoGratificada ?? null,
+              contaGratificacaoId: input.contaGratificacaoId ?? null,
               periodoInicio: input.periodoInicio,
               salarioMercadoMinimo: input.salarioMercadoMinimo,
               salarioMercadoMaximo: input.salarioMercadoMaximo,

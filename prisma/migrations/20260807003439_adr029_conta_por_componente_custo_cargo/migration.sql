@@ -1,0 +1,31 @@
+-- AlterTable
+ALTER TABLE "Cargo" ADD COLUMN     "contaAuxilioCrecheId" TEXT,
+ADD COLUMN     "contaEncargosSociaisId" TEXT,
+ADD COLUMN     "contaGratificacaoId" TEXT,
+ADD COLUMN     "contaPlanoOdontologicoId" TEXT,
+ADD COLUMN     "contaPlanoSaudeId" TEXT,
+ADD COLUMN     "contaSeguroVidaId" TEXT,
+ADD COLUMN     "contaValeAlimentacaoId" TEXT,
+ADD COLUMN     "contaValeRefeicaoId" TEXT,
+ADD COLUMN     "contaValeTransporteId" TEXT;
+
+-- AlterTable
+ALTER TABLE "EmpregadoHeadcount" ADD COLUMN     "contaAuxilioCrecheId" TEXT,
+ADD COLUMN     "contaEncargosSociaisId" TEXT,
+ADD COLUMN     "contaGratificacaoId" TEXT,
+ADD COLUMN     "contaPlanoOdontologicoId" TEXT,
+ADD COLUMN     "contaPlanoSaudeId" TEXT,
+ADD COLUMN     "contaSeguroVidaId" TEXT,
+ADD COLUMN     "contaValeAlimentacaoId" TEXT,
+ADD COLUMN     "contaValeRefeicaoId" TEXT,
+ADD COLUMN     "contaValeTransporteId" TEXT,
+ADD COLUMN     "valorAuxilioCrecheSnapshot" DECIMAL(15,2) NOT NULL DEFAULT 0,
+ADD COLUMN     "valorEncargosSociaisSnapshot" DECIMAL(15,2) NOT NULL DEFAULT 0,
+ADD COLUMN     "valorGratificacaoSnapshot" DECIMAL(15,2) NOT NULL DEFAULT 0,
+ADD COLUMN     "valorPlanoOdontologicoSnapshot" DECIMAL(15,2) NOT NULL DEFAULT 0,
+ADD COLUMN     "valorPlanoSaudeSnapshot" DECIMAL(15,2) NOT NULL DEFAULT 0,
+ADD COLUMN     "valorSalarioSnapshot" DECIMAL(15,2) NOT NULL DEFAULT 0,
+ADD COLUMN     "valorSeguroVidaSnapshot" DECIMAL(15,2) NOT NULL DEFAULT 0,
+ADD COLUMN     "valorValeAlimentacaoSnapshot" DECIMAL(15,2) NOT NULL DEFAULT 0,
+ADD COLUMN     "valorValeRefeicaoSnapshot" DECIMAL(15,2) NOT NULL DEFAULT 0,
+ADD COLUMN     "valorValeTransporteSnapshot" DECIMAL(15,2) NOT NULL DEFAULT 0;

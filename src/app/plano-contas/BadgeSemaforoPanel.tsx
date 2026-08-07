@@ -53,7 +53,7 @@ export async function BadgeSemaforoPanel({
   const colunasRanking = contasAnaliticas
     .map((conta) => {
       const badge = badges.get(conta.id);
-      if (!badge) return null;
+      if (!badge || badge.valorRealizado.isZero()) return null; // só contas com valor lançado
       return {
         id: conta.id,
         label: conta.label,
@@ -66,7 +66,7 @@ export async function BadgeSemaforoPanel({
   return (
     <div className="flex flex-col gap-6 rounded-xl bg-slate-50 p-4 md:p-6">
       {colunasRanking.length > 0 && (
-        <ColumnChartRanking titulo="Ranking de Contas — Valor Realizado" colunas={colunasRanking} formatarValor={formatarMoeda} />
+        <ColumnChartRanking titulo="Ranking de Contas — Valor Realizado" colunas={colunasRanking} />
       )}
 
       <div className="overflow-hidden rounded-lg border border-gray-100 bg-white shadow-sm">

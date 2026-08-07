@@ -644,6 +644,15 @@ export class ContaCargoNaoAnaliticaError extends Error {
   }
 }
 
+// ADR-029 — conta de um componente de custo do Cargo (gratificação, encargos,
+// cada benefício) precisa existir, pertencer ao tenant e ser analítica.
+export class ContaComponenteCustoNaoAnaliticaError extends Error {
+  constructor(componente: string) {
+    super(`Selecione uma conta analítica (nível folha) para ${componente}.`);
+    this.name = 'ContaComponenteCustoNaoAnaliticaError';
+  }
+}
+
 // ADR-027 — Rateio de Impostos precisa de uma ContaContabil analítica por linha.
 export class ContaRateioImpostoNaoAnaliticaError extends Error {
   constructor() {

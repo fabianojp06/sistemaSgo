@@ -13,13 +13,39 @@ const FONTES = [
 ] as const;
 
 const BENEFICIOS_SIMPLES = [
-  { ativo: 'vaAtivo', valor: 'vaValorUnitario', label: 'Vale Alimentação' },
-  { ativo: 'vrAtivo', valor: 'vrValorUnitario', label: 'Vale Refeição' },
-  { ativo: 'planoOdontoAtivo', valor: 'planoOdontoValor', label: 'Plano Odontológico' },
-  { ativo: 'seguroVidaAtivo', valor: 'seguroVidaValor', label: 'Seguro de Vida' },
-  { ativo: 'auxilioCrecheAtivo', valor: 'auxilioCrecheValor', label: 'Auxílio Creche' },
-  { ativo: 'transporteAtivo', valor: 'transporteValorUnitario', label: 'Vale Transporte' },
+  { ativo: 'vaAtivo', valor: 'vaValorUnitario', conta: 'contaValeAlimentacaoId', label: 'Vale Alimentação' },
+  { ativo: 'vrAtivo', valor: 'vrValorUnitario', conta: 'contaValeRefeicaoId', label: 'Vale Refeição' },
+  { ativo: 'planoOdontoAtivo', valor: 'planoOdontoValor', conta: 'contaPlanoOdontologicoId', label: 'Plano Odontológico' },
+  { ativo: 'seguroVidaAtivo', valor: 'seguroVidaValor', conta: 'contaSeguroVidaId', label: 'Seguro de Vida' },
+  { ativo: 'auxilioCrecheAtivo', valor: 'auxilioCrecheValor', conta: 'contaAuxilioCrecheId', label: 'Auxílio Creche' },
+  { ativo: 'transporteAtivo', valor: 'transporteValorUnitario', conta: 'contaValeTransporteId', label: 'Vale Transporte' },
 ] as const;
+
+/** ADR-029 — seletor de conta analítica de um componente de custo, reaproveitado em todos os campos. */
+function ContaComponenteSelect({
+  contasAnaliticas,
+  value,
+  onChange,
+}: {
+  contasAnaliticas: { id: string; label: string }[];
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="rounded border px-2 py-1 text-xs text-gray-600"
+    >
+      <option value="">Conta...</option>
+      {contasAnaliticas.map((c) => (
+        <option key={c.id} value={c.id}>
+          {c.label}
+        </option>
+      ))}
+    </select>
+  );
+}
 
 function dadosVazios() {
   return {
@@ -29,23 +55,32 @@ function dadosVazios() {
     salarioMercadoMinimo: '',
     salarioMercadoMaximo: '',
     funcaoGratificada: '',
+    contaGratificacaoId: '',
     periodoInicio: '',
     encargosSociaisPct: '0',
+    contaEncargosSociaisId: '',
     vaAtivo: false,
     vaValorUnitario: '0',
+    contaValeAlimentacaoId: '',
     vrAtivo: false,
     vrValorUnitario: '0',
+    contaValeRefeicaoId: '',
     planoSaudeAtivo: false,
     planoSaudeFaixa: null as 'BASICO' | 'INTERMEDIARIO' | 'EXECUTIVO' | null,
     planoSaudeValor: '0',
+    contaPlanoSaudeId: '',
     planoOdontoAtivo: false,
     planoOdontoValor: '0',
+    contaPlanoOdontologicoId: '',
     seguroVidaAtivo: false,
     seguroVidaValor: '0',
+    contaSeguroVidaId: '',
     auxilioCrecheAtivo: false,
     auxilioCrecheValor: '0',
+    contaAuxilioCrecheId: '',
     transporteAtivo: false,
     transporteValorUnitario: '0',
+    contaValeTransporteId: '',
   };
 }
 
@@ -93,23 +128,32 @@ export function CargoPanel({
       salarioMercadoMinimo: cargo.salarioMercadoMinimo,
       salarioMercadoMaximo: cargo.salarioMercadoMaximo,
       funcaoGratificada: cargo.funcaoGratificada ?? '',
+      contaGratificacaoId: cargo.contaGratificacaoId ?? '',
       periodoInicio: cargo.periodoInicio.slice(0, 10),
       encargosSociaisPct: cargo.encargosSociaisPct,
+      contaEncargosSociaisId: cargo.contaEncargosSociaisId ?? '',
       vaAtivo: cargo.vaAtivo,
       vaValorUnitario: cargo.vaValorUnitario,
+      contaValeAlimentacaoId: cargo.contaValeAlimentacaoId ?? '',
       vrAtivo: cargo.vrAtivo,
       vrValorUnitario: cargo.vrValorUnitario,
+      contaValeRefeicaoId: cargo.contaValeRefeicaoId ?? '',
       planoSaudeAtivo: cargo.planoSaudeAtivo,
       planoSaudeFaixa: cargo.planoSaudeFaixa,
       planoSaudeValor: cargo.planoSaudeValor,
+      contaPlanoSaudeId: cargo.contaPlanoSaudeId ?? '',
       planoOdontoAtivo: cargo.planoOdontoAtivo,
       planoOdontoValor: cargo.planoOdontoValor,
+      contaPlanoOdontologicoId: cargo.contaPlanoOdontologicoId ?? '',
       seguroVidaAtivo: cargo.seguroVidaAtivo,
       seguroVidaValor: cargo.seguroVidaValor,
+      contaSeguroVidaId: cargo.contaSeguroVidaId ?? '',
       auxilioCrecheAtivo: cargo.auxilioCrecheAtivo,
       auxilioCrecheValor: cargo.auxilioCrecheValor,
+      contaAuxilioCrecheId: cargo.contaAuxilioCrecheId ?? '',
       transporteAtivo: cargo.transporteAtivo,
       transporteValorUnitario: cargo.transporteValorUnitario,
+      contaValeTransporteId: cargo.contaValeTransporteId ?? '',
     });
     setAlocacoes(cargo.alocacoes);
   }
@@ -136,26 +180,35 @@ export function CargoPanel({
       contaId: dados.contaId,
       nomeCargoMercado: dados.nomeCargoMercado,
       funcaoGratificada: dados.funcaoGratificada === '' ? null : Number(dados.funcaoGratificada),
+      contaGratificacaoId: dados.contaGratificacaoId || null,
       periodoInicio: new Date(dados.periodoInicio),
       salarioMercadoMinimo: Number(dados.salarioMercadoMinimo),
       salarioMercadoMaximo: Number(dados.salarioMercadoMaximo),
       fonteAtiva: dados.fonteAtiva,
       encargosSociaisPct: Number(dados.encargosSociaisPct),
+      contaEncargosSociaisId: dados.contaEncargosSociaisId || null,
       vaAtivo: dados.vaAtivo,
       vaValorUnitario: Number(dados.vaValorUnitario),
+      contaValeAlimentacaoId: dados.contaValeAlimentacaoId || null,
       vrAtivo: dados.vrAtivo,
       vrValorUnitario: Number(dados.vrValorUnitario),
+      contaValeRefeicaoId: dados.contaValeRefeicaoId || null,
       planoSaudeAtivo: dados.planoSaudeAtivo,
       planoSaudeFaixa: dados.planoSaudeFaixa,
       planoSaudeValor: Number(dados.planoSaudeValor),
+      contaPlanoSaudeId: dados.contaPlanoSaudeId || null,
       planoOdontoAtivo: dados.planoOdontoAtivo,
       planoOdontoValor: Number(dados.planoOdontoValor),
+      contaPlanoOdontologicoId: dados.contaPlanoOdontologicoId || null,
       seguroVidaAtivo: dados.seguroVidaAtivo,
       seguroVidaValor: Number(dados.seguroVidaValor),
+      contaSeguroVidaId: dados.contaSeguroVidaId || null,
       auxilioCrecheAtivo: dados.auxilioCrecheAtivo,
       auxilioCrecheValor: Number(dados.auxilioCrecheValor),
+      contaAuxilioCrecheId: dados.contaAuxilioCrecheId || null,
       transporteAtivo: dados.transporteAtivo,
       transporteValorUnitario: Number(dados.transporteValorUnitario),
+      contaValeTransporteId: dados.contaValeTransporteId || null,
     };
 
     startTransition(async () => {
@@ -298,6 +351,11 @@ export function CargoPanel({
                 onChange={(e) => setDados((d) => ({ ...d, funcaoGratificada: e.target.value }))}
                 className="w-full rounded border px-2 py-1 text-sm"
               />
+              <ContaComponenteSelect
+                contasAnaliticas={contasAnaliticas}
+                value={dados.contaGratificacaoId}
+                onChange={(v) => setDados((d) => ({ ...d, contaGratificacaoId: v }))}
+              />
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">Fonte Ativa</label>
@@ -357,13 +415,20 @@ export function CargoPanel({
           <div className="flex flex-col gap-3 border-t pt-3">
             <p className="text-xs font-medium text-gray-600">Benefícios e Encargos</p>
 
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">Encargos Sociais (%)</label>
-              <input
-                type="number"
-                value={dados.encargosSociaisPct}
-                onChange={(e) => setDados((d) => ({ ...d, encargosSociaisPct: e.target.value }))}
-                className="w-32 rounded border px-2 py-1 text-sm"
+            <div className="flex items-end gap-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">Encargos Sociais (%)</label>
+                <input
+                  type="number"
+                  value={dados.encargosSociaisPct}
+                  onChange={(e) => setDados((d) => ({ ...d, encargosSociaisPct: e.target.value }))}
+                  className="w-32 rounded border px-2 py-1 text-sm"
+                />
+              </div>
+              <ContaComponenteSelect
+                contasAnaliticas={contasAnaliticas}
+                value={dados.contaEncargosSociaisId}
+                onChange={(v) => setDados((d) => ({ ...d, contaEncargosSociaisId: v }))}
               />
             </div>
 
@@ -383,6 +448,11 @@ export function CargoPanel({
                   onChange={(e) => setDados((d) => ({ ...d, [b.valor]: e.target.value }))}
                   disabled={!dados[b.ativo]}
                   className="w-32 rounded border px-2 py-1 text-sm disabled:opacity-50"
+                />
+                <ContaComponenteSelect
+                  contasAnaliticas={contasAnaliticas}
+                  value={dados[b.conta]}
+                  onChange={(v) => setDados((d) => ({ ...d, [b.conta]: v }))}
                 />
               </div>
             ))}
@@ -413,6 +483,11 @@ export function CargoPanel({
                 onChange={(e) => setDados((d) => ({ ...d, planoSaudeValor: e.target.value }))}
                 disabled={!dados.planoSaudeAtivo}
                 className="w-32 rounded border px-2 py-1 text-sm disabled:opacity-50"
+              />
+              <ContaComponenteSelect
+                contasAnaliticas={contasAnaliticas}
+                value={dados.contaPlanoSaudeId}
+                onChange={(v) => setDados((d) => ({ ...d, contaPlanoSaudeId: v }))}
               />
             </div>
           </div>

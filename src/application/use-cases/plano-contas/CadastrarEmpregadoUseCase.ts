@@ -8,6 +8,7 @@ import {
   VersaoPropostaInvalidaError,
 } from '@/domain/plano-contas/errors';
 import { formatarVinculoFuncionalHerdado } from '@/domain/plano-contas/formatarVinculoFuncionalHerdado';
+import { montarSnapshotComponenteCustoEmpregado } from '@/domain/plano-contas/montarSnapshotComponenteCustoEmpregado';
 
 type CadastrarEmpregadoInput = {
   tenantId: string;
@@ -73,6 +74,10 @@ export class CadastrarEmpregadoUseCase {
       throw new CargoNaoEncontradoParaEmpregadoError();
     }
 
+    const parametro = await this.prisma.parametroSistema.findUnique({ where: { tenantId: input.tenantId } });
+    const diasUteisPadrao = parametro?.diasUteisPadrao ?? 22;
+    const snapshotComponentes = montarSnapshotComponenteCustoEmpregado(cargo, diasUteisPadrao);
+
     const nome = input.nome?.trim() || 'A CONTRATAR'; // RN0249
 
     return this.prisma.$transaction(async (tx) => {
@@ -92,6 +97,7 @@ export class CadastrarEmpregadoUseCase {
           vinculoFuncionalHerdado: formatarVinculoFuncionalHerdado(cargo.alocacoes),
           custoTotalMensal: cargo.custoTotalCargo,
           contaId: cargo.contaId, // ADR-027 — snapshot herdado, mesmo padrão de vinculoFuncionalHerdado
+          ...snapshotComponentes, // ADR-029 — snapshot de valor + conta de cada componente de custo
         },
       });
 

@@ -665,6 +665,21 @@ model Cargo {
   transporteAtivo         Boolean @default(false)
   transporteValorUnitario Decimal @default(0) @db.Decimal(15, 2)
 
+  // ADR-029 — conta analítica por componente de custo (não é @relation formal:
+  // 9 FKs opcionais para ContaContabil validadas na camada de aplicação, mesmo
+  // padrão de "sem lock explícito" já usado em outros pontos — evita 9 relações
+  // nomeadas + 9 campos de retorno em ContaContabil, desproporcional ao ganho).
+  // Cada uma pode ficar null se o benefício correspondente nunca foi configurado.
+  contaGratificacaoId     String?
+  contaEncargosSociaisId  String?
+  contaValeAlimentacaoId  String?
+  contaValeRefeicaoId     String?
+  contaValeTransporteId   String?
+  contaPlanoOdontologicoId String?
+  contaSeguroVidaId       String?
+  contaPlanoSaudeId       String?
+  contaAuxilioCrecheId    String?
+
   // Calculado e persistido pelo use case a cada create/update — nunca input direto.
   custoTotalCargo Decimal @default(0) @db.Decimal(15, 2)
 
@@ -756,6 +771,34 @@ model EmpregadoHeadcount {
   // troca de cargoId, nunca editável diretamente.
   contaId String
   conta   ContaContabil @relation(fields: [contaId], references: [id])
+
+  // ADR-029 — snapshot de valor + conta de cada componente de custo do Cargo,
+  // mesmo congelamento de contaId/custoTotalMensal acima (nunca recalculado
+  // retroativamente). valorSalarioSnapshot é residual: custoTotalMensal menos
+  // a soma dos demais 8 — garante que a soma de todas as contas bate exatamente
+  // com custoTotalMensal, sem sobra nem furo, não importa quais componentes
+  // estavam ativos no Cargo no momento do snapshot. Conta null = componente
+  // sem conta configurada no Cargo; nesse caso o valor cai dentro do valor de
+  // salário (mesma conta contaId acima), nunca é perdido nem contado 2x.
+  valorSalarioSnapshot         Decimal @default(0) @db.Decimal(15, 2)
+  valorGratificacaoSnapshot    Decimal @default(0) @db.Decimal(15, 2)
+  contaGratificacaoId          String?
+  valorEncargosSociaisSnapshot Decimal @default(0) @db.Decimal(15, 2)
+  contaEncargosSociaisId       String?
+  valorValeAlimentacaoSnapshot Decimal @default(0) @db.Decimal(15, 2)
+  contaValeAlimentacaoId       String?
+  valorValeRefeicaoSnapshot    Decimal @default(0) @db.Decimal(15, 2)
+  contaValeRefeicaoId          String?
+  valorValeTransporteSnapshot  Decimal @default(0) @db.Decimal(15, 2)
+  contaValeTransporteId        String?
+  valorPlanoOdontologicoSnapshot Decimal @default(0) @db.Decimal(15, 2)
+  contaPlanoOdontologicoId     String?
+  valorSeguroVidaSnapshot      Decimal @default(0) @db.Decimal(15, 2)
+  contaSeguroVidaId            String?
+  valorPlanoSaudeSnapshot      Decimal @default(0) @db.Decimal(15, 2)
+  contaPlanoSaudeId            String?
+  valorAuxilioCrecheSnapshot   Decimal @default(0) @db.Decimal(15, 2)
+  contaAuxilioCrecheId         String?
 
   ativo     Boolean  @default(true) // soft delete
   createdAt DateTime @default(now())
