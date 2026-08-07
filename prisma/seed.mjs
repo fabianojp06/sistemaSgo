@@ -123,6 +123,25 @@ async function seedModuloPlanoContas() {
   });
 }
 
+// [EP48/26] Módulo Orçamentário — item 4 da estrutura de menu oficial (docs/
+// SGO2_Estrutura_Menu_Relacionamentos.docx, seção 2), logo após Cadastros (item 3).
+// Ainda sem nenhuma UC04 implementada (Cronograma de Desembolso, Execução
+// Orçamentária etc.) — só a entrada de menu + landing page "em construção",
+// para o módulo existir na navegação antes do primeiro UC ser desenvolvido.
+async function seedModuloOrcamentario() {
+  const modulo = await prisma.modulo.upsert({
+    where: { chave: 'orcamentario' },
+    update: {},
+    create: { chave: 'orcamentario', nome: 'Orçamentário' },
+  });
+
+  await prisma.funcionalidade.upsert({
+    where: { moduloId_chave: { moduloId: modulo.id, chave: 'orcamentario.visualizar' } },
+    update: {},
+    create: { moduloId: modulo.id, chave: 'orcamentario.visualizar', nome: 'Orçamentário' },
+  });
+}
+
 // US-111 (ADR-025) — "Gestor Master" nasce como uma linha de Perfil por tenant, sem
 // hierarquia no schema. Recebe só a funcionalidade de homologação — a de aprovação N1
 // já chega ao Administrador automaticamente (linha 117-129, "recebe toda funcionalidade
@@ -182,6 +201,7 @@ async function main() {
   console.log(`conectando em host=${url.host} user=${url.username} db=${url.pathname}`);
 
   await seedModuloPlanoContas();
+  await seedModuloOrcamentario();
 
   const totalUsuarios = await prisma.$queryRaw`SELECT count(*)::int AS total FROM "Usuario"`;
   console.log('contagem via SQL bruto:', JSON.stringify(totalUsuarios));

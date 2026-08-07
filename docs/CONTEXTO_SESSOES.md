@@ -603,9 +603,22 @@ Usuário pediu 3 coisas em sequência para a tela `/propostas/[id]/viagens`:
    - Novo teste `calcularCustoEstimadoViagem.test.ts` (3 casos) — cálculo `[ORIGEM BLINDADA]` que nunca tinha cobertura.
 2. **Menu lateral da Tela Principal retrátil por módulo.** Usuário: "Cadastros é um módulo, deve retrair os submódulos... ao clicar deverá exibir". Antes todos os módulos ficavam sempre expandidos. Extraído `src/app/MenuLateral.tsx` (Client Component novo, `page.tsx` continua Server Component buscando o menu) — cada módulo inicia retraído, clique no cabeçalho inteiro (não só a seta ▸/▾) alterna aberto/fechado via `Set<string>`, múltiplos módulos podem ficar abertos ao mesmo tempo (accordion não-exclusivo). Mesmo visual já implementado nesta sessão, sem mudar `getObterMenuUsuarioUseCase`/`ROTA_POR_FUNCIONALIDADE`.
 
-**Estado ao final:** `tsc --noEmit` limpo em cada etapa. Suíte completa: 260/266 passando (mesmas 6 falhas pré-existentes, +3 testes novos verdes do cálculo de Viagem, 0 regressão — refactor de `calcularCustoEstimadoViagem` confirmado seguro). Servidor reiniciado e validado sem erro de runtime a cada mudança (rotas `/propostas/.../viagens` e `/`). Commit e push desta entrada a seguir.
+**Estado ao final:** `tsc --noEmit` limpo em cada etapa. Suíte completa: 260/266 passando (mesmas 6 falhas pré-existentes, +3 testes novos verdes do cálculo de Viagem, 0 regressão — refactor de `calcularCustoEstimadoViagem` confirmado seguro). Servidor reiniciado e validado sem erro de runtime a cada mudança (rotas `/propostas/.../viagens` e `/`). Commitado e enviado a `origin/master` (`cc0302a`).
 
-**Próximo passo combinado:** nenhum item novo priorizado.
+## 2026-08-07 (cont. 9) — registrada às 20:14 UTC — Módulo "Orçamentário" inserido no menu
+
+Usuário: "abaixo de Cadastros insira o módulo Orçamentário". Achado antes de implementar: **todos** os módulos/funcionalidades do sistema hoje vivem sob um único `Modulo` chamado "cadastros" no `seed.mjs` (Plano de Contas, Termo de Ajuste, Propostas — tudo). Consultado o documento vinculante `docs/SGO2_Estrutura_Menu_Relacionamentos.docx` (seção 2): "Módulo Orçamentário" é de fato o item 4 da estrutura oficial, **[EP48/26]**, posicionado logo após "Módulo de Cadastros" (item 3) — exatamente onde o usuário pediu. Só que esse módulo real tem 16 casos de uso inteiros (UC04.01-16: Cronograma de Desembolso, Execução Orçamentária, Remanejamento entre Contas, Demonstrativo Orçamentário Analítico, etc.) **nenhum implementado ainda**.
+
+**Decisão de escopo:** inserir só a entrada de menu + uma landing page honesta "em construção" listando o que virá — não inventar nenhuma das 16 UCs.
+
+Implementado:
+- `prisma/seed.mjs`: novo `Modulo` `chave: 'orcamentario', nome: 'Orçamentário'` + `Funcionalidade` NAVEGAVEL `orcamentario.visualizar` (função `seedModuloOrcamentario()`, chamada em `main()` logo depois de `seedModuloPlanoContas()` — garante ordem de inserção "Cadastros antes de Orçamentário"). Bloco genérico já existente ("Administrador recebe toda funcionalidade ativa automaticamente") cobriu a nova funcionalidade sem código extra. Seed rodado e aplicado em produção — confirmado via query direta que os dois módulos existem na ordem certa.
+- `src/app/orcamentario/page.tsx` (novo): landing simples, mesmo padrão de auth/layout das outras páginas, mensagem explícita citando o escopo futuro (Cronograma de Desembolso, Execução Orçamentária etc.).
+- `src/app/MenuLateral.tsx`: rota `orcamentario.visualizar → /orcamentario` adicionada ao mapa.
+
+**Estado ao final:** `tsc --noEmit` limpo. Seed aplicado e ordem verificada em produção. Servidor reiniciado com `.next/` limpo, `/` e `/orcamentario` validados (307, sem erro de runtime). Sem mudança de lógica de dados existente — suíte de testes não afetada (não rodada de novo). Commit e push desta entrada a seguir.
+
+**Próximo passo combinado:** nenhum item novo priorizado. Se o usuário quiser avançar o Módulo Orçamentário de verdade, o próximo passo natural é refinar UC04.01 (Cronograma de Desembolso) como US formal com o AN/PO antes de qualquer código.
 
 ---
 
