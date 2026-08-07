@@ -653,6 +653,21 @@ export class ContaComponenteCustoNaoAnaliticaError extends Error {
   }
 }
 
+// ADR-031, mesmo padrão de InativacaoUnidadeFuncionalBloqueadaError (US-106) —
+// Cargo com Empregado ativo vinculado não pode ser excluído.
+export class ExclusaoCargoBloqueadaError extends Error {
+  constructor(public readonly codigosCargosBloqueados: string[]) {
+    super(
+      `Exclusão Bloqueada [TRAVA O ERRO]: ${
+        codigosCargosBloqueados.length === 1
+          ? `O cargo "${codigosCargosBloqueados[0]}" possui`
+          : `Os cargos ${codigosCargosBloqueados.join(', ')} possuem`
+      } empregados vinculados. Exclua ou realoque os empregados antes de excluir o(s) cargo(s).`,
+    );
+    this.name = 'ExclusaoCargoBloqueadaError';
+  }
+}
+
 // ADR-027 — Rateio de Impostos precisa de uma ContaContabil analítica por linha.
 export class ContaRateioImpostoNaoAnaliticaError extends Error {
   constructor() {

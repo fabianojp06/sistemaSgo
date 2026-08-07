@@ -31,6 +31,8 @@ import { EditarEmpregadoUseCase } from './EditarEmpregadoUseCase';
 import { ExcluirEmpregadoUseCase } from './ExcluirEmpregadoUseCase';
 import { ConfigurarBeneficiosCargoUseCase } from './ConfigurarBeneficiosCargoUseCase';
 import { RessincronizarSnapshotEmpregadosCargoUseCase } from './RessincronizarSnapshotEmpregadosCargoUseCase';
+import { ExcluirCargoUseCase } from './ExcluirCargoUseCase';
+import { ExcluirCargosEmLoteUseCase } from './ExcluirCargosEmLoteUseCase';
 import { ConfigurarElegibilidadeBeneficioUseCase } from './ConfigurarElegibilidadeBeneficioUseCase';
 import { CadastrarViagemUseCase } from './CadastrarViagemUseCase';
 import { EditarViagemUseCase } from './EditarViagemUseCase';
@@ -162,6 +164,14 @@ export function getConfigurarBeneficiosCargoUseCase(): ConfigurarBeneficiosCargo
 
 export function getRessincronizarSnapshotEmpregadosCargoUseCase(): RessincronizarSnapshotEmpregadosCargoUseCase {
   return new RessincronizarSnapshotEmpregadosCargoUseCase(prisma);
+}
+
+export function getExcluirCargoUseCase(): ExcluirCargoUseCase {
+  return new ExcluirCargoUseCase(prisma);
+}
+
+export function getExcluirCargosEmLoteUseCase(): ExcluirCargosEmLoteUseCase {
+  return new ExcluirCargosEmLoteUseCase(prisma);
 }
 
 export function getConfigurarElegibilidadeBeneficioUseCase(): ConfigurarElegibilidadeBeneficioUseCase {

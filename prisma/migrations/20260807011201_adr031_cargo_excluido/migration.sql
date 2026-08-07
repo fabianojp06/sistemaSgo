@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "TipoOperacao" ADD VALUE 'CARGO_EXCLUIDO';

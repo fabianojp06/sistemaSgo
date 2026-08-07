@@ -4,6 +4,8 @@ import { useState, useTransition } from 'react';
 import {
   salvarCargoCompleto,
   ressincronizarSnapshotEmpregadosCargo,
+  excluirCargo,
+  excluirCargosEmLote,
   type CargoResultado,
   type UnidadeFuncionalResultado,
 } from './estrutura-actions';
@@ -116,6 +118,9 @@ export function CargoPanel({
   const [pending, startTransition] = useTransition();
   const [ressincronizando, setRessincronizando] = useState(false);
   const [mensagemRessincronizacao, setMensagemRessincronizacao] = useState<string | null>(null);
+  const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
+  const [excluindo, setExcluindo] = useState(false);
+  const [erroExclusao, setErroExclusao] = useState<string | null>(null);
 
   const somaPercentual = alocacoes.reduce((soma, a) => soma + (Number(a.percentual) || 0), 0);
 
@@ -265,6 +270,61 @@ export function CargoPanel({
     }
   }
 
+  function alternarSelecao(cargoId: string) {
+    setSelecionados((atual) => {
+      const novo = new Set(atual);
+      if (novo.has(cargoId)) novo.delete(cargoId);
+      else novo.add(cargoId);
+      return novo;
+    });
+  }
+
+  function alternarSelecaoTodos() {
+    setSelecionados((atual) => (atual.size === cargos.length ? new Set() : new Set(cargos.map((c) => c.id))));
+  }
+
+  async function excluirUmCargo(cargoId: string) {
+    if (!confirm('Excluir este cargo? Esta ação não pode ser desfeita pela tela.')) return;
+    setErroExclusao(null);
+    setExcluindo(true);
+    try {
+      const resposta = await excluirCargo(cargoId);
+      if (!resposta.sucesso) {
+        setErroExclusao(resposta.mensagem);
+        return;
+      }
+      setCargos((atual) => atual.filter((c) => c.id !== cargoId));
+      setSelecionados((atual) => {
+        const novo = new Set(atual);
+        novo.delete(cargoId);
+        return novo;
+      });
+      if (cargoEmEdicaoId === cargoId) iniciarEdicao(null);
+    } finally {
+      setExcluindo(false);
+    }
+  }
+
+  async function excluirSelecionados() {
+    if (selecionados.size === 0) return;
+    if (!confirm(`Excluir ${selecionados.size} cargo(s) selecionado(s)? Esta ação não pode ser desfeita pela tela.`)) return;
+    setErroExclusao(null);
+    setExcluindo(true);
+    try {
+      const ids = Array.from(selecionados);
+      const resposta = await excluirCargosEmLote(propostaId, ids);
+      if (!resposta.sucesso) {
+        setErroExclusao(resposta.mensagem);
+        return;
+      }
+      setCargos((atual) => atual.filter((c) => !selecionados.has(c.id)));
+      setSelecionados(new Set());
+      if (cargoEmEdicaoId && selecionados.has(cargoEmEdicaoId)) iniciarEdicao(null);
+    } finally {
+      setExcluindo(false);
+    }
+  }
+
   const podeSalvar =
     dados.nomeCargoMercado.trim().length > 0 &&
     dados.contaId !== '' &&
@@ -276,11 +336,33 @@ export function CargoPanel({
 
   return (
     <div className="flex flex-col gap-4 rounded border p-4">
-      <h3 className="font-medium">Cargos</h3>
+      <div className="flex items-center justify-between">
+        <h3 className="font-medium">Cargos</h3>
+        {!readOnly && selecionados.size > 0 && (
+          <button
+            type="button"
+            onClick={excluirSelecionados}
+            disabled={excluindo}
+            className="rounded border border-red-600 px-2 py-1 text-xs text-red-700 disabled:opacity-50"
+          >
+            {excluindo ? 'Excluindo...' : `Excluir Selecionados (${selecionados.size})`}
+          </button>
+        )}
+      </div>
 
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b text-left text-xs text-gray-500">
+            {!readOnly && (
+              <th className="w-8 py-1">
+                <input
+                  type="checkbox"
+                  checked={cargos.length > 0 && selecionados.size === cargos.length}
+                  onChange={alternarSelecaoTodos}
+                  aria-label="Selecionar todos os cargos"
+                />
+              </th>
+            )}
             <th className="py-1">Código</th>
             <th className="py-1">Cargo (Mercado)</th>
             <th className="py-1">Salário Total</th>
@@ -291,28 +373,50 @@ export function CargoPanel({
         <tbody>
           {cargos.length === 0 && (
             <tr>
-              <td colSpan={5} className="py-3 text-center text-gray-400">
+              <td colSpan={6} className="py-3 text-center text-gray-400">
                 Nenhum cargo cadastrado.
               </td>
             </tr>
           )}
           {cargos.map((c) => (
             <tr key={c.id} className="border-b last:border-0">
+              {!readOnly && (
+                <td className="py-1.5">
+                  <input
+                    type="checkbox"
+                    checked={selecionados.has(c.id)}
+                    onChange={() => alternarSelecao(c.id)}
+                    aria-label={`Selecionar cargo ${c.codigoCargo}`}
+                  />
+                </td>
+              )}
               <td className="py-1.5">{c.codigoCargo}</td>
               <td className="py-1.5">{c.nomeCargoMercado}</td>
               <td className="py-1.5">R$ {c.salarioTotal}</td>
               <td className="py-1.5">R$ {c.custoTotalCargo}</td>
               <td className="py-1.5 text-right">
                 {!readOnly && (
-                  <button type="button" onClick={() => iniciarEdicao(c)} className="text-xs text-blue-700 hover:underline">
-                    Editar
-                  </button>
+                  <>
+                    <button type="button" onClick={() => iniciarEdicao(c)} className="text-xs text-blue-700 hover:underline">
+                      Editar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => excluirUmCargo(c.id)}
+                      disabled={excluindo}
+                      className="ml-2 text-xs text-red-600 hover:underline disabled:opacity-50"
+                    >
+                      Excluir
+                    </button>
+                  </>
                 )}
               </td>
             </tr>
           ))}
         </tbody>
       </table>
+
+      {erroExclusao && <p className="text-xs text-red-600">{erroExclusao}</p>}
 
       {erro && <p className="text-xs text-red-600">{erro}</p>}
 

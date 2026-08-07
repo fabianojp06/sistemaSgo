@@ -14,6 +14,8 @@ import {
   getEditarCargoUseCase,
   getConfigurarBeneficiosCargoUseCase,
   getRessincronizarSnapshotEmpregadosCargoUseCase,
+  getExcluirCargoUseCase,
+  getExcluirCargosEmLoteUseCase,
 } from '@/application/use-cases/plano-contas/container';
 import type { RessincronizacaoEmpregadoResultado } from '@/application/use-cases/plano-contas/RessincronizarSnapshotEmpregadosCargoUseCase';
 
@@ -323,6 +325,40 @@ export async function ressincronizarSnapshotEmpregadosCargo(
     const resultado = await getRessincronizarSnapshotEmpregadosCargoUseCase().execute({ ...contexto, cargoId });
     revalidatePath('/', 'layout'); // invalida toda a árvore de /propostas — Semáforo e Valor Realizado incluídos
     return { sucesso: true, dados: resultado };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+/** ADR-031 — exclusão individual de Cargo (soft delete), bloqueada se houver Empregado vinculado. */
+export async function excluirCargo(cargoId: string): Promise<ActionResult> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const temPermissao = await usuarioTemFuncionalidade(prisma, contexto.tenantId, contexto.usuarioId, 'propostas.gerenciar-estrutura');
+  if (!temPermissao) return { sucesso: false, mensagem: 'Perfil sem permissão para gerenciar Cargos.' };
+
+  try {
+    await getExcluirCargoUseCase().execute({ ...contexto, cargoId });
+    revalidatePath('/', 'layout');
+    return { sucesso: true };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+/** ADR-031 — exclusão em lote (tudo-ou-nada); rejeita a operação inteira se algum cargo tiver Empregado vinculado. */
+export async function excluirCargosEmLote(propostaId: string, cargoIds: string[]): Promise<ActionResult> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const temPermissao = await usuarioTemFuncionalidade(prisma, contexto.tenantId, contexto.usuarioId, 'propostas.gerenciar-estrutura');
+  if (!temPermissao) return { sucesso: false, mensagem: 'Perfil sem permissão para gerenciar Cargos.' };
+
+  try {
+    await getExcluirCargosEmLoteUseCase().execute({ ...contexto, propostaId, cargoIds });
+    revalidatePath('/', 'layout');
+    return { sucesso: true };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
   }
