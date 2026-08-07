@@ -1,21 +1,11 @@
 import { auth } from '@clerk/nextjs/server';
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { BotaoAjuda } from './ajuda/BotaoAjuda';
 import { BotaoSair } from './logoff/BotaoSair';
+import { MenuLateral } from './MenuLateral';
 import { getObterMenuUsuarioUseCase } from '@/application/use-cases/menu/container';
 import { prisma } from '@/infrastructure/db/prisma';
 import { getTenantId } from '@/infrastructure/tenant';
-
-// Funcionalidade não tem campo de rota — mapeamento local até o projeto
-// precisar de mais que essas entradas (aí sim vale mover pro schema). Só
-// funcionalidades NAVEGAVEL [ADR-021] entram aqui — CONTEXTUAL nunca tem
-// link próprio no menu, a permissão é checada dentro da tela onde a ação vive.
-const ROTA_POR_FUNCIONALIDADE: Record<string, string> = {
-  'plano-contas.visualizar': '/plano-contas',
-  'plano-contas.sincronizar': '/plano-contas',
-  'propostas.visualizar': '/propostas',
-};
 
 /**
  * UC01.03 — Exibir Tela Principal.
@@ -66,44 +56,7 @@ export default async function TelaPrincipal() {
         </div>
       ) : (
         <div className="flex flex-1">
-          <nav className="w-64 border-r border-[#DDE2EA] bg-white p-4 dark:border-[#2B303C] dark:bg-[#191D26]">
-            <ul className="flex flex-col gap-5">
-              {menu.map((modulo) => {
-                const navegaveis = modulo.funcionalidades.filter((f) => f.tipo === 'NAVEGAVEL');
-                if (navegaveis.length === 0) return null;
-
-                return (
-                  <li key={modulo.chave} className="flex flex-col gap-1.5">
-                    <div className="flex items-center gap-2">
-                      <span className="flex h-[22px] w-[22px] flex-shrink-0 items-center justify-center rounded-[6px] bg-[#E8EEFC] text-[0.65rem] font-semibold text-[#2B5FD9] dark:bg-[#1D2A48] dark:text-[#6D93F0]">
-                        {modulo.nome.charAt(0).toUpperCase()}
-                      </span>
-                      <p className="font-semibold text-[#1A1F29] dark:text-[#EBEDF2]">{modulo.nome}</p>
-                    </div>
-                    <ul className="flex flex-col gap-0.5 pl-[30px] text-sm">
-                      {navegaveis.map((funcionalidade) => {
-                        const href = ROTA_POR_FUNCIONALIDADE[funcionalidade.chave];
-                        return (
-                          <li key={funcionalidade.chave}>
-                            {href ? (
-                              <Link
-                                href={href}
-                                className="block rounded-[6px] px-2 py-1 text-[#5B6270] hover:bg-[#E8EEFC] hover:text-[#2B5FD9] dark:text-[#A4AAB6] dark:hover:bg-[#1D2A48] dark:hover:text-[#6D93F0]"
-                              >
-                                {funcionalidade.nome}
-                              </Link>
-                            ) : (
-                              <span className="block px-2 py-1 text-[#8A8F98] dark:text-[#767C89]">{funcionalidade.nome}</span>
-                            )}
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
+          <MenuLateral menu={menu} />
           <div className="flex-1 bg-[#F7F8FA] p-6 dark:bg-[#12151C]" />
         </div>
       )}
