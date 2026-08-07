@@ -437,15 +437,36 @@ inconsistente — confirmado por query direta). **Correção: sempre reiniciar o
 `prisma generate` no meio de uma sessão com o servidor já rodando** — o hot reload do Next não
 recarrega o client do Prisma sozinho.
 
-**Estado do repositório ao final:** tudo commitado e enviado a `origin/master` (`3d2a525`, HEAD).
+**Redesign visual da tela de Cargos:** usuário pediu para aplicar na tela Cargos o mesmo padrão
+visual já usado em Empregados (sessão 2026-08-06). `CargoPanel.tsx` ganhou faixa executiva com 3
+KPIs (Total de Cargos, Custo Total Mensal, Salário Total Mensal), cards brancos com sombra para
+tabela/formulário, valores formatados em R$ pt-BR e botões de exclusão no mesmo estilo visual do
+`EmpregadoPanel.tsx`. Commit `24c5b37`.
+
+**Nova skill de time — `redator-tecnico`:** nenhuma das skills existentes cobria "manual de
+usuário final" (a regra do CLAUDE.md exige parar e pedir autorização nesse caso). Usuário
+autorizou criar a skill; registrada em `.claude/skills/redator-tecnico/SKILL.md` e no CLAUDE.md
+(seção "Time de desenvolvimento"). Produziu `docs/MANUAL_USUARIO_CARGOS_EMPREGADOS_SEMAFORO.md` —
+manual das telas Cargos, Empregados (incl. Qtde. Empregado) e Semáforo, em linguagem de negócio,
+com FAQ cobrindo os dois bugs reais desta sessão (Semáforo não atualiza / exclusão de Cargo
+bloqueada). Commit `4676d57`.
+
+**Artifact publicado:** o mesmo manual foi publicado como página HTML (Artifact) com sumário fixo,
+seções numeradas, quadros de regra destacados e legenda de cores do Semáforo —
+`https://claude.ai/code/artifact/720cb305-230e-4f91-9503-dfaec71fe164`. Privado por padrão;
+usuário decide se/como compartilhar pelo menu da própria página (fora do controle do assistente).
+
+**Estado do repositório ao final:** tudo commitado e enviado a `origin/master` (`4676d57`, HEAD).
 `tsc --noEmit` limpo em cada etapa. Migrations aplicadas em produção nesta sessão:
 `20260807003439_adr029_conta_por_componente_custo_cargo` (retomada), `20260807005656_adr030_...`,
 `20260807011201_adr031_cargo_excluido`. Servidor dev local exposto via porta pública do Codespace
 (`https://laughing-fiesta-q676pqp6rw5f47p4-3000.app.github.dev`) para o usuário testar direto no
-navegador — reiniciado uma vez nesta sessão (ver incidente acima).
+navegador — reiniciado uma vez nesta sessão (ver incidente do Prisma Client acima).
 
-**Próximo passo combinado:** usuário ia retestar a exclusão de Cargo (individual e em lote) após
-o restart do servidor. Nenhum outro item novo priorizado na fila.
+**Próximo passo combinado:** nenhum item novo priorizado na fila — sessão encerrada com o manual
+de usuário publicado. Se o usuário continuar testando, próxima ação provável é retomar o backlog
+(ver `docs/BACKLOG - Kanban EP118-24 Módulo de Cadastros.md`) ou expandir o manual para as telas
+de Viagens/Bens/Rateio de Impostos, ainda não documentadas para o usuário final.
 
 ---
 
