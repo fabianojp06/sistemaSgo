@@ -796,6 +796,14 @@ export type ViagemResultado = {
   id: string;
   descricao: string;
   custoEstimado: string;
+  quantidadePessoas: number;
+  mediaDias: number;
+  custoUnitarioPassagem: string;
+  contaPassagemId: string;
+  custoUnitarioDiaria: string;
+  contaDiariaId: string;
+  custoUnitarioTransporte: string;
+  contaTransporteId: string;
 };
 
 const CadastrarViagemSchema = z.object({
@@ -835,7 +843,19 @@ export async function cadastrarViagem(input: {
   try {
     const viagem = await getCadastrarViagemUseCase().execute({ ...contexto, ...entrada.data });
     revalidatePath('/', 'layout');
-    return { sucesso: true, dados: { id: viagem.id, descricao: viagem.descricao, custoEstimado: viagem.custoEstimado.toString() } };
+    return { sucesso: true, dados: {
+      id: viagem.id,
+      descricao: viagem.descricao,
+      custoEstimado: viagem.custoEstimado.toString(),
+      quantidadePessoas: viagem.quantidadePessoas,
+      mediaDias: viagem.mediaDias,
+      custoUnitarioPassagem: viagem.custoUnitarioPassagem.toString(),
+      contaPassagemId: viagem.contaPassagemId,
+      custoUnitarioDiaria: viagem.custoUnitarioDiaria.toString(),
+      contaDiariaId: viagem.contaDiariaId,
+      custoUnitarioTransporte: viagem.custoUnitarioTransporte.toString(),
+      contaTransporteId: viagem.contaTransporteId,
+    } };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
   }
@@ -880,7 +900,19 @@ export async function editarViagem(input: {
   try {
     const viagem = await getEditarViagemUseCase().execute({ ...contexto, ...entrada.data });
     revalidatePath('/', 'layout');
-    return { sucesso: true, dados: { id: viagem.id, descricao: viagem.descricao, custoEstimado: viagem.custoEstimado.toString() } };
+    return { sucesso: true, dados: {
+      id: viagem.id,
+      descricao: viagem.descricao,
+      custoEstimado: viagem.custoEstimado.toString(),
+      quantidadePessoas: viagem.quantidadePessoas,
+      mediaDias: viagem.mediaDias,
+      custoUnitarioPassagem: viagem.custoUnitarioPassagem.toString(),
+      contaPassagemId: viagem.contaPassagemId,
+      custoUnitarioDiaria: viagem.custoUnitarioDiaria.toString(),
+      contaDiariaId: viagem.contaDiariaId,
+      custoUnitarioTransporte: viagem.custoUnitarioTransporte.toString(),
+      contaTransporteId: viagem.contaTransporteId,
+    } };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
   }

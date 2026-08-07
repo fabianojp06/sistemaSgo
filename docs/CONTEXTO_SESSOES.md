@@ -586,6 +586,19 @@ Usuário testou o ajuste de proporção do commit `f39468e` e reportou que "cont
 
 **Próximo passo combinado:** nenhum item novo priorizado. Seguem em aberto: modo leitura (`readOnly`) nos componentes de detalhe do histórico de versões (desde US-119).
 
+## 2026-08-07 (cont. 7) — registrada às 19:35 UTC — Tela de Viagens: padrão visual de Empregados, botão Copiar, busca de conta contábil
+
+Usuário pediu 3 coisas em sequência para a tela `/propostas/[id]/viagens`:
+
+1. **Adaptar o padrão visual ao de Empregados + botão "Copiar" por Viagem.** Investigação prévia (Explore) mapeou as diferenças entre `ViagemPanel.tsx` (MVP cru) e `EmpregadoPanel.tsx` (já com 2ª leva de UI) e confirmou que **não existe precedente de "duplicar item individual"** no projeto (só `DuplicarPropostaUseCase`, duplicação de Proposta inteira). Decisão técnica: "Copiar" implementado 100% client-side, sem Server Action nova — pré-preenche o formulário de cadastro já existente (`chaveFormulario` força remount do form com os valores da Viagem copiada) e reaproveita `cadastrarViagem`.
+   - **Achado no meio da implementação:** `ViagemResultado` (tipo usado na lista carregada) só trazia `id/descricao/custoEstimado` — insuficiente para pré-preencher uma cópia. Precisou estender o tipo e a query em `src/app/propostas/[id]/[[...guia]]/page.tsx` (todos os campos de `Viagem`) antes de implementar o botão.
+   - `ViagemPanel.tsx` reestilizado: `rounded-xl bg-slate-50`, cards `border-gray-100 shadow-sm`, botão excluir com hover vermelho — mesma linguagem de Empregados, sem portar a árvore por Cargo nem os gráficos/KPIs (fora de escopo, Viagem não tem agrupador natural).
+2. **Busca de conta contábil por nome/código, a partir de 3 caracteres.** Novo componente reutilizável `src/app/propostas/SeletorContaAnalitica.tsx` (combobox sem lib externa, normaliza acentos, fecha ao clicar fora — mesmo padrão de `MenuAcoesProposta` do redesign de Propostas). Integrado só nos 3 seletores de conta de Viagens (Passagem/Diária/Transporte) — os demais formulários do projeto que também usam `contasAnaliticas` (Valor Orçado, Bens, Rateio de Impostos, Termo de Ajuste, Empregados) continuam com `<select>` simples, fora do escopo pedido agora, mas o componente já nasceu reutilizável para quando for pedido.
+
+**Estado ao final:** `tsc --noEmit` limpo em cada etapa. Suíte completa: 257/263 passando após a mudança de `ViagemResultado`/query (mesmas 6 falhas pré-existentes, 0 regressão — validado antes do commit). Servidor reiniciado com `.next/` limpo e validado sem erro de runtime na rota exata de Viagens após cada mudança. Commit e push desta entrada a seguir.
+
+**Próximo passo combinado:** nenhum item novo priorizado. Se o usuário gostar do `SeletorContaAnalitica`, candidato natural é estendê-lo aos outros formulários que hoje usam `<select>` simples de conta contábil.
+
 ---
 
 ## Como usar este arquivo em sessões futuras

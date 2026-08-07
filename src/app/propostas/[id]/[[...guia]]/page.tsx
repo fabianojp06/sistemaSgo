@@ -149,9 +149,33 @@ export default async function PropostaDetalhePage({
   if (guiaAtiva === 'viagens') {
     const viagensDb = await prisma.viagem.findMany({
       where: { tenantId, versaoId: versao.id, ativo: true },
-      select: { id: true, descricao: true, custoEstimado: true },
+      select: {
+        id: true,
+        descricao: true,
+        custoEstimado: true,
+        quantidadePessoas: true,
+        mediaDias: true,
+        custoUnitarioPassagem: true,
+        contaPassagemId: true,
+        custoUnitarioDiaria: true,
+        contaDiariaId: true,
+        custoUnitarioTransporte: true,
+        contaTransporteId: true,
+      },
     });
-    viagensIniciais = viagensDb.map((v) => ({ id: v.id, descricao: v.descricao, custoEstimado: v.custoEstimado.toString() }));
+    viagensIniciais = viagensDb.map((v) => ({
+      id: v.id,
+      descricao: v.descricao,
+      custoEstimado: v.custoEstimado.toString(),
+      quantidadePessoas: v.quantidadePessoas,
+      mediaDias: v.mediaDias,
+      custoUnitarioPassagem: v.custoUnitarioPassagem.toString(),
+      contaPassagemId: v.contaPassagemId,
+      custoUnitarioDiaria: v.custoUnitarioDiaria.toString(),
+      contaDiariaId: v.contaDiariaId,
+      custoUnitarioTransporte: v.custoUnitarioTransporte.toString(),
+      contaTransporteId: v.contaTransporteId,
+    }));
   }
 
   let itensIniciais: import('@/app/plano-contas/actions').ItemPatrimonialResultado[] = [];
