@@ -129,12 +129,7 @@ export default async function PropostaDetalhePage({
   return (
     <main className="flex min-h-screen flex-col gap-6 p-6">
       <header>
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold">{proposta.nome}</h1>
-          <Link href={`/propostas/${id}/estrutura`} className="text-xs text-blue-700 hover:underline">
-            Estrutura Funcional e Cargos &rarr;
-          </Link>
-        </div>
+        <h1 className="text-xl font-semibold">{proposta.nome}</h1>
         <p className="text-sm text-gray-500">
           {proposta.codigo} — Versão {versao.numeroVersao} ({versao.status}) — {proposta.tipo === 'CONTRATO' ? 'Contrato' : 'Termo de Parceria'} —{' '}
           {proposta.categoria === 'CONSOLIDADA' ? 'Consolidada' : 'Por Meta'}
@@ -161,14 +156,24 @@ export default async function PropostaDetalhePage({
         {guiaAtiva === 'meta' && <MetaPanel versaoId={versao.id} metaInicial={metaInicial} readOnly={readOnly} />}
 
         {guiaAtiva === 'empregados' && (
-          <EmpregadoPanel
-            propostaId={id}
-            cargos={cargos}
-            empregadosIniciais={empregados}
-            qtdeEmpregadosIniciais={qtdeEmpregados}
-            contasAnaliticas={contasAnaliticas}
-            readOnly={readOnly}
-          />
+          <div className="flex flex-col gap-3">
+            <div className="flex justify-end">
+              <Link
+                href={`/propostas/${id}/estrutura`}
+                className="flex items-center gap-1 rounded-lg border border-gray-100 bg-white px-4 py-2 text-sm font-medium text-blue-700 shadow-sm hover:shadow-md"
+              >
+                Estrutura Funcional e Cargos &rarr;
+              </Link>
+            </div>
+            <EmpregadoPanel
+              propostaId={id}
+              cargos={cargos}
+              empregadosIniciais={empregados}
+              qtdeEmpregadosIniciais={qtdeEmpregados}
+              contasAnaliticas={contasAnaliticas}
+              readOnly={readOnly}
+            />
+          </div>
         )}
 
         {guiaAtiva === 'viagens' && (
