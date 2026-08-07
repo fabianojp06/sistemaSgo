@@ -28,6 +28,62 @@ const BENEFICIOS_SIMPLES = [
   { ativo: 'transporteAtivo', valor: 'transporteValorUnitario', conta: 'contaValeTransporteId', label: 'Vale Transporte' },
 ] as const;
 
+const formatadorMoeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+function formatarMoeda(valor: number | string): string {
+  return formatadorMoeda.format(Number(valor));
+}
+
+// Mesmos ícones minimalistas inline do EmpregadoPanel — sem dependência de biblioteca de ícones.
+function IconeCracha() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-5 w-5">
+      <rect x="4" y="4" width="16" height="17" rx="2" />
+      <circle cx="12" cy="10" r="2.5" />
+      <path d="M8 17c0-1.8 1.8-3 4-3s4 1.2 4 3M9 4V2.5M15 4V2.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+function IconeMoeda() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-5 w-5">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v10M9 9.5c0-1.4 1.34-2.5 3-2.5s3 1.1 3 2.5-1.34 2-3 2-3 .6-3 2 1.34 2.5 3 2.5 3-1.1 3-2.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+function IconeGrafico() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-5 w-5">
+      <path d="M4 20V10M12 20V4M20 20v-7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** Faixa executiva (mesmo padrão do EmpregadoPanel) com os KPIs principais da tela de Cargos. */
+function ResumoExecutivo({ totalCargos, custoTotalMensal, salarioTotalMensal }: { totalCargos: number; custoTotalMensal: number; salarioTotalMensal: number }) {
+  const kpis = [
+    { icone: <IconeCracha />, label: 'Total de Cargos', valor: String(totalCargos) },
+    { icone: <IconeMoeda />, label: 'Custo Total Mensal', valor: `${formatarMoeda(custoTotalMensal)}/mês` },
+    { icone: <IconeGrafico />, label: 'Salário Total Mensal', valor: `${formatarMoeda(salarioTotalMensal)}/mês` },
+  ];
+
+  return (
+    <div className="rounded-xl bg-slate-900 p-5 shadow-md md:p-6">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-3 md:gap-4">
+        {kpis.map((kpi) => (
+          <div key={kpi.label} className="flex items-start gap-3">
+            <span className="mt-0.5 text-slate-400">{kpi.icone}</span>
+            <div>
+              <p className="text-xs font-medium tracking-wide text-slate-400">{kpi.label}</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums text-amber-400">{kpi.valor}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /** ADR-029 — seletor de conta analítica de um componente de custo, reaproveitado em todos os campos. */
 function ContaComponenteSelect({
   contasAnaliticas,
@@ -39,11 +95,7 @@ function ContaComponenteSelect({
   onChange: (value: string) => void;
 }) {
   return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="rounded border px-2 py-1 text-xs text-gray-600"
-    >
+    <select value={value} onChange={(e) => onChange(e.target.value)} className="rounded border px-2 py-1 text-xs text-gray-600">
       <option value="">Conta...</option>
       {contasAnaliticas.map((c) => (
         <option key={c.id} value={c.id}>
@@ -95,7 +147,8 @@ function dadosVazios() {
  * US-117 (UC03.19, blocos A/B/C) — Gerenciar Cargos: dados de mercado, conta,
  * rateio funcional e benefícios/encargos, tudo sob um único "Salvar Cargo"
  * (ADR-028 — orquestrado por salvarCargoCompleto, que por baixo ainda chama
- * os use cases de domínio separados de Cargo e de Benefícios).
+ * os use cases de domínio separados de Cargo e de Benefícios). Layout
+ * (faixa de KPIs + cards brancos sobre fundo slate) espelha o EmpregadoPanel.
  */
 export function CargoPanel({
   propostaId,
@@ -123,6 +176,8 @@ export function CargoPanel({
   const [erroExclusao, setErroExclusao] = useState<string | null>(null);
 
   const somaPercentual = alocacoes.reduce((soma, a) => soma + (Number(a.percentual) || 0), 0);
+  const custoTotalMensal = cargos.reduce((soma, c) => soma + Number(c.custoTotalCargo), 0);
+  const salarioTotalMensal = cargos.reduce((soma, c) => soma + Number(c.salarioTotal), 0);
 
   function iniciarEdicao(cargo: CargoComAlocacoes | null) {
     setErro(null);
@@ -335,94 +390,103 @@ export function CargoPanel({
     Math.abs(somaPercentual - 100) < 0.01;
 
   return (
-    <div className="flex flex-col gap-4 rounded border p-4">
-      <div className="flex items-center justify-between">
-        <h3 className="font-medium">Cargos</h3>
-        {!readOnly && selecionados.size > 0 && (
-          <button
-            type="button"
-            onClick={excluirSelecionados}
-            disabled={excluindo}
-            className="rounded border border-red-600 px-2 py-1 text-xs text-red-700 disabled:opacity-50"
-          >
-            {excluindo ? 'Excluindo...' : `Excluir Selecionados (${selecionados.size})`}
-          </button>
-        )}
+    <div className="flex flex-col gap-6 rounded-xl bg-slate-50 p-4 md:p-6">
+      <ResumoExecutivo totalCargos={cargos.length} custoTotalMensal={custoTotalMensal} salarioTotalMensal={salarioTotalMensal} />
+
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <h3 className="flex items-center gap-2 font-semibold text-slate-800">
+            <span className="text-slate-400">
+              <IconeCracha />
+            </span>
+            Cargos
+          </h3>
+          {!readOnly && selecionados.size > 0 && (
+            <button
+              type="button"
+              onClick={excluirSelecionados}
+              disabled={excluindo}
+              className="rounded-md border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50"
+            >
+              {excluindo ? 'Excluindo...' : `Excluir Selecionados (${selecionados.size})`}
+            </button>
+          )}
+        </div>
+
+        <div className="overflow-x-auto rounded-lg border border-gray-100 bg-white shadow-sm">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-slate-50 text-left text-xs text-gray-500">
+                {!readOnly && (
+                  <th className="w-8 px-4 py-2.5">
+                    <input
+                      type="checkbox"
+                      checked={cargos.length > 0 && selecionados.size === cargos.length}
+                      onChange={alternarSelecaoTodos}
+                      aria-label="Selecionar todos os cargos"
+                    />
+                  </th>
+                )}
+                <th className="px-4 py-2.5 font-medium">Código</th>
+                <th className="px-4 py-2.5 font-medium">Cargo (Mercado)</th>
+                <th className="px-4 py-2.5 font-medium">Salário Total</th>
+                <th className="px-4 py-2.5 font-medium">Custo Total</th>
+                <th className="px-4 py-2.5" />
+              </tr>
+            </thead>
+            <tbody>
+              {cargos.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-4 py-3 text-center text-gray-400">
+                    Nenhum cargo cadastrado.
+                  </td>
+                </tr>
+              )}
+              {cargos.map((c) => (
+                <tr key={c.id} className="border-b last:border-0 hover:bg-slate-100">
+                  {!readOnly && (
+                    <td className="px-4 py-2.5">
+                      <input
+                        type="checkbox"
+                        checked={selecionados.has(c.id)}
+                        onChange={() => alternarSelecao(c.id)}
+                        aria-label={`Selecionar cargo ${c.codigoCargo}`}
+                      />
+                    </td>
+                  )}
+                  <td className="px-4 py-2.5">{c.codigoCargo}</td>
+                  <td className="px-4 py-2.5">{c.nomeCargoMercado}</td>
+                  <td className="px-4 py-2.5 tabular-nums">{formatarMoeda(c.salarioTotal)}</td>
+                  <td className="px-4 py-2.5 tabular-nums">{formatarMoeda(c.custoTotalCargo)}</td>
+                  <td className="px-4 py-2.5 text-right">
+                    {!readOnly && (
+                      <div className="flex justify-end gap-2">
+                        <button type="button" onClick={() => iniciarEdicao(c)} className="text-xs text-blue-700 hover:underline">
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => excluirUmCargo(c.id)}
+                          disabled={excluindo}
+                          className="rounded-md border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50"
+                        >
+                          Excluir
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {erroExclusao && <p className="text-xs text-red-600">{erroExclusao}</p>}
       </div>
 
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b text-left text-xs text-gray-500">
-            {!readOnly && (
-              <th className="w-8 py-1">
-                <input
-                  type="checkbox"
-                  checked={cargos.length > 0 && selecionados.size === cargos.length}
-                  onChange={alternarSelecaoTodos}
-                  aria-label="Selecionar todos os cargos"
-                />
-              </th>
-            )}
-            <th className="py-1">Código</th>
-            <th className="py-1">Cargo (Mercado)</th>
-            <th className="py-1">Salário Total</th>
-            <th className="py-1">Custo Total</th>
-            <th className="py-1" />
-          </tr>
-        </thead>
-        <tbody>
-          {cargos.length === 0 && (
-            <tr>
-              <td colSpan={6} className="py-3 text-center text-gray-400">
-                Nenhum cargo cadastrado.
-              </td>
-            </tr>
-          )}
-          {cargos.map((c) => (
-            <tr key={c.id} className="border-b last:border-0">
-              {!readOnly && (
-                <td className="py-1.5">
-                  <input
-                    type="checkbox"
-                    checked={selecionados.has(c.id)}
-                    onChange={() => alternarSelecao(c.id)}
-                    aria-label={`Selecionar cargo ${c.codigoCargo}`}
-                  />
-                </td>
-              )}
-              <td className="py-1.5">{c.codigoCargo}</td>
-              <td className="py-1.5">{c.nomeCargoMercado}</td>
-              <td className="py-1.5">R$ {c.salarioTotal}</td>
-              <td className="py-1.5">R$ {c.custoTotalCargo}</td>
-              <td className="py-1.5 text-right">
-                {!readOnly && (
-                  <>
-                    <button type="button" onClick={() => iniciarEdicao(c)} className="text-xs text-blue-700 hover:underline">
-                      Editar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => excluirUmCargo(c.id)}
-                      disabled={excluindo}
-                      className="ml-2 text-xs text-red-600 hover:underline disabled:opacity-50"
-                    >
-                      Excluir
-                    </button>
-                  </>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      {erroExclusao && <p className="text-xs text-red-600">{erroExclusao}</p>}
-
-      {erro && <p className="text-xs text-red-600">{erro}</p>}
-
       {!readOnly && (
-        <div className="flex flex-col gap-4 border-t pt-3">
-          <p className="text-xs font-medium text-gray-600">{cargoEmEdicaoId ? 'Editar Cargo' : 'Novo Cargo'}</p>
+        <div className="flex flex-col gap-4 rounded-lg border border-gray-100 bg-white p-4 shadow-sm md:p-5">
+          <h4 className="text-sm font-semibold text-slate-800">{cargoEmEdicaoId ? 'Editar Cargo' : 'Novo Cargo'}</h4>
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <div>
@@ -506,7 +570,7 @@ export function CargoPanel({
             </div>
           </div>
 
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2 border-t pt-3">
             <div className="flex items-center justify-between">
               <p className="text-xs font-medium text-gray-600">
                 Rateio Funcional (soma deve ser 100% — atual: {somaPercentual.toFixed(2)}%)
@@ -535,7 +599,11 @@ export function CargoPanel({
                   placeholder="%"
                   className="w-24 rounded border px-2 py-1 text-sm"
                 />
-                <button type="button" onClick={() => removerAlocacao(i)} className="text-xs text-red-600 hover:underline">
+                <button
+                  type="button"
+                  onClick={() => removerAlocacao(i)}
+                  className="rounded-md border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                >
                   Remover
                 </button>
               </div>
@@ -568,11 +636,7 @@ export function CargoPanel({
             {BENEFICIOS_SIMPLES.map((b) => (
               <div key={b.ativo} className="flex items-center gap-3">
                 <label className="flex items-center gap-1 text-xs text-gray-600">
-                  <input
-                    type="checkbox"
-                    checked={dados[b.ativo]}
-                    onChange={(e) => setDados((d) => ({ ...d, [b.ativo]: e.target.checked }))}
-                  />
+                  <input type="checkbox" checked={dados[b.ativo]} onChange={(e) => setDados((d) => ({ ...d, [b.ativo]: e.target.checked }))} />
                   {b.label}
                 </label>
                 <input
@@ -625,7 +689,9 @@ export function CargoPanel({
             </div>
           </div>
 
-          <div>
+          {erro && <p className="text-xs text-red-600">{erro}</p>}
+
+          <div className="flex flex-wrap items-center gap-2 border-t pt-3">
             <button
               type="button"
               onClick={salvar}
@@ -635,22 +701,22 @@ export function CargoPanel({
               {pending ? 'Salvando...' : 'Salvar Cargo'}
             </button>
             {cargoEmEdicaoId && (
-              <button type="button" onClick={() => iniciarEdicao(null)} className="ml-2 text-sm text-gray-500 hover:underline">
+              <button type="button" onClick={() => iniciarEdicao(null)} className="text-sm text-gray-500 hover:underline">
                 Cancelar
               </button>
             )}
-            {cargoEmEdicaoId && !readOnly && (
+            {cargoEmEdicaoId && (
               <button
                 type="button"
                 onClick={ressincronizarEmpregados}
                 disabled={ressincronizando}
                 title="Atualiza o custo/conta dos Empregados já cadastrados deste Cargo com os benefícios salvos acima. Empregados de Proposta oficializada não são alterados."
-                className="ml-2 rounded border border-blue-600 px-3 py-1.5 text-sm text-blue-700 disabled:opacity-50"
+                className="rounded border border-blue-600 px-3 py-1.5 text-sm text-blue-700 disabled:opacity-50"
               >
                 {ressincronizando ? 'Ressincronizando...' : 'Ressincronizar Empregados'}
               </button>
             )}
-            {mensagemRessincronizacao && <p className="mt-1 text-xs text-gray-600">{mensagemRessincronizacao}</p>}
+            {mensagemRessincronizacao && <p className="w-full text-xs text-gray-600">{mensagemRessincronizacao}</p>}
           </div>
         </div>
       )}
