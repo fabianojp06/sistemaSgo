@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/infrastructure/db/prisma';
+import { ValorRealizadoService } from '@/domain/plano-contas/ValorRealizadoService';
 import { montarResumoValorOrcado } from '@/domain/plano-contas/montarResumoValorOrcado';
 import { ValorOrcadoContasArvore } from './ValorOrcadoContasArvore';
 
@@ -11,37 +12,36 @@ function formatarMoeda(valor: Prisma.Decimal | number | string): string {
 /**
  * US-118 — dashboard-resumo da guia Valor Orçado: Valor Global, contas
  * sintéticas com total agregado (expansível) e nº de Empregados da Proposta.
- * Server Component: lê direto do Prisma, sem necessidade de interação para
- * os números — só a árvore expansível (ValorOrcadoContasArvore) é Client.
+ *
+ * A guia é só CONSUMIDORA de informação já existente, sem lançamento nem
+ * cálculo próprio: Valor Global e a árvore vêm do custo REALIZADO já gerado
+ * pela Proposta (Empregados+Viagens+Bens+Rateio de Impostos), o mesmo
+ * cálculo do Semáforo (ADR-032, `ValorRealizadoService`) — não do que foi
+ * lançado manualmente na guia "Lançar Valor Orçado" (ValorOrcadoConta),
+ * que é orçamento/planejamento, conceito diferente de custo já incorrido.
+ *
+ * Server Component: lê direto do Prisma — só a árvore expansível
+ * (ValorOrcadoContasArvore) é Client.
  */
 export async function ValorOrcadoResumoPanel({
   tenantId,
   propostaId,
   versaoId,
-  propostaCategoria,
 }: {
   tenantId: string;
   propostaId: string;
   versaoId: string;
-  propostaCategoria: 'CONSOLIDADA' | 'POR_META';
 }) {
-  const [valorGlobal, contas, valoresOrcados, totalEmpregados] = await Promise.all([
-    obterValorGlobal(tenantId, versaoId, propostaCategoria),
+  const [valorPorContaAnalitica, contas, totalEmpregados] = await Promise.all([
+    new ValorRealizadoService(prisma).somarPorContaAnalitica(tenantId, versaoId),
     prisma.contaContabil.findMany({
       where: { tenantId },
       select: { id: true, idPai: true, isAnalitica: true, codigoErp: true, nomeConta: true },
     }),
-    prisma.valorOrcadoConta.findMany({
-      where: { tenantId, versaoId },
-      select: { contaId: true, valor: true },
-    }),
     prisma.empregadoHeadcount.count({ where: { tenantId, propostaId, ativo: true } }),
   ]);
 
-  const valorPorContaAnalitica = new Map<string, Prisma.Decimal>();
-  for (const linha of valoresOrcados) {
-    valorPorContaAnalitica.set(linha.contaId, (valorPorContaAnalitica.get(linha.contaId) ?? new Prisma.Decimal(0)).plus(linha.valor));
-  }
+  const valorGlobal = Array.from(valorPorContaAnalitica.values()).reduce((acc, v) => acc.plus(v), new Prisma.Decimal(0));
 
   const contasParaResumo = contas.map((c) => ({
     id: c.id,
@@ -56,7 +56,7 @@ export async function ValorOrcadoResumoPanel({
       <div className="rounded-xl bg-slate-900 p-5 shadow-md md:p-6">
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-4">
           <div>
-            <p className="text-xs font-medium tracking-wide text-slate-400">Valor Global (total orçado)</p>
+            <p className="text-xs font-medium tracking-wide text-slate-400">Valor Global (custo total já gerado)</p>
             <p className="mt-1 text-2xl font-semibold tabular-nums text-amber-400">{formatarMoeda(valorGlobal)}</p>
           </div>
           <div>
@@ -67,7 +67,7 @@ export async function ValorOrcadoResumoPanel({
       </div>
 
       {resumo.length === 0 ? (
-        <p className="text-sm text-gray-500">Nenhum valor orçado lançado ainda nesta Versão.</p>
+        <p className="text-sm text-gray-500">Nenhum custo gerado ainda nesta Proposta (Empregados, Viagens, Bens ou Rateio de Impostos).</p>
       ) : (
         <ValorOrcadoContasArvore sinteticas={resumo} />
       )}
@@ -86,21 +86,4 @@ function mapearNoParaClient(no: NoServer): NoClient {
     isAnalitica: no.isAnalitica,
     filhas: no.filhas.map(mapearNoParaClient),
   };
-}
-
-/**
- * US-118 — Valor Global: em Proposta POR_META, é Meta.valorGlobal (já
- * espelhado do somatório de ValorOrcadoConta, ADR-017). Em CONSOLIDADA
- * (sem Meta), calculado direto: soma bruta de todas as linhas de
- * ValorOrcadoConta da Versão, todos os exercícios — mesma fórmula, sem
- * depender de Meta existir.
- */
-async function obterValorGlobal(tenantId: string, versaoId: string, propostaCategoria: 'CONSOLIDADA' | 'POR_META'): Promise<Prisma.Decimal> {
-  if (propostaCategoria === 'POR_META') {
-    const meta = await prisma.meta.findFirst({ where: { tenantId, versaoId, ativo: true }, select: { valorGlobal: true } });
-    if (meta) return meta.valorGlobal;
-  }
-
-  const agregado = await prisma.valorOrcadoConta.aggregate({ where: { tenantId, versaoId }, _sum: { valor: true } });
-  return agregado._sum.valor ?? new Prisma.Decimal(0);
 }

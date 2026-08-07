@@ -194,12 +194,7 @@ export default async function PropostaDetalhePage({
                 &larr; Voltar para Propostas
               </Link>
             </div>
-            <ValorOrcadoResumoPanel
-              tenantId={tenantId}
-              propostaId={id}
-              versaoId={versao.id}
-              propostaCategoria={proposta.categoria}
-            />
+            <ValorOrcadoResumoPanel tenantId={tenantId} propostaId={id} versaoId={versao.id} />
           </div>
         )}
 
