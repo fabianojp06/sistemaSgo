@@ -171,6 +171,9 @@ export function CargoPanel({
   const [pending, startTransition] = useTransition();
   const [ressincronizando, setRessincronizando] = useState(false);
   const [mensagemRessincronizacao, setMensagemRessincronizacao] = useState<string | null>(null);
+  // Ressincronização por linha da lista (fora do modo de edição) — mesmo use case, gatilho mais visível.
+  const [ressincronizandoLinhaId, setRessincronizandoLinhaId] = useState<string | null>(null);
+  const [mensagemRessincronizacaoLinha, setMensagemRessincronizacaoLinha] = useState<{ cargoId: string; texto: string } | null>(null);
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [excluindo, setExcluindo] = useState(false);
   const [erroExclusao, setErroExclusao] = useState<string | null>(null);
@@ -325,6 +328,29 @@ export function CargoPanel({
     }
   }
 
+  async function ressincronizarLinha(cargoId: string) {
+    setMensagemRessincronizacaoLinha(null);
+    setRessincronizandoLinhaId(cargoId);
+    try {
+      const resposta = await ressincronizarSnapshotEmpregadosCargo(cargoId);
+      if (!resposta.sucesso) {
+        setMensagemRessincronizacaoLinha({ cargoId, texto: `Falha: ${resposta.mensagem}` });
+        return;
+      }
+      const atualizados = resposta.dados.filter((r) => r.atualizado).length;
+      const ignorados = resposta.dados.length - atualizados;
+      setMensagemRessincronizacaoLinha({
+        cargoId,
+        texto:
+          resposta.dados.length === 0
+            ? 'Nenhum empregado vinculado a este cargo.'
+            : `${atualizados} empregado(s) atualizado(s)${ignorados > 0 ? `, ${ignorados} ignorado(s) (proposta oficializada)` : ''}.`,
+      });
+    } finally {
+      setRessincronizandoLinhaId(null);
+    }
+  }
+
   function alternarSelecao(cargoId: string) {
     setSelecionados((atual) => {
       const novo = new Set(atual);
@@ -459,21 +485,37 @@ export function CargoPanel({
                   <td className="px-4 py-2.5 tabular-nums">{formatarMoeda(c.salarioTotal)}</td>
                   <td className="px-4 py-2.5 tabular-nums">{formatarMoeda(c.custoTotalCargo)}</td>
                   <td className="px-4 py-2.5 text-right">
-                    {!readOnly && (
+                    <div className="flex flex-col items-end gap-1">
                       <div className="flex justify-end gap-2">
-                        <button type="button" onClick={() => iniciarEdicao(c)} className="text-xs text-blue-700 hover:underline">
-                          Editar
-                        </button>
                         <button
                           type="button"
-                          onClick={() => excluirUmCargo(c.id)}
-                          disabled={excluindo}
-                          className="rounded-md border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50"
+                          onClick={() => ressincronizarLinha(c.id)}
+                          disabled={ressincronizandoLinhaId === c.id}
+                          title="Atualiza os Empregados deste Cargo com os valores atuais de salário/benefícios e reflete no saldo das contas."
+                          className="rounded-md border border-gray-200 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-50"
                         >
-                          Excluir
+                          {ressincronizandoLinhaId === c.id ? 'Atualizando...' : 'Atualizar Consolidação'}
                         </button>
+                        {!readOnly && (
+                          <>
+                            <button type="button" onClick={() => iniciarEdicao(c)} className="text-xs text-blue-700 hover:underline">
+                              Editar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => excluirUmCargo(c.id)}
+                              disabled={excluindo}
+                              className="rounded-md border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50"
+                            >
+                              Excluir
+                            </button>
+                          </>
+                        )}
                       </div>
-                    )}
+                      {mensagemRessincronizacaoLinha?.cargoId === c.id && (
+                        <p className="text-xs text-gray-500">{mensagemRessincronizacaoLinha.texto}</p>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
