@@ -643,6 +643,8 @@ Sessão longa iniciando o Módulo Orçamentário de verdade, além dos ajustes v
 
 **Próximo passo combinado:** auditoria (RN0232) da consulta ao Cronograma; depois, seguir refinando as próximas UC04.xx (Premissas/Reajustes é a UC04.02 natural, já mapeada na memória). `npm audit` das libs de exportação vale uma olhada dedicada.
 
+**Encerramento da sessão (20:53 UTC):** usuário encerrou o dia confirmando que a próxima sessão retoma diretamente na **UC04.02 — Premissas / Aplicações de Reajustes**, pulando a auditoria RN0232 e o `npm audit` da lista de "próximo passo" acima para depois (não descartados, só não é o primeiro item da próxima sessão). Tudo já commitado e enviado (`674c759`) antes deste encerramento — nada pendente de commit.
+
 ---
 
 ## Como usar este arquivo em sessões futuras
