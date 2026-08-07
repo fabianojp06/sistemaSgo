@@ -533,7 +533,57 @@ export type EmpregadoResultado = {
   custoTotalMensal: string;
   contaId: string;
   cargoId: string;
+  // ADR-029 — snapshot de valor por componente de custo, usado no modal "Detalhes".
+  valorSalarioSnapshot: string;
+  valorGratificacaoSnapshot: string;
+  valorEncargosSociaisSnapshot: string;
+  valorValeAlimentacaoSnapshot: string;
+  valorValeRefeicaoSnapshot: string;
+  valorValeTransporteSnapshot: string;
+  valorPlanoOdontologicoSnapshot: string;
+  valorSeguroVidaSnapshot: string;
+  valorPlanoSaudeSnapshot: string;
+  valorAuxilioCrecheSnapshot: string;
 };
+
+/** Mapeia o registro completo de EmpregadoHeadcount para o formato exposto ao client. */
+function mapearEmpregadoResultado(e: {
+  id: string;
+  nome: string;
+  vinculoFuncionalHerdado: string;
+  custoTotalMensal: Prisma.Decimal;
+  contaId: string;
+  cargoId: string;
+  valorSalarioSnapshot: Prisma.Decimal;
+  valorGratificacaoSnapshot: Prisma.Decimal;
+  valorEncargosSociaisSnapshot: Prisma.Decimal;
+  valorValeAlimentacaoSnapshot: Prisma.Decimal;
+  valorValeRefeicaoSnapshot: Prisma.Decimal;
+  valorValeTransporteSnapshot: Prisma.Decimal;
+  valorPlanoOdontologicoSnapshot: Prisma.Decimal;
+  valorSeguroVidaSnapshot: Prisma.Decimal;
+  valorPlanoSaudeSnapshot: Prisma.Decimal;
+  valorAuxilioCrecheSnapshot: Prisma.Decimal;
+}): EmpregadoResultado {
+  return {
+    id: e.id,
+    nome: e.nome,
+    vinculoFuncionalHerdado: e.vinculoFuncionalHerdado,
+    custoTotalMensal: e.custoTotalMensal.toString(),
+    contaId: e.contaId,
+    cargoId: e.cargoId,
+    valorSalarioSnapshot: e.valorSalarioSnapshot.toString(),
+    valorGratificacaoSnapshot: e.valorGratificacaoSnapshot.toString(),
+    valorEncargosSociaisSnapshot: e.valorEncargosSociaisSnapshot.toString(),
+    valorValeAlimentacaoSnapshot: e.valorValeAlimentacaoSnapshot.toString(),
+    valorValeRefeicaoSnapshot: e.valorValeRefeicaoSnapshot.toString(),
+    valorValeTransporteSnapshot: e.valorValeTransporteSnapshot.toString(),
+    valorPlanoOdontologicoSnapshot: e.valorPlanoOdontologicoSnapshot.toString(),
+    valorSeguroVidaSnapshot: e.valorSeguroVidaSnapshot.toString(),
+    valorPlanoSaudeSnapshot: e.valorPlanoSaudeSnapshot.toString(),
+    valorAuxilioCrecheSnapshot: e.valorAuxilioCrecheSnapshot.toString(),
+  };
+}
 
 const CadastrarEmpregadoSchema = z.object({
   propostaId: z.string().min(1),
@@ -566,14 +616,7 @@ export async function cadastrarEmpregado(input: {
     revalidatePath('/', 'layout');
     return {
       sucesso: true,
-      dados: {
-        id: empregado.id,
-        nome: empregado.nome,
-        vinculoFuncionalHerdado: empregado.vinculoFuncionalHerdado,
-        custoTotalMensal: empregado.custoTotalMensal.toString(),
-        contaId: empregado.contaId,
-        cargoId: empregado.cargoId,
-      },
+      dados: mapearEmpregadoResultado(empregado),
     };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
@@ -623,14 +666,7 @@ export async function cadastrarEmpregadosEmLote(input: {
     return {
       sucesso: true,
       dados: {
-        empregados: empregados.map((e) => ({
-          id: e.id,
-          nome: e.nome,
-          vinculoFuncionalHerdado: e.vinculoFuncionalHerdado,
-          custoTotalMensal: e.custoTotalMensal.toString(),
-          contaId: e.contaId,
-          cargoId: e.cargoId,
-        })),
+        empregados: empregados.map(mapearEmpregadoResultado),
         quantidade: empregados.length,
         custoTotalMensal,
         totalLote,
@@ -674,14 +710,7 @@ export async function editarEmpregado(input: {
     revalidatePath('/', 'layout');
     return {
       sucesso: true,
-      dados: {
-        id: empregado.id,
-        nome: empregado.nome,
-        vinculoFuncionalHerdado: empregado.vinculoFuncionalHerdado,
-        custoTotalMensal: empregado.custoTotalMensal.toString(),
-        contaId: empregado.contaId,
-        cargoId: empregado.cargoId,
-      },
+      dados: mapearEmpregadoResultado(empregado),
     };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };

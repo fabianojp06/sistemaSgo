@@ -81,7 +81,25 @@ export default async function PropostaDetalhePage({
       }),
       prisma.empregadoHeadcount.findMany({
         where: { tenantId, propostaId: id, ativo: true },
-        select: { id: true, nome: true, categoria: true, vinculoFuncionalHerdado: true, custoTotalMensal: true, contaId: true, cargoId: true },
+        select: {
+          id: true,
+          nome: true,
+          categoria: true,
+          vinculoFuncionalHerdado: true,
+          custoTotalMensal: true,
+          contaId: true,
+          cargoId: true,
+          valorSalarioSnapshot: true,
+          valorGratificacaoSnapshot: true,
+          valorEncargosSociaisSnapshot: true,
+          valorValeAlimentacaoSnapshot: true,
+          valorValeRefeicaoSnapshot: true,
+          valorValeTransporteSnapshot: true,
+          valorPlanoOdontologicoSnapshot: true,
+          valorSeguroVidaSnapshot: true,
+          valorPlanoSaudeSnapshot: true,
+          valorAuxilioCrecheSnapshot: true,
+        },
       }),
       prisma.qtdeEmpregado.findMany({
         where: { tenantId, propostaId: id, ativo: true },
@@ -104,6 +122,16 @@ export default async function PropostaDetalhePage({
       custoTotalMensal: e.custoTotalMensal.toString(),
       contaId: e.contaId,
       cargoId: e.cargoId,
+      valorSalarioSnapshot: e.valorSalarioSnapshot.toString(),
+      valorGratificacaoSnapshot: e.valorGratificacaoSnapshot.toString(),
+      valorEncargosSociaisSnapshot: e.valorEncargosSociaisSnapshot.toString(),
+      valorValeAlimentacaoSnapshot: e.valorValeAlimentacaoSnapshot.toString(),
+      valorValeRefeicaoSnapshot: e.valorValeRefeicaoSnapshot.toString(),
+      valorValeTransporteSnapshot: e.valorValeTransporteSnapshot.toString(),
+      valorPlanoOdontologicoSnapshot: e.valorPlanoOdontologicoSnapshot.toString(),
+      valorSeguroVidaSnapshot: e.valorSeguroVidaSnapshot.toString(),
+      valorPlanoSaudeSnapshot: e.valorPlanoSaudeSnapshot.toString(),
+      valorAuxilioCrecheSnapshot: e.valorAuxilioCrecheSnapshot.toString(),
     }));
     qtdeEmpregados = qtdeDb.map((q) => ({ ...q, valorTotalConsolidado: q.valorTotalConsolidado.toString() }));
   }

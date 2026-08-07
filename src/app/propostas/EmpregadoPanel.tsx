@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import {
   cadastrarEmpregado,
   cadastrarEmpregadosEmLote,
@@ -33,6 +33,85 @@ const LABEL_CATEGORIA: Record<EmpregadoListado['categoria'], string> = {
   ESTAGIARIO: 'Estagiário',
   JOVEM_APRENDIZ: 'Jovem Aprendiz',
 };
+
+type ChaveSnapshotCusto =
+  | 'valorSalarioSnapshot'
+  | 'valorGratificacaoSnapshot'
+  | 'valorEncargosSociaisSnapshot'
+  | 'valorValeAlimentacaoSnapshot'
+  | 'valorValeRefeicaoSnapshot'
+  | 'valorValeTransporteSnapshot'
+  | 'valorPlanoSaudeSnapshot'
+  | 'valorPlanoOdontologicoSnapshot'
+  | 'valorSeguroVidaSnapshot'
+  | 'valorAuxilioCrecheSnapshot';
+
+// ADR-029 — rótulo de cada componente de custo, na mesma ordem exibida no modal de Detalhes.
+const LABEL_COMPONENTE_CUSTO: { chave: ChaveSnapshotCusto; label: string }[] = [
+  { chave: 'valorSalarioSnapshot', label: 'Salário Base' },
+  { chave: 'valorGratificacaoSnapshot', label: 'Gratificação' },
+  { chave: 'valorEncargosSociaisSnapshot', label: 'Encargos Sociais' },
+  { chave: 'valorValeAlimentacaoSnapshot', label: 'Vale Alimentação' },
+  { chave: 'valorValeRefeicaoSnapshot', label: 'Vale Refeição' },
+  { chave: 'valorValeTransporteSnapshot', label: 'Vale Transporte' },
+  { chave: 'valorPlanoSaudeSnapshot', label: 'Plano de Saúde' },
+  { chave: 'valorPlanoOdontologicoSnapshot', label: 'Plano Odontológico' },
+  { chave: 'valorSeguroVidaSnapshot', label: 'Seguro de Vida' },
+  { chave: 'valorAuxilioCrecheSnapshot', label: 'Auxílio-Creche' },
+];
+
+/** Modal "Detalhes" — lista os componentes de custo (benefícios) de um Empregado, só os com valor > 0. */
+function ModalDetalhesEmpregado({ empregado, onFechar }: { empregado: EmpregadoListado; onFechar: () => void }) {
+  useEffect(() => {
+    function aoTeclar(e: KeyboardEvent) {
+      if (e.key === 'Escape') onFechar();
+    }
+    document.addEventListener('keydown', aoTeclar);
+    return () => document.removeEventListener('keydown', aoTeclar);
+  }, [onFechar]);
+
+  const linhas = LABEL_COMPONENTE_CUSTO.map(({ chave, label }) => ({ label, valor: Number(empregado[chave]) })).filter(
+    (linha) => linha.valor > 0,
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onFechar}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Detalhes de ${empregado.nome}`}
+        onClick={(e) => e.stopPropagation()}
+        className="flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-lg bg-white shadow-lg"
+      >
+        <div className="flex items-center justify-between border-b bg-slate-50 px-4 py-3">
+          <h4 className="text-sm font-semibold text-slate-800">Detalhes — {empregado.nome}</h4>
+          <button type="button" onClick={onFechar} aria-label="Fechar" className="text-lg leading-none text-gray-400 hover:text-gray-700">
+            &times;
+          </button>
+        </div>
+        <div className="overflow-y-auto">
+          {linhas.length === 0 ? (
+            <p className="px-4 py-3 text-sm text-gray-500">Nenhum benefício com valor lançado para este Empregado.</p>
+          ) : (
+            <ul className="divide-y">
+              {linhas.map((linha) => (
+                <li key={linha.label} className="flex items-center justify-between gap-2 px-4 py-2.5 text-sm">
+                  <span className="text-slate-700">{linha.label}</span>
+                  <span className="tabular-nums font-medium text-slate-800">{formatarMoeda(linha.valor)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div className="border-t bg-slate-50 px-4 py-2.5 text-right">
+          <button type="button" onClick={onFechar} className="rounded border px-3 py-1.5 text-sm text-slate-700 hover:bg-white">
+            Fechar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // Ícones minimalistas inline — sem dependência de biblioteca de ícones (não instalada no projeto).
 function IconePessoas() {
@@ -301,6 +380,7 @@ function EmpregadosPorCargoArvore({
   readOnly,
   pending,
   onExcluir,
+  onVerDetalhes,
 }: {
   empregados: EmpregadoListado[];
   cargos: CargoOpcao[];
@@ -308,6 +388,7 @@ function EmpregadosPorCargoArvore({
   readOnly?: boolean;
   pending: boolean;
   onExcluir: (empregadoId: string) => void;
+  onVerDetalhes: (empregado: EmpregadoListado) => void;
 }) {
   const cargoLabelPorId = new Map(cargos.map((c) => [c.id, c.label]));
   const [expandidos, setExpandidos] = useState<Set<string>>(new Set());
@@ -354,16 +435,25 @@ function EmpregadosPorCargoArvore({
                         {contaLabelPorId.get(empregado.contaId) ?? 'Conta não encontrada'})
                       </span>
                     </div>
-                    {!readOnly && (
+                    <div className="flex shrink-0 items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => onExcluir(empregado.id)}
-                        disabled={pending}
-                        className="rounded-md border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50"
+                        onClick={() => onVerDetalhes(empregado)}
+                        className="rounded-md border border-gray-200 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
                       >
-                        Excluir
+                        Detalhes
                       </button>
-                    )}
+                      {!readOnly && (
+                        <button
+                          type="button"
+                          onClick={() => onExcluir(empregado.id)}
+                          disabled={pending}
+                          className="rounded-md border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50"
+                        >
+                          Excluir
+                        </button>
+                      )}
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -452,6 +542,7 @@ export function EmpregadoPanel({
   const [empregados, setEmpregados] = useState(empregadosIniciais);
   const [qtdeEmpregados, setQtdeEmpregados] = useState(qtdeEmpregadosIniciais);
   const [pending, startTransition] = useTransition();
+  const [empregadoDetalhes, setEmpregadoDetalhes] = useState<EmpregadoListado | null>(null);
 
   const contaLabelPorId = new Map(contasAnaliticas.map((c) => [c.id, c.label]));
   // Item 2 do feedback de teste HML — total mensal corrente lançado (sem multiplicar por
@@ -504,6 +595,7 @@ export function EmpregadoPanel({
             readOnly={readOnly}
             pending={pending}
             onExcluir={excluir}
+            onVerDetalhes={setEmpregadoDetalhes}
           />
         )}
         {empregados.length > 0 && (
@@ -550,6 +642,8 @@ export function EmpregadoPanel({
           </ul>
         )}
       </div>
+
+      {empregadoDetalhes && <ModalDetalhesEmpregado empregado={empregadoDetalhes} onFechar={() => setEmpregadoDetalhes(null)} />}
     </div>
   );
 }
