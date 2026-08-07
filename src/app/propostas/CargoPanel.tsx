@@ -1,7 +1,12 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { salvarCargoCompleto, type CargoResultado, type UnidadeFuncionalResultado } from './estrutura-actions';
+import {
+  salvarCargoCompleto,
+  ressincronizarSnapshotEmpregadosCargo,
+  type CargoResultado,
+  type UnidadeFuncionalResultado,
+} from './estrutura-actions';
 
 type Alocacao = { unidadeFuncionalId: string; percentual: string };
 type CargoComAlocacoes = CargoResultado & { alocacoes: Alocacao[] };
@@ -109,6 +114,8 @@ export function CargoPanel({
   const [alocacoes, setAlocacoes] = useState<Alocacao[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [ressincronizando, setRessincronizando] = useState(false);
+  const [mensagemRessincronizacao, setMensagemRessincronizacao] = useState<string | null>(null);
 
   const somaPercentual = alocacoes.reduce((soma, a) => soma + (Number(a.percentual) || 0), 0);
 
@@ -234,6 +241,28 @@ export function CargoPanel({
       });
       iniciarEdicao(null);
     });
+  }
+
+  async function ressincronizarEmpregados() {
+    if (!cargoEmEdicaoId) return;
+    setMensagemRessincronizacao(null);
+    setRessincronizando(true);
+    try {
+      const resposta = await ressincronizarSnapshotEmpregadosCargo(cargoEmEdicaoId);
+      if (!resposta.sucesso) {
+        setMensagemRessincronizacao(`Falha: ${resposta.mensagem}`);
+        return;
+      }
+      const atualizados = resposta.dados.filter((r) => r.atualizado).length;
+      const ignorados = resposta.dados.length - atualizados;
+      setMensagemRessincronizacao(
+        resposta.dados.length === 0
+          ? 'Nenhum empregado vinculado a este cargo.'
+          : `${atualizados} empregado(s) atualizado(s)${ignorados > 0 ? `, ${ignorados} ignorado(s) (proposta oficializada)` : ''}.`,
+      );
+    } finally {
+      setRessincronizando(false);
+    }
   }
 
   const podeSalvar =
@@ -506,6 +535,18 @@ export function CargoPanel({
                 Cancelar
               </button>
             )}
+            {cargoEmEdicaoId && !readOnly && (
+              <button
+                type="button"
+                onClick={ressincronizarEmpregados}
+                disabled={ressincronizando}
+                title="Atualiza o custo/conta dos Empregados já cadastrados deste Cargo com os benefícios salvos acima. Empregados de Proposta oficializada não são alterados."
+                className="ml-2 rounded border border-blue-600 px-3 py-1.5 text-sm text-blue-700 disabled:opacity-50"
+              >
+                {ressincronizando ? 'Ressincronizando...' : 'Ressincronizar Empregados'}
+              </button>
+            )}
+            {mensagemRessincronizacao && <p className="mt-1 text-xs text-gray-600">{mensagemRessincronizacao}</p>}
           </div>
         </div>
       )}

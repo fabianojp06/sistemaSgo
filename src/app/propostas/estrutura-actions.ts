@@ -13,7 +13,9 @@ import {
   getCadastrarCargoUseCase,
   getEditarCargoUseCase,
   getConfigurarBeneficiosCargoUseCase,
+  getRessincronizarSnapshotEmpregadosCargoUseCase,
 } from '@/application/use-cases/plano-contas/container';
+import type { RessincronizacaoEmpregadoResultado } from '@/application/use-cases/plano-contas/RessincronizarSnapshotEmpregadosCargoUseCase';
 
 type ActionResult = { sucesso: true } | { sucesso: false; mensagem: string };
 type ActionResultComDados<T> = { sucesso: true; dados: T } | { sucesso: false; mensagem: string };
@@ -296,6 +298,31 @@ export async function configurarBeneficiosCargo(
     const cargo = await getConfigurarBeneficiosCargoUseCase().execute({ ...contexto, ...dados, planoSaudeFaixa: dados.planoSaudeFaixa ?? null });
     revalidatePath('/', 'layout'); // invalida toda a árvore de /propostas (não há layout.tsx aninhado ali) — dropdown de Cargo em Empregados, etc.
     return { sucesso: true, dados: serializarCargo(cargo) };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+/**
+ * ADR-030 — ação explícita: re-herda o custo do Cargo (custoTotalMensal,
+ * contaId e os 9 componentes/contas de benefício) para os Empregados já
+ * cadastrados desse Cargo, quando os benefícios foram alterados depois do
+ * cadastro/edição do Empregado. Empregados de Proposta oficializada são
+ * ignorados (snapshot congelado por desenho, ADR-018) e reportados como tal.
+ */
+export async function ressincronizarSnapshotEmpregadosCargo(
+  cargoId: string,
+): Promise<ActionResultComDados<RessincronizacaoEmpregadoResultado[]>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const temPermissao = await usuarioTemFuncionalidade(prisma, contexto.tenantId, contexto.usuarioId, 'propostas.gerenciar-estrutura');
+  if (!temPermissao) return { sucesso: false, mensagem: 'Perfil sem permissão para gerenciar Cargos.' };
+
+  try {
+    const resultado = await getRessincronizarSnapshotEmpregadosCargoUseCase().execute({ ...contexto, cargoId });
+    revalidatePath('/', 'layout'); // invalida toda a árvore de /propostas — Semáforo e Valor Realizado incluídos
+    return { sucesso: true, dados: resultado };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
   }
