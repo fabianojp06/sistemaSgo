@@ -10,6 +10,7 @@ import {
   getCadastrarPropostaUseCase,
   getDuplicarPropostaUseCase,
   getExcluirVersaoPropostaUseCase,
+  getCriarVersaoPropostaUseCase,
 } from '@/application/use-cases/plano-contas/container';
 
 type ActionResult = { sucesso: true } | { sucesso: false; mensagem: string };
@@ -147,4 +148,77 @@ export async function excluirVersaoProposta(versaoId: string): Promise<ActionRes
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
   }
+}
+
+/** US-119/ADR-033 — Criar Nova Versão de Proposta (copia dados da versão vigente, que fica no histórico). */
+export async function criarNovaVersaoProposta(
+  propostaId: string,
+  descricao?: string,
+): Promise<ActionResultComDados<{ versaoId: string; numeroVersao: number }>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  if (!propostaId) return { sucesso: false, mensagem: 'Proposta inválida.' };
+
+  const temPermissao = await usuarioTemFuncionalidade(prisma, contexto.tenantId, contexto.usuarioId, 'propostas.criar-versao');
+  if (!temPermissao) return { sucesso: false, mensagem: 'Perfil sem permissão para criar nova versão de Proposta.' };
+
+  try {
+    const novaVersao = await getCriarVersaoPropostaUseCase().execute({ ...contexto, propostaId, descricao });
+    revalidatePath('/propostas');
+    return { sucesso: true, dados: { versaoId: novaVersao.id, numeroVersao: novaVersao.numeroVersao } };
+  } catch (erro) {
+    if (erro instanceof Error && erro.message.includes('Unique constraint')) {
+      return { sucesso: false, mensagem: 'Já existe uma nova versão sendo criada para esta Proposta. Atualize a página.' };
+    }
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+export type VersaoPropostaHistorico = {
+  id: string;
+  numeroVersao: number;
+  status: string;
+  descricao: string | null;
+  vigente: boolean;
+  ativa: boolean;
+  createdAt: Date;
+  createdByNome: string;
+};
+
+/** US-119/ADR-033 — Listar histórico de versões de uma Proposta (inclui versões excluídas). */
+export async function listarVersoesProposta(propostaId: string): Promise<ActionResultComDados<VersaoPropostaHistorico[]>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  if (!propostaId) return { sucesso: false, mensagem: 'Proposta inválida.' };
+
+  const temPermissao = await usuarioTemFuncionalidade(prisma, contexto.tenantId, contexto.usuarioId, 'propostas.visualizar');
+  if (!temPermissao) return { sucesso: false, mensagem: 'Perfil sem permissão para visualizar Propostas.' };
+
+  const versoes = await prisma.versaoProposta.findMany({
+    where: { tenantId: contexto.tenantId, propostaId },
+    orderBy: { numeroVersao: 'desc' },
+  });
+
+  const autoresIds = [...new Set(versoes.map((v) => v.createdBy))];
+  const autores = await prisma.usuario.findMany({
+    where: { tenantId: contexto.tenantId, id: { in: autoresIds } },
+    select: { id: true, nomeCompleto: true },
+  });
+  const nomeAutorPorId = new Map(autores.map((a) => [a.id, a.nomeCompleto]));
+
+  return {
+    sucesso: true,
+    dados: versoes.map((v) => ({
+      id: v.id,
+      numeroVersao: v.numeroVersao,
+      status: v.status,
+      descricao: v.descricao,
+      vigente: v.vigente,
+      ativa: v.ativa,
+      createdAt: v.createdAt,
+      createdByNome: nomeAutorPorId.get(v.createdBy) ?? 'Desconhecido',
+    })),
+  };
 }

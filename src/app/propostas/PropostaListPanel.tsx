@@ -1,8 +1,16 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import Link from 'next/link';
-import { cadastrarProposta, duplicarProposta, excluirVersaoProposta, type PropostaListada } from './actions';
+import {
+  cadastrarProposta,
+  duplicarProposta,
+  excluirVersaoProposta,
+  criarNovaVersaoProposta,
+  listarVersoesProposta,
+  type PropostaListada,
+  type VersaoPropostaHistorico,
+} from './actions';
 
 const LABEL_TIPO: Record<PropostaListada['tipo'], string> = {
   CONTRATO: 'Contrato',
@@ -99,19 +107,66 @@ function NovaPropostaForm({ podeCriar, onCriada }: { podeCriar: boolean; onCriad
   );
 }
 
+function HistoricoVersoes({ propostaId }: { propostaId: string }) {
+  const [versoes, setVersoes] = useState<VersaoPropostaHistorico[] | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    startTransition(async () => {
+      const resposta = await listarVersoesProposta(propostaId);
+      if (!resposta.sucesso) {
+        setErro(resposta.mensagem);
+        return;
+      }
+      setVersoes(resposta.dados);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [propostaId]);
+
+  if (pending) return <p className="px-3 py-2 text-xs text-gray-500">Carregando histórico...</p>;
+  if (erro) return <p className="px-3 py-2 text-xs text-red-600">{erro}</p>;
+  if (!versoes || versoes.length === 0) return <p className="px-3 py-2 text-xs text-gray-500">Nenhuma versão encontrada.</p>;
+
+  return (
+    <ul className="divide-y bg-gray-50 text-xs">
+      {versoes.map((v) => (
+        <li key={v.id} className="flex items-center justify-between gap-2 px-4 py-1.5">
+          <div className="flex items-center gap-2">
+            <span className="font-medium">v{v.numeroVersao}</span>
+            <span className="text-gray-600">{v.status}</span>
+            {v.descricao && <span className="text-gray-500">{v.descricao}</span>}
+            <span className="text-gray-400">
+              {new Date(v.createdAt).toLocaleDateString('pt-BR')} — {v.createdByNome}
+            </span>
+          </div>
+          {v.vigente ? (
+            <span className="rounded bg-green-100 px-1.5 py-0.5 font-medium text-green-800">Vigente</span>
+          ) : !v.ativa ? (
+            <span className="rounded bg-gray-200 px-1.5 py-0.5 font-medium text-gray-600">Excluída</span>
+          ) : null}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function LinhaProposta({
   proposta,
   podeDuplicar,
   podeExcluirVersao,
+  podeCriarVersao,
   onMudou,
 }: {
   proposta: PropostaListada;
   podeDuplicar: boolean;
   podeExcluirVersao: boolean;
+  podeCriarVersao: boolean;
   onMudou: () => void;
 }) {
   const [erro, setErro] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [historicoAberto, setHistoricoAberto] = useState(false);
 
   function duplicar() {
     setErro(null);
@@ -138,9 +193,21 @@ function LinhaProposta({
     });
   }
 
+  function criarVersao() {
+    setErro(null);
+    startTransition(async () => {
+      const resposta = await criarNovaVersaoProposta(proposta.id);
+      if (!resposta.sucesso) {
+        setErro(resposta.mensagem);
+        return;
+      }
+      onMudou();
+    });
+  }
+
   return (
-    <li className="px-3 py-2 text-sm">
-      <div className="flex items-center justify-between gap-2">
+    <li className="text-sm">
+      <div className="flex items-center justify-between gap-2 px-3 py-2">
         <div className="flex items-center gap-2">
           <span className="font-mono text-xs text-gray-500">{proposta.codigo}</span>
           <Link href={`/propostas/${proposta.id}`} className="font-medium hover:underline">
@@ -153,6 +220,14 @@ function LinhaProposta({
           )}
         </div>
         <div className="flex items-center gap-2">
+          <button type="button" onClick={() => setHistoricoAberto((a) => !a)} className="rounded border px-2 py-1 text-xs">
+            {historicoAberto ? 'Ocultar Histórico' : 'Histórico de Versões'}
+          </button>
+          {podeCriarVersao && proposta.versaoVigenteId && (
+            <button type="button" onClick={criarVersao} disabled={pending} className="rounded border px-2 py-1 text-xs disabled:opacity-50">
+              Criar Nova Versão
+            </button>
+          )}
           {podeDuplicar && (
             <button type="button" onClick={duplicar} disabled={pending} className="rounded border px-2 py-1 text-xs disabled:opacity-50">
               Duplicar
@@ -170,7 +245,8 @@ function LinhaProposta({
           )}
         </div>
       </div>
-      {erro && <p className="mt-1 text-xs text-red-600">{erro}</p>}
+      {erro && <p className="px-3 pb-2 text-xs text-red-600">{erro}</p>}
+      {historicoAberto && <HistoricoVersoes propostaId={proposta.id} />}
     </li>
   );
 }
@@ -181,11 +257,13 @@ export function PropostaListPanel({
   podeCriar,
   podeDuplicar,
   podeExcluirVersao,
+  podeCriarVersao,
 }: {
   propostasIniciais: PropostaListada[];
   podeCriar: boolean;
   podeDuplicar: boolean;
   podeExcluirVersao: boolean;
+  podeCriarVersao: boolean;
 }) {
   const [propostas, setPropostas] = useState(propostasIniciais);
   const [, startTransition] = useTransition();
@@ -212,6 +290,7 @@ export function PropostaListPanel({
               proposta={proposta}
               podeDuplicar={podeDuplicar}
               podeExcluirVersao={podeExcluirVersao}
+              podeCriarVersao={podeCriarVersao}
               onMudou={recarregar}
             />
           ))}

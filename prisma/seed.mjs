@@ -95,6 +95,13 @@ async function seedModuloPlanoContas() {
     create: { moduloId: modulo.id, chave: 'propostas.excluir-versao', nome: 'Excluir Versão da Proposta', tipo: 'CONTEXTUAL' },
   });
 
+  // US-119 (ADR-033) — Criar Nova Versão de Proposta. CONTEXTUAL, mesmo padrão das irmãs acima.
+  await prisma.funcionalidade.upsert({
+    where: { moduloId_chave: { moduloId: modulo.id, chave: 'propostas.criar-versao' } },
+    update: {},
+    create: { moduloId: modulo.id, chave: 'propostas.criar-versao', nome: 'Criar Nova Versão da Proposta', tipo: 'CONTEXTUAL' },
+  });
+
   // US-116/US-117 (UC03.18/UC03.19) — Estrutura Funcional (Organograma) + Cargos. [ADR-021]
   // CONTEXTUAL: acessada a partir de um link dentro de /propostas/{id}, sem entrada própria no menu.
   await prisma.funcionalidade.upsert({

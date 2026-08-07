@@ -504,6 +504,24 @@ Sessão longa, guiada por feedback de teste manual real do usuário no navegador
 
 **Próximo passo combinado:** nenhum item novo priorizado além do que já foi feito. Se o usuário continuar testando, próximo candidato natural é revisar as demais guias (Bens, Rateio de Impostos, Termo de Ajuste) com o mesmo padrão de teste manual real que gerou os achados desta sessão — e reconferir se alguma outra regra de "exclusivo de POR_META" (fora Viagem, já corrigida) também precisa da mesma correção de escopo.
 
+## 2026-08-07 (cont. 2) — registrada às 16:51 UTC — US-119 (ADR-033): Criar Nova Versão de Proposta + Histórico de Versões
+
+Usuário reportou gap na tela `/propostas`: só havia "Excluir Versão", faltava "Criar Nova Versão" e consulta ao histórico de versões antigas. Fluxo completo pelo time via skills:
+
+1. **[AN/PO]** Refinou a história com Gherkin. Primeiro rascunho usou o ID US-114 por engano — **colisão detectada**: US-114 já era "Gerenciar Propostas" (implementada em 2026-08-06). Renumerada para **US-119** (próximo ID livre, sequência ia até US-118).
+2. **[Tech Lead]** ADR-033. Achado importante antes de decidir: já existia `CriarVersaoPropostaUseCase.ts` no código (nascido em US-007, cenário 4) — wireado no `container.ts` mas nunca exposto em `actions.ts`/UI, e só copiava `ValorOrcadoConta`. Decisão: estender esse use case (não recriar do zero) para copiar também `RateioImpostoGrade`, `Meta`, `Viagem`, `ItemPatrimonial`, `TermoAjuste`, tudo na mesma `$transaction`. Reaproveitar a tela `/propostas` com painel expansível em vez de rota nova `/propostas/[id]/versoes` (não há caso de uso de deep-link para versão isolada). Duas regras de negócio decididas explicitamente: `Meta.valorGlobal` NUNCA é copiado literal — é recalculado como SUM dos `ValorOrcadoConta` recém-copiados (mesmo espelho da US-112); `TermoAjuste` só copia se status `HOMOLOGADO` — pendente de aprovação fica só na versão antiga (aprovação não "herda" para uma versão que não existia quando foi solicitada).
+3. **[Full Stack Dev]** Implementado:
+   - `CriarVersaoPropostaUseCase.ts` estendido conforme ADR-033, `HistoricoOperacao` passou a registrar contagem de cada tipo copiado.
+   - `src/app/propostas/actions.ts`: novas Server Actions `criarNovaVersaoProposta` (trata erro de unique constraint por corrida com mensagem amigável) e `listarVersoesProposta` (traz todas as versões, inclusive `ativa=false`, com nome do autor).
+   - `PropostaListPanel.tsx`: botão "Criar Nova Versão" + painel expansível "Histórico de Versões" com badges Vigente (verde) / Excluída (cinza).
+   - `page.tsx`: nova permissão `propostas.criar-versao` passada ao painel.
+   - `prisma/seed.mjs`: nova Funcionalidade CONTEXTUAL `propostas.criar-versao` — seed rodado e aplicado em produção nesta sessão (upsert, sem migration de schema).
+   - `CriarVersaoPropostaUseCase.test.ts`: mock estendido com os novos modelos + 3 casos novos (Meta/valorGlobal recalculado, Viagem+ItemPatrimonial com metaId apontando para a Meta nova, TermoAjuste filtrado por status).
+
+**Escopo não implementado (declarado, não esquecido):** modo leitura (`readOnly`) nos componentes de detalhe (Valor Orçado/Meta/Viagem/etc.) ao abrir uma versão antiga a partir do histórico. O painel de histórico lista e mostra metadados de cada versão, mas ainda não abre o drill-down de cada versão em modo consulta — usuário optou por registrar e seguir depois, não é bug.
+
+**Estado ao final:** `tsc --noEmit` limpo. Suíte completa: 249/255 passando — as 6 falhas são pré-existentes, confirmado via `git stash` comparando antes/depois (mesmos 6 testes falhando no branch limpo, não relacionados a esta mudança). Seed aplicado em produção. **Ainda não commitado/enviado** ao final desta entrada — commit pendente na sequência desta mesma sessão.
+
 ---
 
 ## Como usar este arquivo em sessões futuras

@@ -16,10 +16,11 @@ export default async function PropostasPage() {
   const usuario = await prisma.usuario.findFirst({ where: { tenantId, clerkUserId: userId }, select: { id: true } });
   if (!usuario) redirect('/login');
 
-  const [podeCriar, podeDuplicar, podeExcluirVersao, resultado] = await Promise.all([
+  const [podeCriar, podeDuplicar, podeExcluirVersao, podeCriarVersao, resultado] = await Promise.all([
     usuarioTemFuncionalidade(prisma, tenantId, usuario.id, 'propostas.criar'),
     usuarioTemFuncionalidade(prisma, tenantId, usuario.id, 'propostas.duplicar'),
     usuarioTemFuncionalidade(prisma, tenantId, usuario.id, 'propostas.excluir-versao'),
+    usuarioTemFuncionalidade(prisma, tenantId, usuario.id, 'propostas.criar-versao'),
     listarPropostas(),
   ]);
 
@@ -45,6 +46,7 @@ export default async function PropostasPage() {
           podeCriar={podeCriar}
           podeDuplicar={podeDuplicar}
           podeExcluirVersao={podeExcluirVersao}
+          podeCriarVersao={podeCriarVersao}
         />
       )}
     </main>
