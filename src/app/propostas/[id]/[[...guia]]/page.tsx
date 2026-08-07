@@ -19,6 +19,7 @@ import { ItemPatrimonialPanel } from '../../ItemPatrimonialPanel';
 
 const GUIAS = [
   { slug: 'valor-orcado', label: 'Valor Orçado' },
+  { slug: 'lancar-valor-orcado', label: 'Lançar Valor Orçado' },
   { slug: 'semaforo', label: 'Semáforo' },
   { slug: 'meta', label: 'Meta' },
   { slug: 'empregados', label: 'Empregados' },
@@ -199,8 +200,11 @@ export default async function PropostaDetalhePage({
               versaoId={versao.id}
               propostaCategoria={proposta.categoria}
             />
-            <ValorOrcadoContaForm versaoId={versao.id} contasAnaliticas={contasAnaliticas} readOnly={readOnly} />
           </div>
+        )}
+
+        {guiaAtiva === 'lancar-valor-orcado' && (
+          <ValorOrcadoContaForm versaoId={versao.id} contasAnaliticas={contasAnaliticas} readOnly={readOnly} />
         )}
 
         {guiaAtiva === 'semaforo' && (
