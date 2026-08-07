@@ -72,7 +72,14 @@ export default async function PropostaDetalhePage({
   let cargos: { id: string; label: string }[] = [];
   let empregados: (import('@/app/plano-contas/actions').EmpregadoResultado & { categoria: 'EMPREGADO' | 'ESTAGIARIO' | 'JOVEM_APRENDIZ' })[] = [];
   let qtdeEmpregados: import('@/app/plano-contas/actions').QtdeEmpregadoResultado[] = [];
+  // Empregado/Qtde. Empregado exigem Meta cadastrada quando a Proposta é POR_META (CadastrarEmpregadoUseCase/
+  // CadastrarQtdeEmpregadoUseCase lançam MetaNaoEncontradaError) — aviso proativo na tela, antes do usuário tentar salvar.
+  let temMetaConfigurada = true;
   if (guiaAtiva === 'empregados') {
+    if (proposta.categoria === 'POR_META') {
+      const meta = await prisma.meta.findFirst({ where: { tenantId, versaoId: versao.id, ativo: true } });
+      temMetaConfigurada = meta !== null;
+    }
     const [cargosDb, empregadosDb, qtdeDb] = await Promise.all([
       prisma.cargo.findMany({
         where: { tenantId, propostaId: id, ativo: true },
@@ -200,6 +207,8 @@ export default async function PropostaDetalhePage({
               qtdeEmpregadosIniciais={qtdeEmpregados}
               contasAnaliticas={contasAnaliticas}
               readOnly={readOnly}
+              propostaCategoria={proposta.categoria}
+              temMetaConfigurada={temMetaConfigurada}
             />
           </div>
         )}

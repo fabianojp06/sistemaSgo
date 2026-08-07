@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
+import Link from 'next/link';
 import {
   cadastrarEmpregado,
   cadastrarEmpregadosEmLote,
@@ -531,6 +532,8 @@ export function EmpregadoPanel({
   qtdeEmpregadosIniciais,
   contasAnaliticas,
   readOnly,
+  propostaCategoria,
+  temMetaConfigurada,
 }: {
   propostaId: string;
   cargos: CargoOpcao[];
@@ -538,11 +541,18 @@ export function EmpregadoPanel({
   qtdeEmpregadosIniciais: QtdeEmpregadoResultado[];
   contasAnaliticas: { id: string; label: string }[];
   readOnly?: boolean;
+  propostaCategoria: 'CONSOLIDADA' | 'POR_META';
+  temMetaConfigurada: boolean;
 }) {
   const [empregados, setEmpregados] = useState(empregadosIniciais);
   const [qtdeEmpregados, setQtdeEmpregados] = useState(qtdeEmpregadosIniciais);
   const [pending, startTransition] = useTransition();
   const [empregadoDetalhes, setEmpregadoDetalhes] = useState<EmpregadoListado | null>(null);
+
+  // Empregado/Qtde. Empregado exigem Meta cadastrada em Proposta POR_META (mesma
+  // regra já aplicada no backend, CadastrarEmpregadoUseCase/CadastrarQtdeEmpregadoUseCase) —
+  // bloqueia os formulários aqui para não deixar o usuário preencher algo que vai falhar.
+  const bloqueadoPorMeta = propostaCategoria === 'POR_META' && !temMetaConfigurada;
 
   const contaLabelPorId = new Map(contasAnaliticas.map((c) => [c.id, c.label]));
   // Item 2 do feedback de teste HML — total mensal corrente lançado (sem multiplicar por
@@ -572,6 +582,21 @@ export function EmpregadoPanel({
         valorTotalConsolidadoMaisRecente={qtdeEmpregados.at(-1)?.valorTotalConsolidado ?? null}
       />
 
+      {bloqueadoPorMeta && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-orange-200 bg-orange-50 px-4 py-3">
+          <p className="text-sm text-orange-800">
+            Esta Proposta é <strong>Por Meta</strong> e ainda não tem uma Meta cadastrada na Versão vigente — cadastre uma Meta antes de
+            lançar Empregados ou consolidar.
+          </p>
+          <Link
+            href={`/propostas/${propostaId}/meta`}
+            className="shrink-0 rounded-md border border-orange-300 bg-white px-3 py-1.5 text-sm font-medium text-orange-800 hover:bg-orange-100"
+          >
+            Ir para Meta &rarr;
+          </Link>
+        </div>
+      )}
+
       <div className="flex flex-col gap-3">
         <h3 className="flex items-center gap-2 font-semibold text-slate-800">
           <span className="text-slate-400">
@@ -582,7 +607,7 @@ export function EmpregadoPanel({
         <NovoEmpregadoForm
           propostaId={propostaId}
           cargos={cargos}
-          readOnly={readOnly}
+          readOnly={readOnly || bloqueadoPorMeta}
           onCriado={(novos) => setEmpregados((atual) => [...atual, ...novos])}
         />
         {empregados.length === 0 ? (
@@ -615,7 +640,11 @@ export function EmpregadoPanel({
           lançamento de vagas/pessoas fica na seção Empregados, acima — os totais abaixo são calculados automaticamente, não digitados.
         </p>
         <ResumoConsolidacao empregados={empregados} cargos={cargos} totalMensal={totalMensal} />
-        <NovaQtdeEmpregadoForm propostaId={propostaId} readOnly={readOnly} onCriado={(q) => setQtdeEmpregados((atual) => [...atual, q])} />
+        <NovaQtdeEmpregadoForm
+          propostaId={propostaId}
+          readOnly={readOnly || bloqueadoPorMeta}
+          onCriado={(q) => setQtdeEmpregados((atual) => [...atual, q])}
+        />
         {qtdeEmpregados.length === 0 ? (
           <p className="text-sm text-gray-500">Nenhum documento de consolidação cadastrado.</p>
         ) : (
