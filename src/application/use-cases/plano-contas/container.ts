@@ -10,6 +10,7 @@ import { ListarAgrupadoresUseCase } from './ListarAgrupadoresUseCase';
 import { AtribuirNaturezaContaUseCase } from './AtribuirNaturezaContaUseCase';
 import { ConfigurarValorOrcadoContaUseCase } from './ConfigurarValorOrcadoContaUseCase';
 import { CriarVersaoPropostaUseCase } from './CriarVersaoPropostaUseCase';
+import { RestaurarVersaoPropostaUseCase } from './RestaurarVersaoPropostaUseCase';
 import { ConfigurarSemaforoContaUseCase } from './ConfigurarSemaforoContaUseCase';
 import { CalcularValorRealizadoUseCase } from './CalcularValorRealizadoUseCase';
 import { ConfigurarRateioImpostoUseCase } from './ConfigurarRateioImpostoUseCase';
@@ -84,6 +85,10 @@ export function getConfigurarValorOrcadoContaUseCase(): ConfigurarValorOrcadoCon
 
 export function getCriarVersaoPropostaUseCase(): CriarVersaoPropostaUseCase {
   return new CriarVersaoPropostaUseCase(prisma);
+}
+
+export function getRestaurarVersaoPropostaUseCase(): RestaurarVersaoPropostaUseCase {
+  return new RestaurarVersaoPropostaUseCase(prisma);
 }
 
 export function getConfigurarSemaforoContaUseCase(): ConfigurarSemaforoContaUseCase {

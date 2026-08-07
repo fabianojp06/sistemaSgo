@@ -6,11 +6,13 @@ import { revalidatePath } from 'next/cache';
 import { prisma } from '@/infrastructure/db/prisma';
 import { getTenantId } from '@/infrastructure/tenant';
 import { usuarioTemFuncionalidade } from '@/application/use-cases/plano-contas/verificarPermissao';
+import { VersaoJaVigenteError } from '@/domain/plano-contas/errors';
 import {
   getCadastrarPropostaUseCase,
   getDuplicarPropostaUseCase,
   getExcluirVersaoPropostaUseCase,
   getCriarVersaoPropostaUseCase,
+  getRestaurarVersaoPropostaUseCase,
 } from '@/application/use-cases/plano-contas/container';
 
 type ActionResult = { sucesso: true } | { sucesso: false; mensagem: string };
@@ -221,4 +223,26 @@ export async function listarVersoesProposta(propostaId: string): Promise<ActionR
       createdByNome: nomeAutorPorId.get(v.createdBy) ?? 'Desconhecido',
     })),
   };
+}
+
+/** US-120/ADR-034 — Restaurar Versão de Proposta (troca a flag vigente, sem copiar dados). */
+export async function restaurarVersaoProposta(propostaId: string, versaoRestauradaId: string): Promise<ActionResult> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  if (!propostaId || !versaoRestauradaId) return { sucesso: false, mensagem: 'Versão inválida.' };
+
+  const temPermissao = await usuarioTemFuncionalidade(prisma, contexto.tenantId, contexto.usuarioId, 'propostas.restaurar-versao');
+  if (!temPermissao) return { sucesso: false, mensagem: 'Perfil sem permissão para restaurar versão de Proposta.' };
+
+  try {
+    await getRestaurarVersaoPropostaUseCase().execute({ ...contexto, propostaId, versaoRestauradaId });
+    revalidatePath('/propostas');
+    return { sucesso: true };
+  } catch (erro) {
+    if (erro instanceof VersaoJaVigenteError) {
+      return { sucesso: false, mensagem: erro.message };
+    }
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
 }

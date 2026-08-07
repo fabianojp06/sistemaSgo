@@ -520,7 +520,27 @@ Usuário reportou gap na tela `/propostas`: só havia "Excluir Versão", faltava
 
 **Escopo não implementado (declarado, não esquecido):** modo leitura (`readOnly`) nos componentes de detalhe (Valor Orçado/Meta/Viagem/etc.) ao abrir uma versão antiga a partir do histórico. O painel de histórico lista e mostra metadados de cada versão, mas ainda não abre o drill-down de cada versão em modo consulta — usuário optou por registrar e seguir depois, não é bug.
 
-**Estado ao final:** `tsc --noEmit` limpo. Suíte completa: 249/255 passando — as 6 falhas são pré-existentes, confirmado via `git stash` comparando antes/depois (mesmos 6 testes falhando no branch limpo, não relacionados a esta mudança). Seed aplicado em produção. **Ainda não commitado/enviado** ao final desta entrada — commit pendente na sequência desta mesma sessão.
+**Estado ao final:** `tsc --noEmit` limpo. Suíte completa: 249/255 passando — as 6 falhas são pré-existentes, confirmado via `git stash` comparando antes/depois (mesmos 6 testes falhando no branch limpo, não relacionados a esta mudança). Seed aplicado em produção. Commitado e enviado a `origin/master` (`babd7bb`).
+
+## 2026-08-07 (cont. 3) — registrada às 17:15 UTC — US-120 (ADR-034): Restaurar Versão de Proposta
+
+Usuário testou US-119 no navegador (via extensão Claude in Chrome ativa localmente, mas não exposta nesta sessão remota do Codespace — teste feito manualmente pelo usuário) e confirmou que o botão "Criar Nova Versão" apareceu. Em seguida pediu a próxima peça natural do fluxo: restaurar uma versão antiga como vigente, com modal de confirmação. Fluxo completo pelo time via skills:
+
+1. **[AN/PO]** US-120. Decisões-chave levantadas e resolvidas: (a) restaurar troca **apenas a flag `vigente`** — a versão restaurada mantém seu `numeroVersao` original, sem copiar dados (diferente de US-119) — decisão justificada por `ContaContabil` nunca ser hard-deleted nem ter flag de inativação no schema, então não há risco de FK órfã ao reativar uma versão antiga; (b) restaurar uma versão excluída (`ativa=false`, via US-103) também a **reativa** (`ativa=true`) — senão "restaurar" uma versão excluída não teria efeito prático; (c) sem fluxo de aprovação sobre `VersaoProposta.status` hoje, então a única precondição é a versão-alvo não ser já a vigente.
+2. **[Tech Lead]** ADR-034. Confirmou a leitura do PO: **use case novo e separado** (`RestaurarVersaoPropostaUseCase`), não extensão de `CriarVersaoPropostaUseCase` — são operações de negócio diferentes (cópia de dados vs. reposicionamento de flag) e acoplar as duas arriscaria quebrar a suíte de US-119 ao mexer numa ou noutra. **Risco de produção identificado explicitamente**: novo valor de enum `TipoOperacao` (`VERSAO_PROPOSTA_RESTAURADA`) exige `ALTER TYPE ... ADD VALUE`, que precisa ser aplicado *antes* de qualquer deploy de código que grave esse valor — ordem de deploy importa (migration primeiro, sempre). Sem lock pessimista (mesma decisão de ADR-033 para VersaoProposta).
+3. **[Full Stack Dev]** Implementado:
+   - `VersaoJaVigenteError` (novo erro de domínio, bloqueia restaurar a própria versão vigente).
+   - Migration `20260807171048_add_versao_proposta_restaurada_enum` gerada e aplicada em produção (Supabase) antes de qualquer código consumir o valor novo — seguindo a ordem alertada pelo ADR.
+   - `RestaurarVersaoPropostaUseCase.ts` (novo, `src/application/use-cases/plano-contas/`) + `.test.ts` com 4 casos (restaura versão ativa, restaura versão excluída reativando, bloqueia se já vigente, bloqueia se não existe). Wireado em `container.ts`.
+   - `restaurarVersaoProposta` em `actions.ts`, tratando `VersaoJaVigenteError` com mensagem amigável.
+   - `prisma/seed.mjs`: nova Funcionalidade CONTEXTUAL `propostas.restaurar-versao` — seed rodado e aplicado em produção.
+   - `PropostaListPanel.tsx`: botão "Restaurar" em cada linha do histórico (exceto a vigente) + `ModalConfirmarRestauracao` (componente local em Tailwind, sem lib nova) nomeando explicitamente qual versão vigente será rebaixada; `page.tsx` passa a nova permissão `podeRestaurarVersao`.
+
+**Estado ao final:** `tsc --noEmit` limpo. Suíte completa: 253/259 passando — mesmas 6 falhas pré-existentes do baseline desta sessão (comparado com a entrada anterior, 249/255 → 253/259: +4 testes novos verdes de `RestaurarVersaoPropostaUseCase`, 0 regressão). Migration e seed aplicados no Supabase real. Commit e push pendentes — a fazer na sequência desta mesma entrada.
+
+**Nota operacional:** tentativa de usar a extensão Claude in Chrome para testar `/propostas` diretamente falhou — a extensão está ativa no navegador local do usuário, mas as ferramentas MCP correspondentes não aparecem disponíveis nesta sessão remota (Codespace). Também não dá para testar via `curl`, pois a rota exige sessão Clerk autenticada (redireciona para `/login` sem cookie de sessão). Testes de UI desta sessão dependeram do usuário verificar manualmente no navegador.
+
+**Próximo passo combinado:** nenhum item novo priorizado. Escopo declarado como não implementado desde US-119 continua em aberto: modo leitura (`readOnly`) nos componentes de detalhe ao abrir uma versão antiga do histórico (hoje só metadados são exibidos, sem drill-down).
 
 ---
 

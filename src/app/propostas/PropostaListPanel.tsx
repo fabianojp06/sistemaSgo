@@ -8,6 +8,7 @@ import {
   excluirVersaoProposta,
   criarNovaVersaoProposta,
   listarVersoesProposta,
+  restaurarVersaoProposta,
   type PropostaListada,
   type VersaoPropostaHistorico,
 } from './actions';
@@ -107,12 +108,63 @@ function NovaPropostaForm({ podeCriar, onCriada }: { podeCriar: boolean; onCriad
   );
 }
 
-function HistoricoVersoes({ propostaId }: { propostaId: string }) {
+function ModalConfirmarRestauracao({
+  versaoVigenteAtual,
+  versaoAlvo,
+  pending,
+  onConfirmar,
+  onCancelar,
+}: {
+  versaoVigenteAtual: VersaoPropostaHistorico | null;
+  versaoAlvo: VersaoPropostaHistorico;
+  pending: boolean;
+  onConfirmar: () => void;
+  onCancelar: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-sm rounded bg-white p-4 shadow-lg">
+        <h3 className="font-medium">Restaurar versão</h3>
+        <p className="mt-2 text-sm text-gray-700">
+          {versaoVigenteAtual
+            ? `A versão ${versaoVigenteAtual.numeroVersao} (vigente atual) deixará de ser vigente. `
+            : ''}
+          Deseja restaurar a versão {versaoAlvo.numeroVersao}?
+        </p>
+        <div className="mt-4 flex justify-end gap-2">
+          <button type="button" onClick={onCancelar} disabled={pending} className="rounded border px-3 py-1.5 text-sm disabled:opacity-50">
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={onConfirmar}
+            disabled={pending}
+            className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white disabled:opacity-50"
+          >
+            {pending ? 'Restaurando...' : 'Confirmar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HistoricoVersoes({
+  propostaId,
+  podeRestaurarVersao,
+  onRestaurado,
+}: {
+  propostaId: string;
+  podeRestaurarVersao: boolean;
+  onRestaurado: () => void;
+}) {
   const [versoes, setVersoes] = useState<VersaoPropostaHistorico[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [versaoParaRestaurar, setVersaoParaRestaurar] = useState<VersaoPropostaHistorico | null>(null);
+  const [restaurando, startRestaurar] = useTransition();
 
-  useEffect(() => {
+  function carregar() {
     startTransition(async () => {
       const resposta = await listarVersoesProposta(propostaId);
       if (!resposta.sucesso) {
@@ -121,33 +173,77 @@ function HistoricoVersoes({ propostaId }: { propostaId: string }) {
       }
       setVersoes(resposta.dados);
     });
+  }
+
+  useEffect(() => {
+    carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [propostaId]);
+
+  function confirmarRestauracao() {
+    if (!versaoParaRestaurar) return;
+    startRestaurar(async () => {
+      const resposta = await restaurarVersaoProposta(propostaId, versaoParaRestaurar.id);
+      setVersaoParaRestaurar(null);
+      if (!resposta.sucesso) {
+        setErro(resposta.mensagem);
+        return;
+      }
+      carregar();
+      onRestaurado();
+    });
+  }
 
   if (pending) return <p className="px-3 py-2 text-xs text-gray-500">Carregando histórico...</p>;
   if (erro) return <p className="px-3 py-2 text-xs text-red-600">{erro}</p>;
   if (!versoes || versoes.length === 0) return <p className="px-3 py-2 text-xs text-gray-500">Nenhuma versão encontrada.</p>;
 
+  const versaoVigenteAtual = versoes.find((v) => v.vigente) ?? null;
+
   return (
-    <ul className="divide-y bg-gray-50 text-xs">
-      {versoes.map((v) => (
-        <li key={v.id} className="flex items-center justify-between gap-2 px-4 py-1.5">
-          <div className="flex items-center gap-2">
-            <span className="font-medium">v{v.numeroVersao}</span>
-            <span className="text-gray-600">{v.status}</span>
-            {v.descricao && <span className="text-gray-500">{v.descricao}</span>}
-            <span className="text-gray-400">
-              {new Date(v.createdAt).toLocaleDateString('pt-BR')} — {v.createdByNome}
-            </span>
-          </div>
-          {v.vigente ? (
-            <span className="rounded bg-green-100 px-1.5 py-0.5 font-medium text-green-800">Vigente</span>
-          ) : !v.ativa ? (
-            <span className="rounded bg-gray-200 px-1.5 py-0.5 font-medium text-gray-600">Excluída</span>
-          ) : null}
-        </li>
-      ))}
-    </ul>
+    <>
+      <ul className="divide-y bg-gray-50 text-xs">
+        {versoes.map((v) => (
+          <li key={v.id} className="flex items-center justify-between gap-2 px-4 py-1.5">
+            <div className="flex items-center gap-2">
+              <span className="font-medium">v{v.numeroVersao}</span>
+              <span className="text-gray-600">{v.status}</span>
+              {v.descricao && <span className="text-gray-500">{v.descricao}</span>}
+              <span className="text-gray-400">
+                {new Date(v.createdAt).toLocaleDateString('pt-BR')} — {v.createdByNome}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              {v.vigente ? (
+                <span className="rounded bg-green-100 px-1.5 py-0.5 font-medium text-green-800">Vigente</span>
+              ) : (
+                <>
+                  {!v.ativa && <span className="rounded bg-gray-200 px-1.5 py-0.5 font-medium text-gray-600">Excluída</span>}
+                  {podeRestaurarVersao && (
+                    <button
+                      type="button"
+                      onClick={() => setVersaoParaRestaurar(v)}
+                      className="rounded border px-2 py-0.5 text-xs"
+                    >
+                      Restaurar
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
+      {versaoParaRestaurar && (
+        <ModalConfirmarRestauracao
+          versaoVigenteAtual={versaoVigenteAtual}
+          versaoAlvo={versaoParaRestaurar}
+          pending={restaurando}
+          onConfirmar={confirmarRestauracao}
+          onCancelar={() => setVersaoParaRestaurar(null)}
+        />
+      )}
+    </>
   );
 }
 
@@ -156,12 +252,14 @@ function LinhaProposta({
   podeDuplicar,
   podeExcluirVersao,
   podeCriarVersao,
+  podeRestaurarVersao,
   onMudou,
 }: {
   proposta: PropostaListada;
   podeDuplicar: boolean;
   podeExcluirVersao: boolean;
   podeCriarVersao: boolean;
+  podeRestaurarVersao: boolean;
   onMudou: () => void;
 }) {
   const [erro, setErro] = useState<string | null>(null);
@@ -246,7 +344,9 @@ function LinhaProposta({
         </div>
       </div>
       {erro && <p className="px-3 pb-2 text-xs text-red-600">{erro}</p>}
-      {historicoAberto && <HistoricoVersoes propostaId={proposta.id} />}
+      {historicoAberto && (
+        <HistoricoVersoes propostaId={proposta.id} podeRestaurarVersao={podeRestaurarVersao} onRestaurado={onMudou} />
+      )}
     </li>
   );
 }
@@ -258,12 +358,14 @@ export function PropostaListPanel({
   podeDuplicar,
   podeExcluirVersao,
   podeCriarVersao,
+  podeRestaurarVersao,
 }: {
   propostasIniciais: PropostaListada[];
   podeCriar: boolean;
   podeDuplicar: boolean;
   podeExcluirVersao: boolean;
   podeCriarVersao: boolean;
+  podeRestaurarVersao: boolean;
 }) {
   const [propostas, setPropostas] = useState(propostasIniciais);
   const [, startTransition] = useTransition();
@@ -291,6 +393,7 @@ export function PropostaListPanel({
               podeDuplicar={podeDuplicar}
               podeExcluirVersao={podeExcluirVersao}
               podeCriarVersao={podeCriarVersao}
+              podeRestaurarVersao={podeRestaurarVersao}
               onMudou={recarregar}
             />
           ))}

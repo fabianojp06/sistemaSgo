@@ -246,6 +246,15 @@ export class VersaoPropostaInvalidaError extends Error {
   }
 }
 
+// US-120/ADR-034 — bloqueio de negócio ao tentar restaurar a versão que já é a vigente
+// (nada a fazer; validado no backend, não só desabilitado na UI).
+export class VersaoJaVigenteError extends Error {
+  constructor(motivo: string = 'Esta já é a versão vigente.') {
+    super(motivo);
+    this.name = 'VersaoJaVigenteError';
+  }
+}
+
 // US-003, Cenário 2, RN_PLA_005 — natureza da conta filha deve ser consistente com a
 // hierarquia; regra simétrica (bloqueia OPEX sob ancestral CAPEX e vice-versa).
 export class NaturezaHierarquiaInvalidaError extends Error {
