@@ -397,6 +397,58 @@ provável é uma 4ª rodada de feedback na mesma tela de Empregados ou expansão
 
 ---
 
+## 2026-08-07 01:21 UTC — ADR-029/030/031: custo por componente, ressincronização e exclusão de Cargo
+
+Sessão focada em fechar o ciclo "custo do Cargo → conta analítica → Semáforo" e em higiene da
+tela de Cargos, guiada por feedback de teste manual real do usuário (mesmo padrão da sessão
+2026-08-06).
+
+**ADR-029 (retomada de sessão anterior, finalizada aqui):** cada componente de custo do Cargo
+(gratificação, encargos sociais, VA/VR, VT, plano de saúde/odonto, seguro de vida, auxílio-creche)
+ganhou conta analítica própria + snapshot em `EmpregadoHeadcount`
+(`montarSnapshotComponenteCustoEmpregado.ts`, `valorSalarioSnapshot` residual para nunca sobrar/
+faltar). `CalcularValorRealizadoUseCase` passou a distribuir o custo entre as contas configuradas.
+Commit `a20b093`.
+
+**Bug relatado pelo usuário:** configurou contas de benefício no Cargo, Semáforo não atualizou.
+Causa raiz nº 1 — snapshot congelado por desenho (ADR-018): editar benefícios do Cargo não
+recalcula Empregados já cadastrados. **ADR-030** resolveu com ação explícita "Ressincronizar
+Empregados" (não automática — decisão do techlead-fsg para preservar o congelamento intencional
+pós-consolidação). Commit `ea44fec`.
+
+Segunda causa raiz (mesmo sintoma, caso real do usuário): ele só havia usado **Qtde. Empregado**
+(US-113, documento de consolidação sem `contaId`) — não tinha nenhum `EmpregadoHeadcount`
+individual cadastrado no Cargo, então não havia nada para o Semáforo somar. Confirmado cadastrando
+um Empregado de teste diretamente via `CadastrarEmpregadoUseCase` (script `tsx`, bypass de Clerk)
+e verificando o badge via `CalcularValorRealizadoUseCase` — valores corretos por conta. Empregado
+de teste removido em seguida (soft delete real, mesmo `ExcluirEmpregadoUseCase` da UI).
+
+**ADR-031:** tela de Cargos não tinha exclusão. Implementada exclusão individual + em lote
+(checkbox "Selecionar todos" + "Excluir Selecionados"), soft delete, bloqueada se houver Empregado
+ativo vinculado (mesmo padrão de `InativacaoUnidadeFuncionalBloqueadaError`, US-106), lote
+tudo-ou-nada. Commit `3d2a525`.
+
+**Incidente operacional (resolvido, registrar para não repetir):** após `npx prisma generate`
+para o novo enum `CARGO_EXCLUIDO`, o `next dev` já em execução continuou com o `@prisma/client`
+antigo carregado em memória — `ExcluirCargoUseCase` falhava com
+`Invalid value for argument 'tipoOperacao'` mesmo com schema/migration corretos. A transação
+Prisma protegeu a integridade (rollback automático, nenhum Cargo ficou com `ativo=false`
+inconsistente — confirmado por query direta). **Correção: sempre reiniciar o `next dev` depois de
+`prisma generate` no meio de uma sessão com o servidor já rodando** — o hot reload do Next não
+recarrega o client do Prisma sozinho.
+
+**Estado do repositório ao final:** tudo commitado e enviado a `origin/master` (`3d2a525`, HEAD).
+`tsc --noEmit` limpo em cada etapa. Migrations aplicadas em produção nesta sessão:
+`20260807003439_adr029_conta_por_componente_custo_cargo` (retomada), `20260807005656_adr030_...`,
+`20260807011201_adr031_cargo_excluido`. Servidor dev local exposto via porta pública do Codespace
+(`https://laughing-fiesta-q676pqp6rw5f47p4-3000.app.github.dev`) para o usuário testar direto no
+navegador — reiniciado uma vez nesta sessão (ver incidente acima).
+
+**Próximo passo combinado:** usuário ia retestar a exclusão de Cargo (individual e em lote) após
+o restart do servidor. Nenhum outro item novo priorizado na fila.
+
+---
+
 ## Como usar este arquivo em sessões futuras
 
 No início de uma sessão, se o usuário perguntar "qual o contexto/status de X", leia este arquivo antes de assumir que a memória padrão (`~/.claude/.../memory/`) está atualizada — o ambiente deste projeto (Codespace) pode ter sido recriado desde a última sessão, apagando a memória padrão sem apagar o repositório.
