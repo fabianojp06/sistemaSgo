@@ -568,7 +568,21 @@ Usuário testou a guia Valor Orçado e achou que o ranking "não fará sentido" 
    - `ValorOrcadoContasArvore.tsx` (`ValorOrcadoResumoVisual`): seletor de nível (botões 1-4, padrão 1), `extrairRankingPorNivel` reimplementado no client (mesma regra, árvore já serializada), `corPorConta` (hash simples de char-code do `contaId` % tamanho da paleta) substituindo cor por posição.
    - **Ajuste pedido em seguida pelo usuário**: o gráfico (`BarChartHorizontal.tsx`) ficou desproporcional com níveis mais profundos (muito mais barras). Causa: altura de linha fixa (36px) num SVG com `viewBox` proporcional e `width=100%` — mais barras = SVG inteiro esticando em altura sem limite. Corrigido: altura de linha adaptativa (`Math.max(22, Math.min(36, 480 / nº barras))`), fonte reduzida quando compacto, e teto de altura com scroll (`max-h-[520px] overflow-y-auto`) para níveis muito granulares.
 
-**Estado ao final:** `tsc --noEmit` limpo em cada etapa. Suíte completa: 257/263 passando — mesmas 6 falhas pré-existentes do baseline da sessão (comparado com a entrada anterior, 253/259 → 257/263: +4 testes novos verdes, 0 regressão). Servidor validado sem erro de runtime após cada mudança (reiniciado com `.next/` limpo, mesmo procedimento do incidente de cache do Turbopack já registrado nesta sessão, mais uma vez precisou disso). Commit e push desta entrada a seguir.
+**Estado ao final:** `tsc --noEmit` limpo em cada etapa. Suíte completa: 257/263 passando — mesmas 6 falhas pré-existentes do baseline da sessão (comparado com a entrada anterior, 253/259 → 257/263: +4 testes novos verdes, 0 regressão). Servidor validado sem erro de runtime após cada mudança (reiniciado com `.next/` limpo, mesmo procedimento do incidente de cache do Turbopack já registrado nesta sessão, mais uma vez precisou disso). Commitado e enviado a `origin/master` (`f39468e`).
+
+## 2026-08-07 (cont. 6) — registrada às 17:52 UTC — BarChartHorizontal reescrito (HTML/CSS em vez de SVG)
+
+Usuário testou o ajuste de proporção do commit `f39468e` e reportou que "continua horrível" e o nome da conta seguia sendo cortado — 2ª tentativa de patch pontual no mesmo componente não resolveu.
+
+**Causa raiz identificada (não era mais um parâmetro errado, era a abordagem):** `BarChartHorizontal.tsx` usava um `<svg>` com `viewBox` de largura fixa (640px) + `width="100%"` — o navegador escala o SVG inteiro em bloco pelo aspect ratio do viewBox, então qualquer variação no número de barras (o próprio objetivo da US-121, ranking por nível) distorcia a proporção do gráfico inteiro. Além disso, a faixa reservada para o rótulo da conta era fixa em 200px e o texto SVG não quebra linha nem trunca sozinho — rótulos mais longos (`${codigoErp} — ${nomeConta}`) vazavam para fora da área visível do SVG e ficavam cortados sem nenhum aviso.
+
+**Correção:** reescrito o componente inteiro como HTML/CSS puro (grid + flexbox), sem SVG e sem lib nova — cada linha ocupa a largura real do container (responsivo de verdade, sem aspect ratio travado), o nome da conta usa `truncate` do Tailwind (reticências) com `title` mostrando o texto completo no hover, e a barra é uma `div` com `width` em porcentagem. Continua com `max-h-[520px] overflow-y-auto` para rankings com muitas barras (níveis mais profundos). Mesma interface de props (`titulo`/`barras`/`formatarValor`), então `EmpregadoPanel.tsx` (outro consumidor do componente) não precisou de nenhuma mudança.
+
+**Usuário confirmou que funcionou** ("agora deu certo") após testar no navegador.
+
+**Estado ao final:** `tsc --noEmit` limpo, servidor reiniciado com `.next/` limpo e validado sem erro de runtime. Sem mudança de lógica de dados — puramente visual, suíte de testes não afetada (não rodada de novo).
+
+**Lição para sessões futuras:** ao reportar um problema visual pela 2ª vez no mesmo componente após um "ajuste fino" não ter resolvido, considerar trocar a abordagem em vez de continuar ajustando parâmetros da mesma implementação — SVG com viewBox de proporção fixa é frágil para conteúdo de tamanho variável; HTML/CSS com flexbox é o padrão mais robusto para esse tipo de gráfico simples neste projeto.
 
 **Próximo passo combinado:** nenhum item novo priorizado. Seguem em aberto: modo leitura (`readOnly`) nos componentes de detalhe do histórico de versões (desde US-119).
 

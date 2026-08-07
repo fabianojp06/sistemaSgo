@@ -5,11 +5,16 @@ import { useState } from 'react';
 type Barra = { id: string; label: string; valor: number; cor: string };
 
 /**
- * Gráfico de barras horizontais interativo (SVG puro, sem dependência nova).
- * Cada barra recebe sua própria cor (identidade por Cargo) — paleta categórica
- * validada pela skill dataviz, atribuída pelo chamador (ver EmpregadoPanel.tsx,
- * ResumoConsolidacao) para ficar consistente entre os dois gráficos da tela.
- * Identidade já reforçada pelo rótulo no eixo, então não precisa de legenda.
+ * Gráfico de barras horizontais (HTML/CSS puro, sem SVG e sem dependência
+ * nova). Reescrito nesta sessão: a versão anterior usava um SVG com viewBox
+ * de largura fixa (640px) e uma faixa de rótulo também fixa (200px) — como o
+ * SVG escala em bloco pelo aspect ratio do viewBox, qualquer variação no
+ * número de barras (ranking por nível, US-121) distorcia a proporção do
+ * gráfico inteiro, e rótulos de conta mais longos que 200px eram cortados
+ * sem qualquer aviso visual (vazavam para fora da área do SVG). Com
+ * flexbox, cada linha ocupa a largura real do container (responsivo de
+ * verdade) e o rótulo usa `truncate` do Tailwind (reticências + `title`
+ * com o texto completo no hover), em vez de cortar sem indicar que cortou.
  */
 export function BarChartHorizontal({
   titulo,
@@ -25,88 +30,46 @@ export function BarChartHorizontal({
   const ordenadas = [...barras].sort((a, b) => b.valor - a.valor);
   const maiorValor = Math.max(...ordenadas.map((b) => b.valor), 1);
 
-  // US-121: com o ranking podendo aprofundar até o nível 4, a quantidade de barras varia
-  // muito (de ~3 na raiz a dezenas em contas mais granulares). Altura de linha fixa fazia o
-  // SVG (viewBox proporcional, width 100%) esticar demais em altura com muitas barras,
-  // ficando desproporcional ao resto da tela — por isso a altura por linha encolhe conforme
-  // o total de barras cresce, dentro de limites que mantêm o texto legível.
-  const alturaLinha = Math.max(22, Math.min(36, 480 / Math.max(ordenadas.length, 1)));
-  const alturaGrafico = ordenadas.length * alturaLinha;
-  const larguraRotulo = 200;
-  const larguraTotal = 640;
-  const larguraBarraMax = larguraTotal - larguraRotulo - 90; // espaço para o valor no fim
-  const fonteBase = alturaLinha < 28 ? 10 : 12;
-  const alturaBarra = Math.max(alturaLinha - 16, 12);
-
   return (
     <div className="rounded border p-4">
       <h4 className="mb-3 text-sm font-medium text-gray-700">{titulo}</h4>
-      <div className="max-h-[520px] overflow-y-auto">
-      <svg width="100%" viewBox={`0 0 ${larguraTotal} ${alturaGrafico}`} role="img" aria-label={titulo}>
-        {/* Gridlines verticais recessivas em valores redondos */}
-        {[0, 0.25, 0.5, 0.75, 1].map((fracao) => (
-          <line
-            key={fracao}
-            x1={larguraRotulo + larguraBarraMax * fracao}
-            x2={larguraRotulo + larguraBarraMax * fracao}
-            y1={0}
-            y2={alturaGrafico}
-            stroke="#e1e0d9"
-            strokeWidth={1}
-          />
-        ))}
-
-        {ordenadas.map((barra, i) => {
-          const y = i * alturaLinha;
-          const largura = (barra.valor / maiorValor) * larguraBarraMax;
+      <div className="flex max-h-[520px] flex-col gap-1.5 overflow-y-auto pr-1">
+        {ordenadas.map((barra) => {
+          const percentual = Math.max((barra.valor / maiorValor) * 100, 1.5);
           const ativo = ativoId === barra.id;
 
           return (
-            <g
+            <div
               key={barra.id}
-              tabIndex={0}
+              className="grid grid-cols-[minmax(0,200px)_1fr] items-center gap-2 rounded px-1 py-1 hover:bg-gray-50"
               onMouseEnter={() => setAtivoId(barra.id)}
               onMouseLeave={() => setAtivoId(null)}
               onFocus={() => setAtivoId(barra.id)}
               onBlur={() => setAtivoId(null)}
-              style={{ cursor: 'pointer', outline: 'none' }}
+              tabIndex={0}
+              title={`${barra.label}: ${formatarValor(barra.valor)}`}
             >
-              {/* Hit target maior que a barra, cobrindo a linha inteira */}
-              <rect x={0} y={y} width={larguraTotal} height={alturaLinha} fill="transparent" />
-
-              <text x={larguraRotulo - 8} y={y + alturaLinha / 2 + 4} textAnchor="end" fontSize={fonteBase} fill="#52514e">
+              <span className="truncate text-right text-xs text-gray-600" title={barra.label}>
                 {barra.label}
-              </text>
-
-              <rect
-                x={larguraRotulo}
-                y={y + (alturaLinha - alturaBarra) / 2}
-                width={Math.max(largura, 2)}
-                height={alturaBarra}
-                rx={4}
-                fill={barra.cor}
-                style={ativo ? { filter: 'brightness(0.85)' } : undefined}
-              />
-
-              <text
-                x={larguraRotulo + largura + 8}
-                y={y + alturaLinha / 2 + 4}
-                fontSize={fonteBase}
-                fontWeight={ativo ? 600 : 400}
-                fill="#0b0b0b"
-              >
-                {formatarValor(barra.valor)}
-              </text>
-
-              {ativo && (
-                <title>
-                  {barra.label}: {formatarValor(barra.valor)}
-                </title>
-              )}
-            </g>
+              </span>
+              <div className="flex items-center gap-2">
+                <div className="h-4 min-w-0 flex-1 rounded bg-gray-100">
+                  <div
+                    className="h-full rounded transition-[width]"
+                    style={{
+                      width: `${percentual}%`,
+                      backgroundColor: barra.cor,
+                      filter: ativo ? 'brightness(0.85)' : undefined,
+                    }}
+                  />
+                </div>
+                <span className={`w-24 flex-shrink-0 text-xs tabular-nums text-gray-900 ${ativo ? 'font-semibold' : ''}`}>
+                  {formatarValor(barra.valor)}
+                </span>
+              </div>
+            </div>
           );
         })}
-      </svg>
       </div>
     </div>
   );
