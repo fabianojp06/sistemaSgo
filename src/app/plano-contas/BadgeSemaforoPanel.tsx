@@ -63,6 +63,18 @@ export async function BadgeSemaforoPanel({
     })
     .filter((c): c is NonNullable<typeof c> => c !== null);
 
+  // Só contas com valor lançado, decrescente por valor realizado.
+  const contasComValor = contasAnaliticas
+    .filter((conta) => {
+      const badge = badges.get(conta.id);
+      return badge && !badge.valorRealizado.isZero();
+    })
+    .sort((a, b) => {
+      const valorA = badges.get(a.id)!.valorRealizado;
+      const valorB = badges.get(b.id)!.valorRealizado;
+      return valorB.comparedTo(valorA);
+    });
+
   return (
     <div className="flex flex-col gap-6 rounded-xl bg-slate-50 p-4 md:p-6">
       {colunasRanking.length > 0 && (
@@ -73,10 +85,12 @@ export async function BadgeSemaforoPanel({
         <div className="border-b bg-slate-50 px-4 py-2.5">
           <h3 className="text-sm font-semibold text-slate-800">Semáforo Orçamentário — por Conta Analítica</h3>
         </div>
+        {contasComValor.length === 0 && (
+          <p className="px-4 py-3 text-sm text-gray-500">Nenhuma conta com valor lançado nesta versão.</p>
+        )}
         <ul className="divide-y">
-          {contasAnaliticas.map((conta) => {
-            const badge = badges.get(conta.id);
-            if (!badge) return null;
+          {contasComValor.map((conta) => {
+            const badge = badges.get(conta.id)!;
             return (
               <li key={conta.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm hover:bg-slate-100">
                 <span className="text-slate-700">{conta.label}</span>
