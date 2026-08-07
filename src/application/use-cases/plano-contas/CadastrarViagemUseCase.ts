@@ -5,7 +5,6 @@ import {
   ContaViagemNaoAnaliticaError,
   MetaNaoEncontradaError,
   VersaoPropostaInvalidaError,
-  ViagemForaDeEscopoCategoriaError,
 } from '@/domain/plano-contas/errors';
 
 type CadastrarViagemInput = {
@@ -24,9 +23,12 @@ type CadastrarViagemInput = {
 };
 
 /**
- * US-109, Cenário 1 — Cadastrar Viagem. Exige Proposta categoria=POR_META com
- * Meta ativa cadastrada (US-112); as 3 contas (passagem/diária/transporte)
- * devem ser analíticas [RN_PLA_003]. Custo Estimado sempre calculado no servidor.
+ * US-109, Cenário 1 — Cadastrar Viagem. Aceita Proposta categoria=POR_META ou
+ * CONSOLIDADA (correção de escopo, 2026-08-07 — antes era exclusiva de
+ * POR_META). Em POR_META, exige Meta ativa cadastrada (US-112), mesmo padrão
+ * de ItemPatrimonial (ADR-023); em CONSOLIDADA, metaId fica null. As 3 contas
+ * (passagem/diária/transporte) devem ser analíticas [RN_PLA_003]. Custo
+ * Estimado sempre calculado no servidor.
  */
 export class CadastrarViagemUseCase {
   constructor(private readonly prisma: PrismaClient) {}
@@ -59,13 +61,13 @@ export class CadastrarViagemUseCase {
         'Manutenção Rejeitada: este snapshot está homologado e tornou-se permanentemente imutável por ciclo de vida.',
       );
     }
-    if (versao.proposta.categoria !== 'POR_META') {
-      throw new ViagemForaDeEscopoCategoriaError();
-    }
-
-    const meta = await this.prisma.meta.findFirst({ where: { tenantId: input.tenantId, versaoId: input.versaoId, ativo: true } });
-    if (!meta) {
-      throw new MetaNaoEncontradaError();
+    let metaId: string | null = null;
+    if (versao.proposta.categoria === 'POR_META') {
+      const meta = await this.prisma.meta.findFirst({ where: { tenantId: input.tenantId, versaoId: input.versaoId, ativo: true } });
+      if (!meta) {
+        throw new MetaNaoEncontradaError();
+      }
+      metaId = meta.id;
     }
 
     const contas = await this.prisma.contaContabil.findMany({
@@ -96,7 +98,7 @@ export class CadastrarViagemUseCase {
         data: {
           tenantId: input.tenantId,
           versaoId: input.versaoId,
-          metaId: meta.id,
+          metaId,
           descricao,
           quantidadePessoas: input.quantidadePessoas,
           mediaDias: input.mediaDias,

@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client';
 import { describe, expect, it } from 'vitest';
 import { vi } from 'vitest';
 import { CadastrarViagemUseCase } from './CadastrarViagemUseCase';
-import { CamposObrigatoriosViagemError, ContaViagemNaoAnaliticaError, MetaNaoEncontradaError, ViagemForaDeEscopoCategoriaError } from '@/domain/plano-contas/errors';
+import { CamposObrigatoriosViagemError, ContaViagemNaoAnaliticaError, MetaNaoEncontradaError } from '@/domain/plano-contas/errors';
 
 type VersaoMock = { id: string; tenantId: string; status: string; ativa: boolean; proposta: { categoria: string } };
 type ContaMock = { id: string; isAnalitica: boolean };
@@ -75,11 +75,17 @@ describe('CadastrarViagemUseCase [US-109]', () => {
     );
   });
 
-  it('bloqueia Viagem em Proposta CONSOLIDADA (sem Meta) [Cenário 2]', async () => {
-    const prisma = criarPrismaMock([versaoConsolidada], [], []);
+  it('aceita Viagem em Proposta CONSOLIDADA, sem exigir Meta (correção de escopo, 2026-08-07) [Cenário 2]', async () => {
+    const prisma = criarPrismaMock(
+      [versaoConsolidada],
+      [],
+      [contaAnalitica('cp'), contaAnalitica('cd'), contaAnalitica('ct')],
+    );
     const useCase = new CadastrarViagemUseCase(prisma as never);
 
-    await expect(useCase.execute({ ...inputBase, versaoId: 'v2' })).rejects.toThrow(ViagemForaDeEscopoCategoriaError);
+    const viagem = await useCase.execute({ ...inputBase, versaoId: 'v2' });
+
+    expect(viagem.metaId).toBeNull();
   });
 
   it('bloqueia quando a Versão não tem Meta ativa cadastrada', async () => {

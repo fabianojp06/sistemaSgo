@@ -417,8 +417,10 @@ model Viagem {
   tenantId String
   versaoId String
   versao   VersaoProposta @relation(fields: [versaoId], references: [id])
-  metaId   String
-  meta     Meta           @relation(fields: [metaId], references: [id])
+  // Nullable — obrigatório só quando Proposta.categoria=POR_META (mesmo padrão de
+  // ItemPatrimonial.metaId, ADR-023); sempre null em CONSOLIDADA.
+  metaId   String?
+  meta     Meta?          @relation(fields: [metaId], references: [id])
 
   descricao String // até 100 caracteres, validado na aplicação
 

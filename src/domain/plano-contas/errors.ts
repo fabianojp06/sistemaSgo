@@ -433,13 +433,6 @@ export class CamposObrigatoriosBeneficioError extends Error {
   }
 }
 
-// US-109, Cenário 2 — Viagem exige Meta, que só existe em Proposta categoria=POR_META.
-export class ViagemForaDeEscopoCategoriaError extends Error {
-  constructor() {
-    super('Viagem exige uma Meta vinculada — disponível apenas em Propostas por Meta.');
-    this.name = 'ViagemForaDeEscopoCategoriaError';
-  }
-}
 
 // US-109, Cenário 3 — conta referenciada (passagem/diária/transporte) não é analítica.
 export class ContaViagemNaoAnaliticaError extends Error {

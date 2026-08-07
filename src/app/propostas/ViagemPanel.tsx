@@ -136,7 +136,7 @@ function NovaViagemForm({
   );
 }
 
-/** US-109/US-115 — Viagens (exclusiva de Proposta POR_META; o use case bloqueia se não for). */
+/** US-109/US-115 — Viagens (POR_META ou CONSOLIDADA; Meta só é exigida pelo use case quando POR_META). */
 export function ViagemPanel({
   versaoId,
   contasAnaliticas,
