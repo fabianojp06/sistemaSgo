@@ -182,7 +182,19 @@ export default async function PropostaDetalhePage({
       <PropostaTabs propostaId={id} guias={GUIAS} guiaAtiva={guiaAtiva} />
 
       <section>
-        {guiaAtiva === 'valor-orcado' && <ValorOrcadoContaForm versaoId={versao.id} contasAnaliticas={contasAnaliticas} readOnly={readOnly} />}
+        {guiaAtiva === 'valor-orcado' && (
+          <div className="flex flex-col gap-3">
+            <div className="flex justify-end">
+              <Link
+                href="/propostas"
+                className="rounded-lg border border-gray-100 bg-white px-4 py-2 text-sm font-medium text-blue-700 shadow-sm hover:shadow-md"
+              >
+                &larr; Voltar para Propostas
+              </Link>
+            </div>
+            <ValorOrcadoContaForm versaoId={versao.id} contasAnaliticas={contasAnaliticas} readOnly={readOnly} />
+          </div>
+        )}
 
         {guiaAtiva === 'semaforo' && (
           <BadgeSemaforoPanel tenantId={tenantId} versaoId={versao.id} contasAnaliticas={contasAnaliticas} />
