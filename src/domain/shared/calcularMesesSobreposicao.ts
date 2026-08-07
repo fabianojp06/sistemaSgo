@@ -1,6 +1,21 @@
-/** Conta meses cheios (calendário, inclusivo) entre duas datas — mínimo 1. */
+/**
+ * Conta meses entre duas datas, sensível ao dia — não só ano/mês. Meses
+ * cheios entre `inicio` e `fim` (contados por aniversário: ex. 01/09/2026 →
+ * 01/09/2027 = 12 meses cheios, não 13), mais 1 mês extra se sobrar
+ * qualquer fração de dia além dos meses cheios. Mínimo 1 (mesmo início e
+ * fim no mesmo dia conta como 1 mês).
+ *
+ * Corrige o bug anterior (ano×12 + mês + 1), que superestimava em 1 mês
+ * sempre que o dia de `fim` fosse >= dia de `inicio` — ex.: um contrato de
+ * exatamente 1 ano (mesmo dia em início e fim) contava 13 meses, não 12.
+ */
 export function contarMesesInclusivo(inicio: Date, fim: Date): number {
-  const meses = (fim.getUTCFullYear() - inicio.getUTCFullYear()) * 12 + (fim.getUTCMonth() - inicio.getUTCMonth()) + 1;
+  let meses = (fim.getUTCFullYear() - inicio.getUTCFullYear()) * 12 + (fim.getUTCMonth() - inicio.getUTCMonth());
+  if (fim.getUTCDate() < inicio.getUTCDate()) meses -= 1;
+
+  const baseMesesCheios = new Date(Date.UTC(inicio.getUTCFullYear(), inicio.getUTCMonth() + meses, inicio.getUTCDate()));
+  if (fim.getTime() > baseMesesCheios.getTime()) meses += 1;
+
   return Math.max(meses, 1);
 }
 
