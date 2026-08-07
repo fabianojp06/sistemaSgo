@@ -44,11 +44,11 @@ export default async function TelaPrincipal() {
   const dataHoraAcesso = new Date().toLocaleString('pt-BR');
 
   return (
-    <main className="flex min-h-screen flex-col">
-      <header className="flex items-center justify-between border-b px-6 py-3">
+    <main className="flex min-h-screen flex-col bg-[#F7F8FA] dark:bg-[#12151C]">
+      <header className="flex items-center justify-between border-b border-[#DDE2EA] bg-white px-6 py-3.5 dark:border-[#2B303C] dark:bg-[#191D26]">
         <div className="text-sm">
-          <p className="font-medium">{usuario?.nomeCompleto ?? 'Usuário'}</p>
-          <p className="text-gray-500">{dataHoraAcesso}</p>
+          <p className="font-semibold text-[#1A1F29] dark:text-[#EBEDF2]">{usuario?.nomeCompleto ?? 'Usuário'}</p>
+          <p className="text-[#8A8F98] dark:text-[#767C89]">{dataHoraAcesso}</p>
         </div>
         <div className="flex items-center gap-2">
           <BotaoAjuda />
@@ -57,31 +57,43 @@ export default async function TelaPrincipal() {
       </header>
 
       {menu.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center p-6 text-center text-gray-500">
-          <p>Nenhuma funcionalidade disponível para o seu perfil de acesso. Contate o Administrador.</p>
+        <div className="flex flex-1 items-center justify-center p-6">
+          <div className="max-w-sm rounded-[10px] border border-[#DDE2EA] bg-white p-6 text-center shadow-[0_1px_2px_rgba(20,24,33,0.05),0_1px_1px_rgba(20,24,33,0.04)] dark:border-[#2B303C] dark:bg-[#191D26]">
+            <p className="text-sm text-[#5B6270] dark:text-[#A4AAB6]">
+              Nenhuma funcionalidade disponível para o seu perfil de acesso. Contate o Administrador.
+            </p>
+          </div>
         </div>
       ) : (
         <div className="flex flex-1">
-          <nav className="w-64 border-r p-4">
-            <ul className="space-y-4">
+          <nav className="w-64 border-r border-[#DDE2EA] bg-white p-4 dark:border-[#2B303C] dark:bg-[#191D26]">
+            <ul className="flex flex-col gap-5">
               {menu.map((modulo) => {
                 const navegaveis = modulo.funcionalidades.filter((f) => f.tipo === 'NAVEGAVEL');
                 if (navegaveis.length === 0) return null;
 
                 return (
-                  <li key={modulo.chave}>
-                    <p className="font-medium">{modulo.nome}</p>
-                    <ul className="mt-1 space-y-1 pl-3 text-sm text-gray-500">
+                  <li key={modulo.chave} className="flex flex-col gap-1.5">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-[22px] w-[22px] flex-shrink-0 items-center justify-center rounded-[6px] bg-[#E8EEFC] text-[0.65rem] font-semibold text-[#2B5FD9] dark:bg-[#1D2A48] dark:text-[#6D93F0]">
+                        {modulo.nome.charAt(0).toUpperCase()}
+                      </span>
+                      <p className="font-semibold text-[#1A1F29] dark:text-[#EBEDF2]">{modulo.nome}</p>
+                    </div>
+                    <ul className="flex flex-col gap-0.5 pl-[30px] text-sm">
                       {navegaveis.map((funcionalidade) => {
                         const href = ROTA_POR_FUNCIONALIDADE[funcionalidade.chave];
                         return (
                           <li key={funcionalidade.chave}>
                             {href ? (
-                              <Link href={href} className="hover:text-gray-900 hover:underline">
+                              <Link
+                                href={href}
+                                className="block rounded-[6px] px-2 py-1 text-[#5B6270] hover:bg-[#E8EEFC] hover:text-[#2B5FD9] dark:text-[#A4AAB6] dark:hover:bg-[#1D2A48] dark:hover:text-[#6D93F0]"
+                              >
                                 {funcionalidade.nome}
                               </Link>
                             ) : (
-                              funcionalidade.nome
+                              <span className="block px-2 py-1 text-[#8A8F98] dark:text-[#767C89]">{funcionalidade.nome}</span>
                             )}
                           </li>
                         );
@@ -92,7 +104,7 @@ export default async function TelaPrincipal() {
               })}
             </ul>
           </nav>
-          <div className="flex-1 p-6" />
+          <div className="flex-1 bg-[#F7F8FA] p-6 dark:bg-[#12151C]" />
         </div>
       )}
     </main>

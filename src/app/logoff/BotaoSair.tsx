@@ -37,23 +37,31 @@ export function BotaoSair() {
 
   return (
     <>
-      <button type="button" onClick={() => setConfirmando(true)} className="rounded border px-4 py-2">
+      <button
+        type="button"
+        onClick={() => setConfirmando(true)}
+        className="rounded-[7px] border border-[#DDE2EA] px-4 py-1.5 text-sm text-[#5B6270] hover:border-[#C43D3D] hover:text-[#C43D3D] dark:border-[#2B303C] dark:text-[#A4AAB6] dark:hover:border-[#E0716B] dark:hover:text-[#E0716B]"
+      >
         Sair
       </button>
 
       {confirmando && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/40" role="dialog" aria-modal="true">
-          <div className="w-full max-w-xs space-y-4 rounded-lg bg-white p-6 dark:bg-gray-900">
-            <p>Deseja realmente sair?</p>
+          <div className="w-full max-w-xs space-y-4 rounded-[10px] border border-[#DDE2EA] bg-white p-6 dark:border-[#2B303C] dark:bg-[#191D26]">
+            <p className="text-[#1A1F29] dark:text-[#EBEDF2]">Deseja realmente sair?</p>
             <div className="flex justify-end gap-2">
-              <button type="button" onClick={() => setConfirmando(false)} className="rounded border px-4 py-2">
+              <button
+                type="button"
+                onClick={() => setConfirmando(false)}
+                className="rounded-[7px] border border-[#DDE2EA] px-4 py-2 text-[#5B6270] dark:border-[#2B303C] dark:text-[#A4AAB6]"
+              >
                 Não
               </button>
               <button
                 type="button"
                 onClick={confirmarLogoff}
                 disabled={pending}
-                className="rounded bg-blue-600 px-4 py-2 text-white"
+                className="rounded-[7px] bg-[#2B5FD9] px-4 py-2 text-white disabled:opacity-50 dark:bg-[#6D93F0] dark:text-[#12151C]"
               >
                 Sim
               </button>

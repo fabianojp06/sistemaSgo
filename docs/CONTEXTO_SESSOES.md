@@ -536,11 +536,26 @@ Usuário testou US-119 no navegador (via extensão Claude in Chrome ativa localm
    - `prisma/seed.mjs`: nova Funcionalidade CONTEXTUAL `propostas.restaurar-versao` — seed rodado e aplicado em produção.
    - `PropostaListPanel.tsx`: botão "Restaurar" em cada linha do histórico (exceto a vigente) + `ModalConfirmarRestauracao` (componente local em Tailwind, sem lib nova) nomeando explicitamente qual versão vigente será rebaixada; `page.tsx` passa a nova permissão `podeRestaurarVersao`.
 
-**Estado ao final:** `tsc --noEmit` limpo. Suíte completa: 253/259 passando — mesmas 6 falhas pré-existentes do baseline desta sessão (comparado com a entrada anterior, 249/255 → 253/259: +4 testes novos verdes de `RestaurarVersaoPropostaUseCase`, 0 regressão). Migration e seed aplicados no Supabase real. Commit e push pendentes — a fazer na sequência desta mesma entrada.
+**Estado ao final:** `tsc --noEmit` limpo. Suíte completa: 253/259 passando — mesmas 6 falhas pré-existentes do baseline desta sessão (comparado com a entrada anterior, 249/255 → 253/259: +4 testes novos verdes de `RestaurarVersaoPropostaUseCase`, 0 regressão). Migration e seed aplicados no Supabase real. Commitado e enviado a `origin/master` (`58cfbc9`).
 
 **Nota operacional:** tentativa de usar a extensão Claude in Chrome para testar `/propostas` diretamente falhou — a extensão está ativa no navegador local do usuário, mas as ferramentas MCP correspondentes não aparecem disponíveis nesta sessão remota (Codespace). Também não dá para testar via `curl`, pois a rota exige sessão Clerk autenticada (redireciona para `/login` sem cookie de sessão). Testes de UI desta sessão dependeram do usuário verificar manualmente no navegador.
 
-**Próximo passo combinado:** nenhum item novo priorizado. Escopo declarado como não implementado desde US-119 continua em aberto: modo leitura (`readOnly`) nos componentes de detalhe ao abrir uma versão antiga do histórico (hoje só metadados são exibidos, sem drill-down).
+**Incidente de cache do Turbopack (3ª ocorrência nesta sessão):** depois de restaurar uma versão no navegador, apareceu erro de runtime "Invalid value for argument `tipoOperacao`. Expected TipoOperacao" mesmo com o `@prisma/client` já regenerado com o valor novo do enum — Turbopack não recompilou o chunk que referenciava o enum antigo. Resolvido com o procedimento já registrado: matar `next-server`, apagar `.next/`, subir `npm run dev` de novo.
+
+## 2026-08-07 (cont. 4) — registrada às 17:33 UTC — Redesign visual de `/propostas` e da Tela Principal
+
+Usuário achou o layout de `/propostas` "muito feito" (cru/genérico) e pediu para reunir o time para um brainstorm de redesign antes de mexer em código.
+
+1. **[AN/PO]** Consulta de UX (não gerou US formal): definiu hierarquia de informação (Nome > Status+versão vigente > código discreto), recomendou mover ações raras/arriscadas (Criar Versão, Duplicar, Excluir Versão) para um menu overflow "⋯", mantendo só "Histórico" sempre visível; recomendou diferenciar visualmente Consolidada vs. Por Meta (ícone/cor); confirmou que o volume esperado de Propostas por tenant é dezenas, não centenas — favorece lista/tabela densa, não grid de cards.
+2. **[Full Stack Dev]** Protótipo publicado como Artifact HTML (`https://claude.ai/code/artifact/f221ae2c-f503-4b6f-8b05-bf6a79c77296`) com paleta nova (fundo levemente azulado, accent `#2B5FD9`/`#6D93F0`, categoria Por Meta em roxo `#8A5CF6`/`#B39BF9`, semânticas de status separadas do accent) e a estrutura de card com ícone de categoria, pill de status+versão, menu overflow. **Usuário aceitou o protótipo sem pedir ajuste.**
+3. **[Full Stack Dev]** Implementado no código real:
+   - `PropostaListPanel.tsx`: reescrito por completo — `LinhaProposta` virou card com ícone "C"/"M" por categoria, pill de status mapeado do `StatusProposta` real (`OFICIALIZADO`=verde/vigente, `ENCERRADO`=cinza, `RASCUNHO`/`EM_ELABORACAO`=âmbar), novo componente `MenuAcoesProposta` (dropdown com fecha-ao-clicar-fora via `useRef`+listener de `mousedown`), `HistoricoVersoes`/`ModalConfirmarRestauracao` restilizados sem alterar lógica. Confirmado antes de codar: projeto usa Tailwind v4 puro sem shadcn (sem `components.json`), `dark:` funciona nativo via `prefers-color-scheme` (Tailwind v4) — sem lib de design nova introduzida.
+   - Estendido o mesmo redesign para a **Tela Principal** (`src/app/page.tsx`, pedido em seguida pelo usuário): header, nav lateral com ícone de inicial por módulo, estado vazio em card, mesma paleta. `BotaoAjuda.tsx`/`BotaoSair.tsx` restilizados também (usados só na Tela Principal, sem risco de quebrar outra tela). Nenhuma lógica de menu/permissão/auth (UC01.03, ADR-021) foi tocada.
+   - Terceiro incidente de cache do Turbopack na sessão (mesmo padrão, mesma correção: matar processo, apagar `.next/`, resubir).
+
+**Estado ao final:** `tsc --noEmit` limpo em cada etapa. Servidor validado sem erro de runtime (`/propostas` e `/` respondendo 307→`/login` normalmente, sem exceção). Sem mudança de lógica de dados/backend nesta entrada — puramente visual, então sem impacto na suíte de testes (não rodada de novo, nenhum arquivo `.test.ts` tocado). Commit e push desta entrada a seguir.
+
+**Próximo passo combinado:** nenhum item novo priorizado além do redesign. Segue em aberto desde US-119: modo leitura (`readOnly`) nos componentes de detalhe ao abrir uma versão antiga do histórico.
 
 ---
 
