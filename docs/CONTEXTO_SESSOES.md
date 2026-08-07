@@ -470,6 +470,38 @@ de Viagens/Bens/Rateio de Impostos, ainda não documentadas para o usuário fina
 
 ---
 
+## 2026-08-07 14:06 UTC — Sessão de teste manual real: reposicionamento de UI, ADR-032 (Valor Realizado do Semáforo), correção de contagem de meses e US-118 (dashboard Valor Orçado)
+
+Sessão longa, guiada por feedback de teste manual real do usuário no navegador (Codespace), não por backlog — mesmo padrão das sessões de 2026-08-06. Link de teste usado: `https://laughing-fiesta-q676pqp6rw5f47p4-3000.app.github.dev`.
+
+**Ajustes de UI pontuais (início da sessão):** botão "Estrutura Funcional e Cargos" reposicionado para dentro da guia Empregados (antes era global no header de todas as guias), ordenação decrescente + ocultar contas zeradas no Semáforo, paleta categórica no gráfico de colunas do Semáforo enquanto não há Valor Orçado (skill `dataviz`, paleta validada), botão "Detalhes" com modal de benefícios por Empregado, botão "Atualizar Consolidação" direto na linha da lista de Cargos (mesmo use case do ADR-030, sem precisar entrar no modo de edição). Commits `5e7c3c8`→`4de5e7a`→`5bd51eb`.
+
+**ADR-032 — Valor Realizado do Semáforo vira total do prazo do contrato:** usuário pediu que o "Valor Realizado" comparado com o Orçado no Semáforo passasse a refletir o total do período da Proposta, não o valor mensal corrente. Tech Lead decidiu: Viagem/ItemPatrimonial/RateioImpostoGrade já são valor total (não mexer); só os componentes de Empregado (único custo mensal recorrente) passam a ser multiplicados pelos meses de sobreposição entre o período do Empregado e o período da Proposta, reaproveitando a lógica de overlap de `calcularValorTotalConsolidado.ts` (US-113b), extraída para `domain/shared/calcularMesesSobreposicao.ts`. Commit `8c55809`.
+
+**Bug real encontrado ao validar com dado real (não simulado):** usuário calculou manualmente o Vale Transporte esperado (R$ 15.840 para 2 estagiários × 12 meses) e o sistema mostrava R$ 17.160. Causa raiz: `contarMesesInclusivo` contava 13 meses para um contrato de exatamente 1 ano com o mesmo dia em início e fim (ex. 01/09/2026 a 01/09/2027) — fórmula antiga (`ano×12 + mês + 1`) não era sensível ao dia. Corrigida para contar meses cheios por aniversário de dia, com +1 só se sobrar fração — mesmo comportamento já validado nos testes de US-113b (partial month arredonda para cima), sem duplo-contar o mês de aniversário exato. Commit `b332ad3`, com 5 testes novos dedicados.
+
+**Aviso proativo de Meta obrigatória (Proposta POR_META):** backend já bloqueava (`MetaNaoEncontradaError`) cadastro de Empregado/consolidação sem Meta configurada na Versão, mas só depois de tentar salvar. Tela agora avisa antes, com link direto para a guia Meta, e desabilita os formulários enquanto a Meta não existir. Commit `9234b3a`.
+
+**Botões de navegação:** "← Página Inicial" na tela Propostas, "← Voltar para Propostas" na guia Valor Orçado. Commits `ee54e06`, `d22eb4b`.
+
+**US-118 — guia Valor Orçado vira dashboard-resumo (retrabalhada 2x na mesma sessão):**
+1. Primeira implementação: Valor Global = `Meta.valorGlobal` (POR_META) ou soma direta de `ValorOrcadoConta` (CONSOLIDADA) — ou seja, o que foi lançado manualmente. Formulário de lançamento (`ValorOrcadoContaForm`, US-007) separado para uma guia nova, "Lançar Valor Orçado" (guia Valor Orçado vira 100% leitura). Commits `a003314`, `13d0d0e`.
+2. **Usuário testou e corrigiu o conceito:** "Valor Global" não deveria vir do que é lançado manualmente (isso é orçamento/planejamento) — deveria vir do CUSTO REAL já gerado pela Proposta (Empregados+Viagens+Bens+Rateio de Impostos), o mesmo cálculo do Semáforo (`valorRealizado`, ADR-032). Tech Lead decidiu extrair `somarValorRealizadoPorConta` (antes privado dentro de `CalcularValorRealizadoUseCase`) para uma classe de domínio nova, `ValorRealizadoService` (mesmo padrão de `ValorOrcadoTotalizerService`), reusada tanto pelo Semáforo (comportamento idêntico, 8 testes verdes sem alterar asserção nenhuma — confirma que a extração não quebrou nada em produção) quanto pelo dashboard. Validado com dado real: Proposta B, 5 Analista de Sistemas × R$8.290 × 12 meses + 2 Estagiário de TI × R$4.380 × 12 meses = R$ 602.520, bateu exatamente. Commit `c78a01d`.
+3. Enfeitamento visual pedido pelo usuário: ícones nos KPIs, gráfico de ranking das contas sintéticas (`BarChartHorizontal`, paleta categórica), barra de peso proporcional na árvore expansível. Commit `4b4941b`.
+4. **Bug de runtime descoberto ao testar no navegador:** `ValorOrcadoResumoPanel` (Server Component) passava a função `formatarMoeda` como prop para `BarChartHorizontal` (Client Component) — React só serializa dados através da fronteira Server→Client, nunca funções. Corrigido extraindo `ValorOrcadoResumoVisual`, um Client Component que recebe só dados serializáveis e define a formatação internamente. Commit `3cd2616`.
+
+**Incidente operacional repetido (2x nesta sessão, mesmo padrão da sessão de 2026-08-06):** depois de editar imports/componentes com o `next dev` já rodando, o Turbopack não pegou a mudança automaticamente (`ReferenceError: X is not defined` em runtime, apesar de `tsc`/lint limpos). Correção: matar o `next-server` real (não só `next dev`), apagar `.next/` e subir de novo. **Registrar para não repetir:** sempre que um componente novo referenciado via import não aparecer em runtime mesmo com tudo compilando limpo, suspeitar do cache do Turbopack antes de investigar o código.
+
+**Achado de dados (não é bug):** durante os testes, o snapshot de custo de Empregados já cadastrados numa Proposta ficou desatualizado em relação ao Cargo (mesmo mecanismo do ADR-030 da sessão anterior) — resolvido rodando a Ressincronização diretamente via script, sem precisar recriar os Empregados do zero.
+
+**US-118 formalizada** em `docs/US-118 - Dashboard-resumo da Proposta (Valor Orçado).pt-BR.md` e movida para "Próximo da Fila" no backlog Kanban (depois implementada na mesma sessão).
+
+**Estado do repositório ao final:** tudo commitado; HEAD nesta sessão adiciona 15 commits sobre `a28208f` (início: `5e7c3c8` … fim: `3cd2616`). `tsc --noEmit` limpo em cada etapa, lint limpo. Suíte de testes: baseline de 7 falhas pré-existentes (não relacionadas) melhorou para 6 (corrigido de brinde um mock desatualizado em `CalcularValorRealizadoUseCase.test.ts`), sem nenhuma regressão nova introduzida.
+
+**Próximo passo combinado:** nenhum item novo priorizado além do que já foi feito. Se o usuário continuar testando, próximo candidato natural é revisar as demais guias (Viagens, Bens, Rateio de Impostos, Termo de Ajuste) com o mesmo padrão de teste manual real que gerou os achados desta sessão.
+
+---
+
 ## Como usar este arquivo em sessões futuras
 
 No início de uma sessão, se o usuário perguntar "qual o contexto/status de X", leia este arquivo antes de assumir que a memória padrão (`~/.claude/.../memory/`) está atualizada — o ambiente deste projeto (Codespace) pode ter sido recriado desde a última sessão, apagando a memória padrão sem apagar o repositório.

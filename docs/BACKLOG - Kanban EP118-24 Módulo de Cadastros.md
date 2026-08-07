@@ -33,6 +33,8 @@
 | US-101a | Server Action/UI de Rateio de Impostos | `configurarRateioImposto` Server Action + `RateioImpostoPanel.tsx`; permissão `plano-contas.configurar-rateio-imposto` já seedada |
 | US-114 | Gerenciar Propostas (Listar, Cadastrar, Duplicar, Excluir Versão) | Novo módulo de menu "Propostas" (`propostas.visualizar` NAVEGAVEL + `propostas.criar`/`duplicar`/`excluir-versao` CONTEXTUAL, seed aplicado); tela `/propostas` |
 | US-115 (UC03.06) | Tela de Proposta com Guias Analíticas | `/propostas/{id}/[[...guia]]` — capa Read-only + 8 abas (Valor Orçado, Semáforo, Meta, Empregados+Qtde.Empregado, Viagens, Bens, Rateio de Impostos, Termo de Ajuste), deep-link por URL; `podeEditarVersao()` centraliza o enforcement client-side de read-only; Cargo/UnidadeFuncional ficam fora (ciclo de vida por Proposta, não por Versão) |
+| ADR-032 | Valor Realizado do Semáforo = total do prazo do contrato | Empregado (único custo mensal recorrente) multiplicado pelos meses de sobreposição com o período da Proposta; `calcularMesesSobreposicao` corrigido (contrato de 1 ano contava 13 meses, não 12) |
+| US-118 | Guia Valor Orçado vira dashboard-resumo da Proposta | Valor Global + árvore de contas sintéticas expansível vêm do custo REALIZADO (Empregados+Viagens+Bens+Rateio, `ValorRealizadoService`, mesmo cálculo do Semáforo) — não do lançamento manual, que virou guia própria "Lançar Valor Orçado"; nº de Empregados; enfeitado com gráfico de ranking e ícones |
 
 ---
 
@@ -42,7 +44,6 @@
 |---|---|---|---|
 | 1 | **US-116 — Gerenciar Estrutura Funcional (Organograma)** | UC03.18/ADR-015 nunca ganhou UI, só Server Action (`CriarUnidadeFuncionalUseCase`/`InativarUnidadeFuncionalUseCase`, já testados). Bloqueia US-117 (Cargo precisa de Unidade Analítica para o rateio). Nova tela `/propostas/{id}/estrutura`, fora do catch-all de guias de US-115 (ciclo de vida por Proposta, não por Versão). | M |
 | 2 | **US-117 — Gerenciar Cargos (dados de mercado, conta, rateio, benefícios)** | UC03.19/ADR-016/ADR-019/ADR-027 nunca ganharam UI, só Server Actions (`cadastrarCargo`/`editarCargo`/`configurarBeneficiosCargo`, já testados). Mesma tela de US-116, sub-seção "Cargos". | G |
-| 3 | **US-118 — Guia Valor Orçado vira dashboard-resumo da Proposta** | Pedido direto do usuário (2026-08-07): guia hoje é só o formulário de lançamento linha a linha; precisa virar a fonte de informação principal da Proposta — Valor Global, contas sintéticas expansíveis com total agregado, nº de Empregados. | M |
 
 ---
 
