@@ -1,5 +1,6 @@
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { prisma } from '@/infrastructure/db/prisma';
 import { getTenantId } from '@/infrastructure/tenant';
 import { usuarioTemFuncionalidade } from '@/application/use-cases/plano-contas/verificarPermissao';
@@ -26,8 +27,14 @@ export default async function PropostasPage() {
 
   return (
     <main className="flex min-h-screen flex-col gap-6 p-6">
-      <header>
+      <header className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Propostas</h1>
+        <Link
+          href="/"
+          className="rounded-lg border border-gray-100 bg-white px-4 py-2 text-sm font-medium text-blue-700 shadow-sm hover:shadow-md"
+        >
+          &larr; Página Inicial
+        </Link>
       </header>
 
       {!resultado.sucesso ? (
