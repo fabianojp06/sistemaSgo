@@ -35,12 +35,13 @@ export default async function TelaPrincipal() {
 
   return (
     <main className="flex min-h-screen flex-col bg-[#F7F8FA] dark:bg-[#12151C]">
-      <header className="flex items-center justify-between border-b border-[#DDE2EA] bg-white px-6 py-3.5 dark:border-[#2B303C] dark:bg-[#191D26]">
+      <header className="grid grid-cols-3 items-center border-b border-[#DDE2EA] bg-white px-6 py-3.5 dark:border-[#2B303C] dark:bg-[#191D26]">
         <div className="text-sm">
           <p className="font-semibold text-[#1A1F29] dark:text-[#EBEDF2]">{usuario?.nomeCompleto ?? 'Usuário'}</p>
           <p className="text-[#8A8F98] dark:text-[#767C89]">{dataHoraAcesso}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <p className="text-center text-lg font-bold text-[#1A1F29] dark:text-[#EBEDF2]">Sistema de Gestão Orçamentária</p>
+        <div className="flex items-center justify-end gap-2">
           <BotaoAjuda />
           <BotaoSair />
         </div>

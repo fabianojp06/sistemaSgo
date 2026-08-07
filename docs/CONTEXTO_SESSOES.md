@@ -616,9 +616,15 @@ Implementado:
 - `src/app/orcamentario/page.tsx` (novo): landing simples, mesmo padrão de auth/layout das outras páginas, mensagem explícita citando o escopo futuro (Cronograma de Desembolso, Execução Orçamentária etc.).
 - `src/app/MenuLateral.tsx`: rota `orcamentario.visualizar → /orcamentario` adicionada ao mapa.
 
-**Estado ao final:** `tsc --noEmit` limpo. Seed aplicado e ordem verificada em produção. Servidor reiniciado com `.next/` limpo, `/` e `/orcamentario` validados (307, sem erro de runtime). Sem mudança de lógica de dados existente — suíte de testes não afetada (não rodada de novo). Commit e push desta entrada a seguir.
+**Estado ao final:** `tsc --noEmit` limpo. Seed aplicado e ordem verificada em produção. Servidor reiniciado com `.next/` limpo, `/` e `/orcamentario` validados (307, sem erro de runtime). Sem mudança de lógica de dados existente — suíte de testes não afetada (não rodada de novo). Commitado e enviado a `origin/master` (`7a59421`).
 
-**Próximo passo combinado:** nenhum item novo priorizado. Se o usuário quiser avançar o Módulo Orçamentário de verdade, o próximo passo natural é refinar UC04.01 (Cronograma de Desembolso) como US formal com o AN/PO antes de qualquer código.
+## 2026-08-07 (cont. 10) — registrada às 20:19 UTC — Título "Sistema de Gestão Orçamentária" no header da Tela Principal
+
+Ajuste visual rápido no header da Tela Principal (`src/app/page.tsx`), iterado 3x em sequência pelo usuário: (1) pedido inicial — título ao lado do nome do usuário; (2) "centralizado" — header virou grid de 3 colunas (`grid grid-cols-3`: usuário/data à esquerda, título ao centro, botões Ajuda/Sair à direita); (3) "aumente a fonte e em negrito" — `text-lg font-bold`, cor primária (`#1A1F29`/`#EBEDF2`) em vez de secundária.
+
+**Estado ao final:** `tsc --noEmit` limpo, servidor reiniciado com `.next/` limpo, `/` validado (307, sem erro). Puramente visual, sem impacto em lógica ou testes. Commit e push desta entrada a seguir.
+
+**Próximo passo combinado:** nenhum item novo priorizado.
 
 ---
 
