@@ -1,12 +1,30 @@
 'use client';
 
 import { useState } from 'react';
+import { BarChartHorizontal } from '../propostas/BarChartHorizontal';
 
 type NoResumo = { id: string; label: string; total: string; isAnalitica: boolean; filhas: NoResumo[] };
+type BarraRanking = { id: string; label: string; valor: number; cor: string };
 
 const formatadorMoeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
-function formatarMoeda(valor: string): string {
+function formatarMoeda(valor: string | number): string {
   return formatadorMoeda.format(Number(valor));
+}
+
+/**
+ * US-118 — ranking + árvore, num só Client Component: o gráfico
+ * (BarChartHorizontal) exige uma função formatarValor, que não pode
+ * atravessar a fronteira Server→Client (só dados serializáveis passam) —
+ * por isso `ranking` (dados puros) vem do Server Component pai, mas a
+ * função de formatação é definida aqui dentro, já em contexto client.
+ */
+export function ValorOrcadoResumoVisual({ sinteticas, ranking }: { sinteticas: NoResumo[]; ranking: BarraRanking[] }) {
+  return (
+    <>
+      <BarChartHorizontal titulo="Ranking de Contas Sintéticas — Custo Total" barras={ranking} formatarValor={formatarMoeda} />
+      <ValorOrcadoContasArvore sinteticas={sinteticas} />
+    </>
+  );
 }
 
 /** US-118 — árvore expansível de contas sintéticas com total agregado, mesmo padrão de EmpregadosPorCargoArvore. */

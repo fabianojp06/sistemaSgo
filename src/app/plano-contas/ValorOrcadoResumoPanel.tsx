@@ -2,8 +2,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '@/infrastructure/db/prisma';
 import { ValorRealizadoService } from '@/domain/plano-contas/ValorRealizadoService';
 import { montarResumoValorOrcado } from '@/domain/plano-contas/montarResumoValorOrcado';
-import { BarChartHorizontal } from '../propostas/BarChartHorizontal';
-import { ValorOrcadoContasArvore } from './ValorOrcadoContasArvore';
+import { ValorOrcadoResumoVisual } from './ValorOrcadoContasArvore';
 
 const formatadorMoeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 function formatarMoeda(valor: Prisma.Decimal | number | string): string {
@@ -111,10 +110,7 @@ export async function ValorOrcadoResumoPanel({
       {resumo.length === 0 ? (
         <p className="text-sm text-gray-500">Nenhum custo gerado ainda nesta Proposta (Empregados, Viagens, Bens ou Rateio de Impostos).</p>
       ) : (
-        <>
-          <BarChartHorizontal titulo="Ranking de Contas Sintéticas — Custo Total" barras={ranking} formatarValor={formatarMoeda} />
-          <ValorOrcadoContasArvore sinteticas={resumo} />
-        </>
+        <ValorOrcadoResumoVisual sinteticas={resumo} ranking={ranking} />
       )}
     </div>
   );
