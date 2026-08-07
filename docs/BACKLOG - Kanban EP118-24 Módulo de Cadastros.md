@@ -42,6 +42,7 @@
 |---|---|---|---|
 | 1 | **US-116 — Gerenciar Estrutura Funcional (Organograma)** | UC03.18/ADR-015 nunca ganhou UI, só Server Action (`CriarUnidadeFuncionalUseCase`/`InativarUnidadeFuncionalUseCase`, já testados). Bloqueia US-117 (Cargo precisa de Unidade Analítica para o rateio). Nova tela `/propostas/{id}/estrutura`, fora do catch-all de guias de US-115 (ciclo de vida por Proposta, não por Versão). | M |
 | 2 | **US-117 — Gerenciar Cargos (dados de mercado, conta, rateio, benefícios)** | UC03.19/ADR-016/ADR-019/ADR-027 nunca ganharam UI, só Server Actions (`cadastrarCargo`/`editarCargo`/`configurarBeneficiosCargo`, já testados). Mesma tela de US-116, sub-seção "Cargos". | G |
+| 3 | **US-118 — Guia Valor Orçado vira dashboard-resumo da Proposta** | Pedido direto do usuário (2026-08-07): guia hoje é só o formulário de lançamento linha a linha; precisa virar a fonte de informação principal da Proposta — Valor Global, contas sintéticas expansíveis com total agregado, nº de Empregados. | M |
 
 ---
 

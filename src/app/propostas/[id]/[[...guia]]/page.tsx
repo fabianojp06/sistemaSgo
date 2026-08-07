@@ -6,6 +6,7 @@ import { getTenantId } from '@/infrastructure/tenant';
 import { podeEditarVersao } from '@/domain/plano-contas/podeEditarVersao';
 import { ValorOrcadoContaForm } from '@/app/plano-contas/ValorOrcadoContaForm';
 import { BadgeSemaforoPanel } from '@/app/plano-contas/BadgeSemaforoPanel';
+import { ValorOrcadoResumoPanel } from '@/app/plano-contas/ValorOrcadoResumoPanel';
 import { RateioImpostoPanel } from '@/app/plano-contas/RateioImpostoPanel';
 import { TermoAjustePanel } from '@/app/plano-contas/TermoAjustePanel';
 import { getListarTermosAjusteUseCase } from '@/application/use-cases/plano-contas/container';
@@ -192,6 +193,12 @@ export default async function PropostaDetalhePage({
                 &larr; Voltar para Propostas
               </Link>
             </div>
+            <ValorOrcadoResumoPanel
+              tenantId={tenantId}
+              propostaId={id}
+              versaoId={versao.id}
+              propostaCategoria={proposta.categoria}
+            />
             <ValorOrcadoContaForm versaoId={versao.id} contasAnaliticas={contasAnaliticas} readOnly={readOnly} />
           </div>
         )}
