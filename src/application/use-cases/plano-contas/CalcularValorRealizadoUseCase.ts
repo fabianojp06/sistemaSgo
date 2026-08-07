@@ -1,5 +1,6 @@
 import { Prisma, type PrismaClient } from '@prisma/client';
 import { calcularCorSemaforo, LIMIARES_SEMAFORO_PADRAO, type CorSemaforo } from '@/domain/plano-contas/semaforoOrcamentario';
+import { calcularMesesSobreposicao } from '@/domain/shared/calcularMesesSobreposicao';
 
 type ContaHierarquia = { id: string; idPai: string | null; isAnalitica: boolean };
 
@@ -30,12 +31,19 @@ export type BadgeSemaforoConta = {
 };
 
 /**
- * US-008a (ADR-013) + ADR-027 (2026-08-06) — Badge do Semáforo Orçamentário.
+ * US-008a (ADR-013) + ADR-027 (2026-08-06) + ADR-032 (2026-08-07) — Badge do
+ * Semáforo Orçamentário.
  *
  * ADR-027 fechou o gap original: Cargo/EmpregadoHeadcount (herdado do Cargo)
  * e RateioImpostoGrade ganharam `contaId` obrigatório, junto de Viagem e
  * ItemPatrimonial. As 4 fontes de custo hoje conhecidas no sistema estão
  * cobertas — `parcial` deixou de ser `true` fixo.
+ *
+ * ADR-032 — `valorRealizado` passou a ser o total do PRAZO DO CONTRATO, não
+ * o valor mensal corrente. Viagem/ItemPatrimonial/RateioImpostoGrade já são
+ * valor total por natureza; só os componentes de Empregado (mensais
+ * recorrentes) são multiplicados pelos meses de sobreposição com o período
+ * da Proposta — ver `somarValorRealizadoPorConta`.
  */
 export class CalcularValorRealizadoUseCase {
   constructor(private readonly prisma: PrismaClient) {}
@@ -146,12 +154,14 @@ export class CalcularValorRealizadoUseCase {
     // conta é o snapshot herdado do Cargo no momento do vínculo.
     const versao = await this.prisma.versaoProposta.findFirst({
       where: { tenantId, id: versaoId },
-      select: { propostaId: true },
+      select: { propostaId: true, proposta: { select: { dataInicio: true, dataFim: true } } },
     });
     if (versao) {
       const empregados = await this.prisma.empregadoHeadcount.findMany({
         where: { tenantId, propostaId: versao.propostaId, ativo: true },
         select: {
+          periodoInicio: true,
+          periodoFim: true,
           contaId: true,
           valorSalarioSnapshot: true,
           valorGratificacaoSnapshot: true,
@@ -174,20 +184,38 @@ export class CalcularValorRealizadoUseCase {
           contaAuxilioCrecheId: true,
         },
       });
-      // ADR-029 — cada componente vai para sua própria conta (snapshot); sem
-      // conta configurada, cai na conta de salário do próprio Empregado
-      // (nunca some, nunca duplica — valorSalarioSnapshot já é residual).
+      // ADR-032 — Empregado é a única fonte de custo MENSAL recorrente (as
+      // demais — Viagem, ItemPatrimonial, RateioImpostoGrade — já são valor
+      // total). Para o Semáforo refletir o total do prazo do contrato, cada
+      // componente é multiplicado pelos meses de sobreposição entre o período
+      // do Empregado ([periodoInicio, periodoFim ?? dataFim da Proposta]) e o
+      // período da própria Proposta. Sem sobreposição, o Empregado não
+      // contribui em nada (mesma regra de calcularValorTotalConsolidado).
       for (const empregado of empregados) {
-        soma(empregado.contaId, empregado.valorSalarioSnapshot);
-        soma(empregado.contaGratificacaoId ?? empregado.contaId, empregado.valorGratificacaoSnapshot);
-        soma(empregado.contaEncargosSociaisId ?? empregado.contaId, empregado.valorEncargosSociaisSnapshot);
-        soma(empregado.contaValeAlimentacaoId ?? empregado.contaId, empregado.valorValeAlimentacaoSnapshot);
-        soma(empregado.contaValeRefeicaoId ?? empregado.contaId, empregado.valorValeRefeicaoSnapshot);
-        soma(empregado.contaValeTransporteId ?? empregado.contaId, empregado.valorValeTransporteSnapshot);
-        soma(empregado.contaPlanoOdontologicoId ?? empregado.contaId, empregado.valorPlanoOdontologicoSnapshot);
-        soma(empregado.contaSeguroVidaId ?? empregado.contaId, empregado.valorSeguroVidaSnapshot);
-        soma(empregado.contaPlanoSaudeId ?? empregado.contaId, empregado.valorPlanoSaudeSnapshot);
-        soma(empregado.contaAuxilioCrecheId ?? empregado.contaId, empregado.valorAuxilioCrecheSnapshot);
+        const fimEmpregado = empregado.periodoFim ?? versao.proposta.dataFim;
+        const meses = calcularMesesSobreposicao(
+          empregado.periodoInicio,
+          fimEmpregado,
+          versao.proposta.dataInicio,
+          versao.proposta.dataFim,
+        );
+        if (meses === 0) continue;
+
+        const multiplicar = (valor: Prisma.Decimal) => valor.times(meses);
+
+        // ADR-029 — cada componente vai para sua própria conta (snapshot); sem
+        // conta configurada, cai na conta de salário do próprio Empregado
+        // (nunca some, nunca duplica — valorSalarioSnapshot já é residual).
+        soma(empregado.contaId, multiplicar(empregado.valorSalarioSnapshot));
+        soma(empregado.contaGratificacaoId ?? empregado.contaId, multiplicar(empregado.valorGratificacaoSnapshot));
+        soma(empregado.contaEncargosSociaisId ?? empregado.contaId, multiplicar(empregado.valorEncargosSociaisSnapshot));
+        soma(empregado.contaValeAlimentacaoId ?? empregado.contaId, multiplicar(empregado.valorValeAlimentacaoSnapshot));
+        soma(empregado.contaValeRefeicaoId ?? empregado.contaId, multiplicar(empregado.valorValeRefeicaoSnapshot));
+        soma(empregado.contaValeTransporteId ?? empregado.contaId, multiplicar(empregado.valorValeTransporteSnapshot));
+        soma(empregado.contaPlanoOdontologicoId ?? empregado.contaId, multiplicar(empregado.valorPlanoOdontologicoSnapshot));
+        soma(empregado.contaSeguroVidaId ?? empregado.contaId, multiplicar(empregado.valorSeguroVidaSnapshot));
+        soma(empregado.contaPlanoSaudeId ?? empregado.contaId, multiplicar(empregado.valorPlanoSaudeSnapshot));
+        soma(empregado.contaAuxilioCrecheId ?? empregado.contaId, multiplicar(empregado.valorAuxilioCrecheSnapshot));
       }
     }
 

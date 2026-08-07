@@ -25,9 +25,14 @@ function criarPrismaMock(opts: {
     custoUnitarioTransporte: number;
   }[];
   itens?: { contaId: string; valorTotal: number }[];
-  empregados?: { contaId: string; custoTotalMensal: number }[];
+  empregados?: { contaId: string; custoTotalMensal: number; periodoInicio?: Date; periodoFim?: Date | null }[];
   rateiosImposto?: { contaId: string; valorDeclarado: number }[];
+  propostaPeriodo?: { dataInicio: Date; dataFim: Date };
 }) {
+  // Default: período de 1 mês só — mantém o multiplicador em 1 para os testes
+  // que não testam sobreposição de período (ADR-032), sem precisar declarar
+  // datas em cada cenário existente.
+  const propostaPeriodo = opts.propostaPeriodo ?? { dataInicio: new Date('2026-01-01'), dataFim: new Date('2026-01-31') };
   return {
     contaContabil: {
       findMany: vi.fn().mockResolvedValue(opts.contas),
@@ -51,14 +56,39 @@ function criarPrismaMock(opts: {
       findMany: vi.fn().mockResolvedValue((opts.itens ?? []).map((i) => ({ contaId: i.contaId, valorTotal: new Prisma.Decimal(i.valorTotal) }))),
     },
     versaoProposta: {
-      findFirst: vi.fn().mockResolvedValue({ propostaId: 'p1' }),
+      findFirst: vi.fn().mockResolvedValue({ propostaId: 'p1', proposta: propostaPeriodo }),
     },
     empregadoHeadcount: {
-      findMany: vi
-        .fn()
-        .mockResolvedValue(
-          (opts.empregados ?? []).map((e) => ({ contaId: e.contaId, custoTotalMensal: new Prisma.Decimal(e.custoTotalMensal) })),
-        ),
+      // custoTotalMensal do cenário de teste vira valorSalarioSnapshot (único
+      // componente não-zero) — os outros 9 componentes/contas ficam zerados/
+      // null por padrão, mesmo formato de campos que o use case seleciona de
+      // fato (ADR-029).
+      findMany: vi.fn().mockResolvedValue(
+        (opts.empregados ?? []).map((e) => ({
+          contaId: e.contaId,
+          periodoInicio: e.periodoInicio ?? propostaPeriodo.dataInicio,
+          periodoFim: e.periodoFim === undefined ? propostaPeriodo.dataFim : e.periodoFim,
+          valorSalarioSnapshot: new Prisma.Decimal(e.custoTotalMensal),
+          valorGratificacaoSnapshot: new Prisma.Decimal(0),
+          contaGratificacaoId: null,
+          valorEncargosSociaisSnapshot: new Prisma.Decimal(0),
+          contaEncargosSociaisId: null,
+          valorValeAlimentacaoSnapshot: new Prisma.Decimal(0),
+          contaValeAlimentacaoId: null,
+          valorValeRefeicaoSnapshot: new Prisma.Decimal(0),
+          contaValeRefeicaoId: null,
+          valorValeTransporteSnapshot: new Prisma.Decimal(0),
+          contaValeTransporteId: null,
+          valorPlanoOdontologicoSnapshot: new Prisma.Decimal(0),
+          contaPlanoOdontologicoId: null,
+          valorSeguroVidaSnapshot: new Prisma.Decimal(0),
+          contaSeguroVidaId: null,
+          valorPlanoSaudeSnapshot: new Prisma.Decimal(0),
+          contaPlanoSaudeId: null,
+          valorAuxilioCrecheSnapshot: new Prisma.Decimal(0),
+          contaAuxilioCrecheId: null,
+        })),
+      ),
     },
     rateioImpostoGrade: {
       findMany: vi
@@ -109,6 +139,35 @@ describe('CalcularValorRealizadoUseCase', () => {
     const badge = (await useCase.execute('t1', 'v1', ['c1'])).get('c1')!;
     expect(badge.valorRealizado.toNumber()).toBe(400);
     expect(badge.parcial).toBe(false);
+  });
+
+  it('ADR-032 — multiplica componentes de Empregado pelos meses de sobreposição com o período da Proposta', async () => {
+    const propostaPeriodo = { dataInicio: new Date('2026-01-01'), dataFim: new Date('2026-12-31') }; // 12 meses
+    const prisma = criarPrismaMock({
+      contas: [contaAnaliticaBase],
+      propostaPeriodo,
+      empregados: [
+        // Começa em junho, sem periodoFim (usa dataFim da Proposta) → overlap jun-dez = 7 meses.
+        { contaId: 'c1', custoTotalMensal: 300, periodoInicio: new Date('2026-06-01'), periodoFim: null },
+      ],
+    });
+    const useCase = new CalcularValorRealizadoUseCase(prisma as never);
+
+    const badge = (await useCase.execute('t1', 'v1', ['c1'])).get('c1')!;
+    expect(badge.valorRealizado.toNumber()).toBe(2100); // 300 * 7 meses, não 300 * 12
+  });
+
+  it('ADR-032 — Empregado fora do período da Proposta não contribui', async () => {
+    const propostaPeriodo = { dataInicio: new Date('2026-01-01'), dataFim: new Date('2026-06-30') };
+    const prisma = criarPrismaMock({
+      contas: [contaAnaliticaBase],
+      propostaPeriodo,
+      empregados: [{ contaId: 'c1', custoTotalMensal: 300, periodoInicio: new Date('2026-08-01'), periodoFim: new Date('2026-12-31') }],
+    });
+    const useCase = new CalcularValorRealizadoUseCase(prisma as never);
+
+    const badge = (await useCase.execute('t1', 'v1', ['c1'])).get('c1')!;
+    expect(badge.valorRealizado.toNumber()).toBe(0);
   });
 
   it('usa limiares próprios da conta quando configurados', async () => {
