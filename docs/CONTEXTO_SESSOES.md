@@ -553,9 +553,24 @@ Usuário achou o layout de `/propostas` "muito feito" (cru/genérico) e pediu pa
    - Estendido o mesmo redesign para a **Tela Principal** (`src/app/page.tsx`, pedido em seguida pelo usuário): header, nav lateral com ícone de inicial por módulo, estado vazio em card, mesma paleta. `BotaoAjuda.tsx`/`BotaoSair.tsx` restilizados também (usados só na Tela Principal, sem risco de quebrar outra tela). Nenhuma lógica de menu/permissão/auth (UC01.03, ADR-021) foi tocada.
    - Terceiro incidente de cache do Turbopack na sessão (mesmo padrão, mesma correção: matar processo, apagar `.next/`, resubir).
 
-**Estado ao final:** `tsc --noEmit` limpo em cada etapa. Servidor validado sem erro de runtime (`/propostas` e `/` respondendo 307→`/login` normalmente, sem exceção). Sem mudança de lógica de dados/backend nesta entrada — puramente visual, então sem impacto na suíte de testes (não rodada de novo, nenhum arquivo `.test.ts` tocado). Commit e push desta entrada a seguir.
+**Estado ao final:** `tsc --noEmit` limpo em cada etapa. Servidor validado sem erro de runtime (`/propostas` e `/` respondendo 307→`/login` normalmente, sem exceção). Sem mudança de lógica de dados/backend nesta entrada — puramente visual, então sem impacto na suíte de testes (não rodada de novo, nenhum arquivo `.test.ts` tocado). Commitado e enviado a `origin/master` (`463be90`).
 
-**Próximo passo combinado:** nenhum item novo priorizado além do redesign. Segue em aberto desde US-119: modo leitura (`readOnly`) nos componentes de detalhe ao abrir uma versão antiga do histórico.
+## 2026-08-07 (cont. 5) — registrada às 17:48 UTC — US-121 (ADR-035): Ranking por Nível Configurável + ajuste de proporção do gráfico
+
+Usuário testou a guia Valor Orçado e achou que o ranking "não fará sentido" agrupado só na conta sintética raiz — pediu para agrupar pelo nível do código ERP (ex: "1.9.11"). Perguntei se era nível fixo ou configurável; usuário confirmou **configurável** (o usuário escolhe entre 2, 3 ou 4).
+
+1. **[AN/PO]** US-121. Regra de negócio central: "conta de parada" no caminho raiz→folha — para no primeiro nó com `nivel >= N` OU que já é `isAnalitica` antes disso (o que vier primeiro), garantindo que 100% do valor sempre aparece no ranking (nenhum ramo "some" por ser mais raso que o nível pedido). Também esclareceu o pedido "cores devem variar": investigação técnica mostrou que a paleta categórica já variava por **posição** — o problema real era a mesma conta trocar de cor toda vez que o ranking reordenava entre sessões/níveis. Decisão: cor por hash determinístico do `contaId`, estável.
+2. **[Tech Lead]** ADR-035. Decidiu manter `montarResumoValorOrcado.ts` retornando a árvore completa (não só raízes pré-recortadas) e resolver a troca de nível 100% client-side via `useMemo`, sem nova query — o servidor já carregava todas as `ContaContabil` do tenant de qualquer forma. Risco identificado: mudar o contrato de retorno da função quebraria silenciosamente testes que dependessem do formato antigo (só 1 consumidor hoje, risco local).
+3. **[Full Stack Dev]** Implementado:
+   - `montarResumoValorOrcado.ts`: campo `nivel` propagado a cada nó; nova função pura `extrairRankingPorNivel(raizes, nivelAlvo)`.
+   - `montarResumoValorOrcado.test.ts`: 4 novos testes (nível padrão=raiz, nível exato, ramo mais raso que o nível pedido, conta já analítica antes do nível pedido) — todos verificando que a soma das barras sempre bate com o total.
+   - `ValorOrcadoResumoPanel.tsx`: parou de pré-computar o ranking no server; passa a árvore completa (com `nivel`) para o client.
+   - `ValorOrcadoContasArvore.tsx` (`ValorOrcadoResumoVisual`): seletor de nível (botões 1-4, padrão 1), `extrairRankingPorNivel` reimplementado no client (mesma regra, árvore já serializada), `corPorConta` (hash simples de char-code do `contaId` % tamanho da paleta) substituindo cor por posição.
+   - **Ajuste pedido em seguida pelo usuário**: o gráfico (`BarChartHorizontal.tsx`) ficou desproporcional com níveis mais profundos (muito mais barras). Causa: altura de linha fixa (36px) num SVG com `viewBox` proporcional e `width=100%` — mais barras = SVG inteiro esticando em altura sem limite. Corrigido: altura de linha adaptativa (`Math.max(22, Math.min(36, 480 / nº barras))`), fonte reduzida quando compacto, e teto de altura com scroll (`max-h-[520px] overflow-y-auto`) para níveis muito granulares.
+
+**Estado ao final:** `tsc --noEmit` limpo em cada etapa. Suíte completa: 257/263 passando — mesmas 6 falhas pré-existentes do baseline da sessão (comparado com a entrada anterior, 253/259 → 257/263: +4 testes novos verdes, 0 regressão). Servidor validado sem erro de runtime após cada mudança (reiniciado com `.next/` limpo, mesmo procedimento do incidente de cache do Turbopack já registrado nesta sessão, mais uma vez precisou disso). Commit e push desta entrada a seguir.
+
+**Próximo passo combinado:** nenhum item novo priorizado. Seguem em aberto: modo leitura (`readOnly`) nos componentes de detalhe do histórico de versões (desde US-119).
 
 ---
 

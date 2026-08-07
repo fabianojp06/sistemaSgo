@@ -25,15 +25,23 @@ export function BarChartHorizontal({
   const ordenadas = [...barras].sort((a, b) => b.valor - a.valor);
   const maiorValor = Math.max(...ordenadas.map((b) => b.valor), 1);
 
-  const alturaLinha = 36;
+  // US-121: com o ranking podendo aprofundar até o nível 4, a quantidade de barras varia
+  // muito (de ~3 na raiz a dezenas em contas mais granulares). Altura de linha fixa fazia o
+  // SVG (viewBox proporcional, width 100%) esticar demais em altura com muitas barras,
+  // ficando desproporcional ao resto da tela — por isso a altura por linha encolhe conforme
+  // o total de barras cresce, dentro de limites que mantêm o texto legível.
+  const alturaLinha = Math.max(22, Math.min(36, 480 / Math.max(ordenadas.length, 1)));
   const alturaGrafico = ordenadas.length * alturaLinha;
   const larguraRotulo = 200;
   const larguraTotal = 640;
   const larguraBarraMax = larguraTotal - larguraRotulo - 90; // espaço para o valor no fim
+  const fonteBase = alturaLinha < 28 ? 10 : 12;
+  const alturaBarra = Math.max(alturaLinha - 16, 12);
 
   return (
     <div className="rounded border p-4">
       <h4 className="mb-3 text-sm font-medium text-gray-700">{titulo}</h4>
+      <div className="max-h-[520px] overflow-y-auto">
       <svg width="100%" viewBox={`0 0 ${larguraTotal} ${alturaGrafico}`} role="img" aria-label={titulo}>
         {/* Gridlines verticais recessivas em valores redondos */}
         {[0, 0.25, 0.5, 0.75, 1].map((fracao) => (
@@ -66,15 +74,15 @@ export function BarChartHorizontal({
               {/* Hit target maior que a barra, cobrindo a linha inteira */}
               <rect x={0} y={y} width={larguraTotal} height={alturaLinha} fill="transparent" />
 
-              <text x={larguraRotulo - 8} y={y + alturaLinha / 2 + 4} textAnchor="end" fontSize={12} fill="#52514e">
+              <text x={larguraRotulo - 8} y={y + alturaLinha / 2 + 4} textAnchor="end" fontSize={fonteBase} fill="#52514e">
                 {barra.label}
               </text>
 
               <rect
                 x={larguraRotulo}
-                y={y + (alturaLinha - 20) / 2}
+                y={y + (alturaLinha - alturaBarra) / 2}
                 width={Math.max(largura, 2)}
-                height={20}
+                height={alturaBarra}
                 rx={4}
                 fill={barra.cor}
                 style={ativo ? { filter: 'brightness(0.85)' } : undefined}
@@ -83,7 +91,7 @@ export function BarChartHorizontal({
               <text
                 x={larguraRotulo + largura + 8}
                 y={y + alturaLinha / 2 + 4}
-                fontSize={12}
+                fontSize={fonteBase}
                 fontWeight={ativo ? 600 : 400}
                 fill="#0b0b0b"
               >
@@ -99,6 +107,7 @@ export function BarChartHorizontal({
           );
         })}
       </svg>
+      </div>
     </div>
   );
 }

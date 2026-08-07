@@ -1,12 +1,13 @@
 import { Prisma } from '@prisma/client';
 
-type ContaHierarquia = { id: string; idPai: string | null; isAnalitica: boolean; label: string };
+type ContaHierarquia = { id: string; idPai: string | null; isAnalitica: boolean; label: string; nivel: number };
 
 export type NoResumoValorOrcado = {
   id: string;
   label: string;
   total: Prisma.Decimal;
   isAnalitica: boolean;
+  nivel: number;
   filhas: NoResumoValorOrcado[];
 };
 
@@ -41,7 +42,7 @@ export function montarResumoValorOrcado(
 
     if (conta.isAnalitica) {
       const total = valoresPorContaAnalitica.get(contaId) ?? new Prisma.Decimal(0);
-      return { id: conta.id, label: conta.label, total, isAnalitica: true, filhas: [] };
+      return { id: conta.id, label: conta.label, total, isAnalitica: true, nivel: conta.nivel, filhas: [] };
     }
 
     const filhas = (filhasPorPai.get(contaId) ?? [])
@@ -49,11 +50,36 @@ export function montarResumoValorOrcado(
       .filter((n): n is NoResumoValorOrcado => n !== null && !n.total.isZero());
 
     const total = filhas.reduce((acc, f) => acc.plus(f.total), new Prisma.Decimal(0));
-    return { id: conta.id, label: conta.label, total, isAnalitica: false, filhas };
+    return { id: conta.id, label: conta.label, total, isAnalitica: false, nivel: conta.nivel, filhas };
   }
 
   const raizes = contas.filter((c) => c.idPai === null);
   return raizes
     .map((r) => montarNo(r.id))
     .filter((n): n is NoResumoValorOrcado => n !== null && !n.isAnalitica && !n.total.isZero());
+}
+
+export type BarraRankingNivel = { id: string; label: string; total: Prisma.Decimal };
+
+/**
+ * US-121/ADR-035 — extrai as barras do ranking no nível hierárquico `nivelAlvo`
+ * (1 = raízes, comportamento anterior a esta US). Para em cada ramo raiz→folha
+ * no primeiro nó cujo `nivel >= nivelAlvo` OU que já é `isAnalitica` antes
+ * disso — o que vier primeiro. Isso garante que 100% do valor sempre aparece
+ * distribuído entre as barras: um ramo mais raso que o nível pedido não
+ * "some", reaparece como barra no seu próprio nível mais fundo.
+ */
+export function extrairRankingPorNivel(raizes: NoResumoValorOrcado[], nivelAlvo: number): BarraRankingNivel[] {
+  const barras: BarraRankingNivel[] = [];
+
+  function percorrer(no: NoResumoValorOrcado) {
+    if (no.isAnalitica || no.nivel >= nivelAlvo) {
+      barras.push({ id: no.id, label: no.label, total: no.total });
+      return;
+    }
+    for (const filha of no.filhas) percorrer(filha);
+  }
+
+  for (const raiz of raizes) percorrer(raiz);
+  return barras;
 }

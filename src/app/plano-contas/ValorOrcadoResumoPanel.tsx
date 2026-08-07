@@ -9,10 +9,6 @@ function formatarMoeda(valor: Prisma.Decimal | number | string): string {
   return formatadorMoeda.format(Number(valor));
 }
 
-// Paleta categórica validada pela skill dataviz — ordem fixa, mesma já usada em
-// EmpregadoPanel.tsx e BadgeSemaforoPanel.tsx (identidade por posição, não hash).
-const PALETA_CATEGORICA = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#4a3aa7', '#e34948'];
-
 // Mesmos ícones minimalistas inline de EmpregadoPanel.tsx/CargoPanel.tsx — sem dependência de biblioteca de ícones.
 function IconeMoeda() {
   return (
@@ -59,7 +55,7 @@ export async function ValorOrcadoResumoPanel({
     new ValorRealizadoService(prisma).somarPorContaAnalitica(tenantId, versaoId),
     prisma.contaContabil.findMany({
       where: { tenantId },
-      select: { id: true, idPai: true, isAnalitica: true, codigoErp: true, nomeConta: true },
+      select: { id: true, idPai: true, isAnalitica: true, codigoErp: true, nomeConta: true, nivel: true },
     }),
     prisma.empregadoHeadcount.count({ where: { tenantId, propostaId, ativo: true } }),
   ]);
@@ -71,16 +67,11 @@ export async function ValorOrcadoResumoPanel({
     idPai: c.idPai,
     isAnalitica: c.isAnalitica,
     label: `${c.codigoErp} — ${c.nomeConta}`,
+    nivel: c.nivel,
   }));
+  // US-121/ADR-035: a árvore completa (não só raízes pré-recortadas) vai para o client, que
+  // recalcula o ranking a cada troca do seletor de nível — sem nova query por troca.
   const resumo = montarResumoValorOrcado(contasParaResumo, valorPorContaAnalitica).map(mapearNoParaClient);
-
-  // Ranking do gráfico = mesmas sintéticas raiz da árvore, cor por posição (identidade, não status).
-  const ranking = resumo.map((no, i) => ({
-    id: no.id,
-    label: no.label,
-    valor: Number(no.total),
-    cor: PALETA_CATEGORICA[i % PALETA_CATEGORICA.length],
-  }));
 
   return (
     <div className="flex flex-col gap-6 rounded-xl bg-slate-50 p-4 md:p-6">
@@ -110,14 +101,14 @@ export async function ValorOrcadoResumoPanel({
       {resumo.length === 0 ? (
         <p className="text-sm text-gray-500">Nenhum custo gerado ainda nesta Proposta (Empregados, Viagens, Bens ou Rateio de Impostos).</p>
       ) : (
-        <ValorOrcadoResumoVisual sinteticas={resumo} ranking={ranking} />
+        <ValorOrcadoResumoVisual sinteticas={resumo} />
       )}
     </div>
   );
 }
 
-type NoClient = { id: string; label: string; total: string; isAnalitica: boolean; filhas: NoClient[] };
-type NoServer = { id: string; label: string; total: Prisma.Decimal; isAnalitica: boolean; filhas: NoServer[] };
+type NoClient = { id: string; label: string; total: string; isAnalitica: boolean; nivel: number; filhas: NoClient[] };
+type NoServer = { id: string; label: string; total: Prisma.Decimal; isAnalitica: boolean; nivel: number; filhas: NoServer[] };
 
 function mapearNoParaClient(no: NoServer): NoClient {
   return {
@@ -125,6 +116,7 @@ function mapearNoParaClient(no: NoServer): NoClient {
     label: no.label,
     total: no.total.toString(),
     isAnalitica: no.isAnalitica,
+    nivel: no.nivel,
     filhas: no.filhas.map(mapearNoParaClient),
   };
 }
