@@ -495,7 +495,7 @@ export function AliquotaImpostoListPanel({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="w-full max-w-sm rounded bg-white p-6 shadow-lg">
             <p className="text-sm">
-              Deseja realmente excluir a alíquota "{aliquotas.find((a) => a.id === confirmandoExclusaoId)?.nome}"? A alíquota
+              Deseja realmente excluir a alíquota &quot;{aliquotas.find((a) => a.id === confirmandoExclusaoId)?.nome}&quot;? A alíquota
               será inativada e não estará mais disponível para novas Propostas.
             </p>
             {erroExclusao && <p className="mt-2 text-xs text-red-600">{erroExclusao}</p>}
