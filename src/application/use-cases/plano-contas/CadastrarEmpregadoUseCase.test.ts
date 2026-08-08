@@ -41,12 +41,48 @@ function criarPrismaMock(propostas: PropostaMock[], cargos: CargoMock[], versoes
     cargo: {
       findFirst: vi.fn(({ where }: { where: { tenantId: string; id: string; propostaId: string } }) =>
         Promise.resolve(
-          cargos.find((c) => c.tenantId === where.tenantId && c.id === where.id && c.propostaId === where.propostaId) ?? null,
+          (() => {
+            const c = cargos.find((c) => c.tenantId === where.tenantId && c.id === where.id && c.propostaId === where.propostaId);
+            return c
+              ? {
+                  salarioTotal: c.custoTotalCargo,
+                  contaGratificacaoId: null,
+                  contaEncargosSociaisId: null,
+                  contaValeAlimentacaoId: null,
+                  contaValeRefeicaoId: null,
+                  contaValeTransporteId: null,
+                  contaPlanoOdontologicoId: null,
+                  contaSeguroVidaId: null,
+                  contaPlanoSaudeId: null,
+                  contaAuxilioCrecheId: null,
+                  encargosSociaisPct: 0,
+                  vaAtivo: false,
+                  vaValorUnitario: 0,
+                  vrAtivo: false,
+                  vrValorUnitario: 0,
+                  planoSaudeAtivo: false,
+                  planoSaudeFaixa: null,
+                  planoSaudeValor: 0,
+                  planoOdontoAtivo: false,
+                  planoOdontoValor: 0,
+                  seguroVidaAtivo: false,
+                  seguroVidaValor: 0,
+                  auxilioCrecheAtivo: false,
+                  auxilioCrecheValor: 0,
+                  transporteAtivo: false,
+                  transporteValorUnitario: 0,
+                  ...c,
+                }
+              : null;
+          })(),
         ),
       ),
     },
     empregadoHeadcount: {
       create: vi.fn(({ data }: { data: Record<string, unknown> }) => Promise.resolve({ id: `e${idSeq++}`, ativo: true, ...data })),
+    },
+    parametroSistema: {
+      findUnique: vi.fn().mockResolvedValue(null),
     },
     historicoOperacao: { create: vi.fn().mockResolvedValue({}) },
     $transaction: vi.fn((fn: (tx: unknown) => Promise<unknown>) => fn(base)),
