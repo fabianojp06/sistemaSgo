@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useRef, useState, useTransition } from 'react';
-import { cadastrarViagem, excluirViagem, type ViagemResultado } from '@/app/plano-contas/actions';
+import { cadastrarViagem, excluirViagem, type ViagemResultado } from '@/app/(autenticado)/plano-contas/actions';
 import { SeletorContaAnalitica } from './SeletorContaAnalitica';
 import { BarChartHorizontal } from './BarChartHorizontal';
 import { calcularComponentesCustoViagem } from '@/domain/plano-contas/calcularCustoEstimadoViagem';

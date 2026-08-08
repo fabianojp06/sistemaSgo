@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { cadastrarMeta, editarMeta, type MetaResultado } from '@/app/plano-contas/actions';
+import { cadastrarMeta, editarMeta, type MetaResultado } from '@/app/(autenticado)/plano-contas/actions';
 
 type MetaInicial = { id: string; tipo: string; nome: string; valorGlobal: string; status: 'ATIVO' | 'INATIVO'; observacao: string | null };
 

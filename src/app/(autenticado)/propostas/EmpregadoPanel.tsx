@@ -10,7 +10,7 @@ import {
   excluirQtdeEmpregado,
   type EmpregadoResultado,
   type QtdeEmpregadoResultado,
-} from '@/app/plano-contas/actions';
+} from '@/app/(autenticado)/plano-contas/actions';
 import { BarChartHorizontal } from './BarChartHorizontal';
 
 type CargoOpcao = { id: string; label: string };

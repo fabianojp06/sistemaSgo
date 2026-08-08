@@ -1,27 +1,23 @@
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
-import { BotaoAjuda } from './ajuda/BotaoAjuda';
-import { BotaoSair } from './logoff/BotaoSair';
+import { BotaoAjuda } from '../ajuda/BotaoAjuda';
+import { BotaoSair } from '../logoff/BotaoSair';
 import { MenuLateral } from './MenuLateral';
 import { getObterMenuUsuarioUseCase } from '@/application/use-cases/menu/container';
 import { prisma } from '@/infrastructure/db/prisma';
 import { getTenantId } from '@/infrastructure/tenant';
 
 /**
- * UC01.03 — Exibir Tela Principal.
- * CA-01.03.01 — exibida imediatamente após o login, sem ação adicional do usuário.
- * CA-01.03.02–04 — menu filtrado por perfil [ADR-001], só módulos/funcionalidades ativos.
- * CA-01.03.05/06 — barra de status com nome completo, data/hora do acesso e botão Ajuda;
- * botão Sair sempre visível.
- * CA-01.03.18/19 [E4] — sem nenhuma permissão, exibe mensagem de menu vazio sem erro,
- * mantendo Sair e barra de status funcionais.
+ * UC01.03 — casca comum de toda tela autenticada. O menu lateral e a barra de
+ * status (nome do usuário, data/hora, Ajuda, Sair) ficam aqui, não em cada
+ * `page.tsx` — antes só a Tela Principal (`/`) tinha `MenuLateral`, então
+ * navegar para qualquer outra rota (`/aliquotas-impostos`, `/plano-contas`
+ * etc.) perdia o menu por completo. CA-01.03.05/06 (Sair sempre visível)
+ * agora vale em toda a área autenticada, não só na Tela Principal.
  */
-export default async function TelaPrincipal() {
+export default async function LayoutAutenticado({ children }: { children: React.ReactNode }) {
   const { userId } = await auth();
-
-  if (!userId) {
-    redirect('/login');
-  }
+  if (!userId) redirect('/login');
 
   const tenantId = await getTenantId();
   const usuario = await prisma.usuario.findFirst({
@@ -30,11 +26,10 @@ export default async function TelaPrincipal() {
   });
 
   const menu = usuario ? await getObterMenuUsuarioUseCase().execute(tenantId, usuario.id) : [];
-
   const dataHoraAcesso = new Date().toLocaleString('pt-BR');
 
   return (
-    <main className="flex min-h-screen flex-col bg-[#F7F8FA] dark:bg-[#12151C]">
+    <div className="flex min-h-screen flex-col bg-[#F7F8FA] dark:bg-[#12151C]">
       <header className="grid grid-cols-3 items-center border-b border-[#DDE2EA] bg-white px-6 py-3.5 dark:border-[#2B303C] dark:bg-[#191D26]">
         <div className="text-sm">
           <p className="font-semibold text-[#1A1F29] dark:text-[#EBEDF2]">{usuario?.nomeCompleto ?? 'Usuário'}</p>
@@ -58,9 +53,9 @@ export default async function TelaPrincipal() {
       ) : (
         <div className="flex flex-1">
           <MenuLateral menu={menu} />
-          <div className="flex-1 bg-[#F7F8FA] p-6 dark:bg-[#12151C]" />
+          <div className="flex-1 overflow-y-auto">{children}</div>
         </div>
       )}
-    </main>
+    </div>
   );
 }

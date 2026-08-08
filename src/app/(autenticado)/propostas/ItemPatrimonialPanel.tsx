@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { cadastrarItemPatrimonial, excluirItemPatrimonial, type ItemPatrimonialResultado } from '@/app/plano-contas/actions';
+import { cadastrarItemPatrimonial, excluirItemPatrimonial, type ItemPatrimonialResultado } from '@/app/(autenticado)/plano-contas/actions';
 
 type ContaOpcao = { id: string; label: string };
 

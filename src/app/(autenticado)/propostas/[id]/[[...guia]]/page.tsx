@@ -4,11 +4,11 @@ import Link from 'next/link';
 import { prisma } from '@/infrastructure/db/prisma';
 import { getTenantId } from '@/infrastructure/tenant';
 import { podeEditarVersao } from '@/domain/plano-contas/podeEditarVersao';
-import { ValorOrcadoContaForm } from '@/app/plano-contas/ValorOrcadoContaForm';
-import { BadgeSemaforoPanel } from '@/app/plano-contas/BadgeSemaforoPanel';
-import { ValorOrcadoResumoPanel } from '@/app/plano-contas/ValorOrcadoResumoPanel';
-import { RateioImpostoPanel } from '@/app/plano-contas/RateioImpostoPanel';
-import { TermoAjustePanel } from '@/app/plano-contas/TermoAjustePanel';
+import { ValorOrcadoContaForm } from '@/app/(autenticado)/plano-contas/ValorOrcadoContaForm';
+import { BadgeSemaforoPanel } from '@/app/(autenticado)/plano-contas/BadgeSemaforoPanel';
+import { ValorOrcadoResumoPanel } from '@/app/(autenticado)/plano-contas/ValorOrcadoResumoPanel';
+import { RateioImpostoPanel } from '@/app/(autenticado)/plano-contas/RateioImpostoPanel';
+import { TermoAjustePanel } from '@/app/(autenticado)/plano-contas/TermoAjustePanel';
 import { getListarTermosAjusteUseCase } from '@/application/use-cases/plano-contas/container';
 import { usuarioTemFuncionalidade } from '@/application/use-cases/plano-contas/verificarPermissao';
 import { PropostaTabs } from '../../PropostaTabs';
@@ -75,8 +75,8 @@ export default async function PropostaDetalhePage({
   }
 
   let cargos: { id: string; label: string }[] = [];
-  let empregados: (import('@/app/plano-contas/actions').EmpregadoResultado & { categoria: 'EMPREGADO' | 'ESTAGIARIO' | 'JOVEM_APRENDIZ' })[] = [];
-  let qtdeEmpregados: import('@/app/plano-contas/actions').QtdeEmpregadoResultado[] = [];
+  let empregados: (import('@/app/(autenticado)/plano-contas/actions').EmpregadoResultado & { categoria: 'EMPREGADO' | 'ESTAGIARIO' | 'JOVEM_APRENDIZ' })[] = [];
+  let qtdeEmpregados: import('@/app/(autenticado)/plano-contas/actions').QtdeEmpregadoResultado[] = [];
   // Empregado/Qtde. Empregado exigem Meta cadastrada quando a Proposta é POR_META (CadastrarEmpregadoUseCase/
   // CadastrarQtdeEmpregadoUseCase lançam MetaNaoEncontradaError) — aviso proativo na tela, antes do usuário tentar salvar.
   let temMetaConfigurada = true;
@@ -148,7 +148,7 @@ export default async function PropostaDetalhePage({
     qtdeEmpregados = qtdeDb.map((q) => ({ ...q, valorTotalConsolidado: q.valorTotalConsolidado.toString() }));
   }
 
-  let viagensIniciais: import('@/app/plano-contas/actions').ViagemResultado[] = [];
+  let viagensIniciais: import('@/app/(autenticado)/plano-contas/actions').ViagemResultado[] = [];
   if (guiaAtiva === 'viagens') {
     const viagensDb = await prisma.viagem.findMany({
       where: { tenantId, versaoId: versao.id, ativo: true },
@@ -181,7 +181,7 @@ export default async function PropostaDetalhePage({
     }));
   }
 
-  let itensIniciais: import('@/app/plano-contas/actions').ItemPatrimonialResultado[] = [];
+  let itensIniciais: import('@/app/(autenticado)/plano-contas/actions').ItemPatrimonialResultado[] = [];
   if (guiaAtiva === 'bens') {
     const itensDb = await prisma.itemPatrimonial.findMany({
       where: { tenantId, versaoId: versao.id, ativo: true },
