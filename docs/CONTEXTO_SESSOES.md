@@ -704,6 +704,19 @@ app). `docs/UC04.01 — Cronograma de Desembolso.md` tem 1 linha em branco adici
 não relacionada a este trabalho (provável edição incidental do usuário no IDE) — deixada de fora
 do commit desta sessão de propósito.
 
+## 2026-08-08 (cont.) — registrada logo após o push de 143f136 — 2ª rodada de QA (script v2): bug de fuso NÃO estava corrigido, causa raiz era outra
+
+Usuário rodou o script v2 (16 cenários, 0-15) via Claude in Chrome. 13/16 passaram, mas o achado principal invalida a correção anterior:
+
+1. **[NÃO CORRIGIDO — diagnóstico refeito, ainda sem fix] Bug de data "hoje" rejeitada como retroativa.** O fix da rodada anterior (`Date.UTC(...)` puro nos use cases) resolveu um bug real, mas diferente do que se manifestou aqui: aquele tratava da hora *local do processo Node*, e o Codespace roda em UTC, então nunca teria reaparecido neste ambiente. O bug que o QA encontrou é outro: `FORM_VAZIO` em `AliquotaImpostoListPanel.tsx` pré-preenche a data com `new Date().toISOString().slice(0,10)` — `toISOString()` sempre retorna em UTC. Às 21h30 em Brasília (UTC-3) já é 00h30 do dia seguinte em UTC, então o formulário pré-preenche com "amanhã" (calculado em UTC), e o backend, comparando contra `Date.UTC(agora)` no mesmo instante, também já está em "amanhã" — rejeitando a data real de hoje (calendário de Brasília) como retroativa. **Causa raiz correta:** o conceito que falta é "hoje segundo o fuso do usuário", não "hoje em UTC" nem "hoje no fuso do processo servidor" — nenhum dos dois fixes até agora tratou isso. É intermitente: só se manifesta na janela ~21h-23h59 (horário de Brasília) todo dia, quando UTC já virou o dia seguinte. **Usuário pediu só o diagnóstico nesta rodada, sem implementar** — fix fica para a próxima interação.
+2. **[NOVO ACHADO, não investigado] Exportar PDF não funciona.** XLSX funciona (download real via blob). PDF: nenhuma requisição, nenhum erro, nenhum download — botão parece desconectado do handler ou falhando silenciosamente. Não investigado ainda.
+3. **[Não é bug — ajuste de roteiro]** Seed do ambiente já tem um tributo "ISS" pré-cadastrado, o que impede testar a 2ª parte do Cenário 4 (ISS dentro da faixa 2-5%) sem cair antes na regra de nome duplicado. Próxima versão do script de QA deveria usar um nome de tributo fictício em vez de "ISS" para esse teste específico.
+4. Cenário 8 pulado como consequência esperada do bug de data (TESTE-FAIXA/TESTE-RETROATIVO nunca existiram, pois 3 e 5 corretamente bloquearam a criação). Cenários 2, 3, 5, 6, 7, 9, 10, 11, 14, 15 passaram limpo — Optimistic Locking (9), soft delete com trava de referência (11) e as 2 correções anteriores (vírgula decimal, rótulo TRAVA O ERRO) confirmadas funcionando.
+
+**Estado ao final:** nenhum código alterado nesta rodada (só diagnóstico, a pedido explícito do usuário). Registros de teste desta rodada (REGRESSAO-DATA, REGRESSAO-VIRGULA, TESTE-EXCLUSAO, rateio de ISS em "Teste A") não foram limpos.
+
+**Próximo passo combinado:** corrigir o bug de data usando o fuso do usuário como referência (não UTC do servidor nem UTC do `toISOString()` do form) — provavelmente a forma mais robusta é nunca reinterpretar a string `YYYY-MM-DD` do `<input type="date">` como instante UTC para fins de comparação "é hoje/passado", e sim comparar string-a-string com a data local do navegador (`Intl`/`toLocaleDateString` do próprio input, sem `Date` no meio) — decisão de design a tomar com o Tech Lead antes de implementar. Depois, investigar Exportar PDF.
+
 ## Como usar este arquivo em sessões futuras
 
 No início de uma sessão, se o usuário perguntar "qual o contexto/status de X", leia este arquivo antes de assumir que a memória padrão (`~/.claude/.../memory/`) está atualizada — o ambiente deste projeto (Codespace) pode ter sido recriado desde a última sessão, apagando a memória padrão sem apagar o repositório.
