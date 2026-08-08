@@ -101,6 +101,8 @@ export function AliquotaImpostoListPanel({
   const [confirmandoExclusaoId, setConfirmandoExclusaoId] = useState<string | null>(null);
   const [erroExclusao, setErroExclusao] = useState<string | null>(null);
 
+  const [erroExportacao, setErroExportacao] = useState<string | null>(null);
+
   function pesquisar() {
     startTransition(async () => {
       const resposta = await listarAliquotasImposto({
@@ -204,26 +206,33 @@ export function AliquotaImpostoListPanel({
     return partes.join(' — ');
   }
 
-  function exportar(formato: 'PDF' | 'XLSX') {
-    const linhas = aliquotas.map((a) => ({
-      nome: a.nome,
-      aliquotaPct: `${a.aliquotaPct}%`,
-      tipoIncidencia: TIPO_LABEL[a.tipoIncidencia],
-      dataInicioVigencia: formatarData(a.dataInicioVigencia),
-      dataFimVigencia: formatarData(a.dataFimVigencia),
-      status: a.status,
-    }));
-    if (formato === 'PDF') {
-      exportarParaPDF({
-        nomeArquivo: 'aliquotas-impostos',
-        titulo: 'ALÍQUOTAS DE IMPOSTOS',
-        subtitulo: subtituloFiltros(),
-        colunas: colunasExport,
-        linhas,
-        rodape: 'ALÍQUOTAS DE IMPOSTOS',
-      });
-    } else {
-      void exportarParaXLSX({ nomeArquivo: 'aliquotas-impostos', titulo: 'ALÍQUOTAS DE IMPOSTOS', colunas: colunasExport, linhas });
+  async function exportar(formato: 'PDF' | 'XLSX') {
+    setErroExportacao(null);
+    try {
+      const linhas = aliquotas.map((a) => ({
+        nome: a.nome,
+        aliquotaPct: `${a.aliquotaPct}%`,
+        tipoIncidencia: TIPO_LABEL[a.tipoIncidencia],
+        dataInicioVigencia: formatarData(a.dataInicioVigencia),
+        dataFimVigencia: formatarData(a.dataFimVigencia),
+        status: a.status,
+      }));
+      if (formato === 'PDF') {
+        exportarParaPDF({
+          nomeArquivo: 'aliquotas-impostos',
+          titulo: 'ALÍQUOTAS DE IMPOSTOS',
+          subtitulo: subtituloFiltros(),
+          colunas: colunasExport,
+          linhas,
+          rodape: 'ALÍQUOTAS DE IMPOSTOS',
+        });
+      } else {
+        await exportarParaXLSX({ nomeArquivo: 'aliquotas-impostos', titulo: 'ALÍQUOTAS DE IMPOSTOS', colunas: colunasExport, linhas });
+      }
+    } catch (erro) {
+      setErroExportacao(
+        `Não foi possível gerar o arquivo ${formato}. ${erro instanceof Error ? erro.message : 'Erro desconhecido.'}`,
+      );
     }
   }
 
@@ -274,12 +283,13 @@ export function AliquotaImpostoListPanel({
         >
           Pesquisar
         </button>
-        <button type="button" onClick={() => exportar('PDF')} className="rounded border px-3 py-1.5 text-sm">
+        <button type="button" onClick={() => void exportar('PDF')} className="rounded border px-3 py-1.5 text-sm">
           Exportar PDF
         </button>
-        <button type="button" onClick={() => exportar('XLSX')} className="rounded border px-3 py-1.5 text-sm">
+        <button type="button" onClick={() => void exportar('XLSX')} className="rounded border px-3 py-1.5 text-sm">
           Exportar XLSX
         </button>
+        {erroExportacao && <p className="w-full text-xs text-red-600">{erroExportacao}</p>}
         {podeCriar && (
           <button
             type="button"
