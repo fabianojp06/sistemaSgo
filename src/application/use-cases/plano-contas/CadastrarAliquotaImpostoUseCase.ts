@@ -7,6 +7,7 @@ import {
   AliquotaImpostoDataFimInvalidaError,
   ContaSugeridaAliquotaImpostoNaoSinteticaError,
 } from '@/domain/plano-contas/errors';
+import { ehDataAnteriorAHoje } from '@/domain/shared/dataCalendario';
 
 type CadastrarAliquotaImpostoInput = {
   tenantId: string;
@@ -37,12 +38,8 @@ function validarFaixaEDataOuLanca(
     throw new AliquotaImpostoIssForaDaFaixaLegalError();
   }
 
-  // Datas de vigência vêm de <input type="date"> como "YYYY-MM-DD", parseadas pelo Date
-  // constructor como meia-noite UTC (z.coerce.date()). Comparar via setHours(0,0,0,0) usaria
-  // meia-noite LOCAL do servidor e, em fusos negativos (ex: UTC-3), voltaria a data em 1 dia —
-  // bug real encontrado em QA. Comparação precisa ser 100% em UTC, sem tocar em hora local.
-  const inicioDoDiaUTC = (data: Date) => Date.UTC(data.getUTCFullYear(), data.getUTCMonth(), data.getUTCDate());
-  if (inicioDoDiaUTC(dataInicioVigencia) < inicioDoDiaUTC(new Date())) {
+  // Comparação por calendário puro (ver domain/shared/dataCalendario) — nunca por instante/fuso.
+  if (ehDataAnteriorAHoje(dataInicioVigencia)) {
     throw new AliquotaImpostoDataInicioRetroativaError();
   }
 

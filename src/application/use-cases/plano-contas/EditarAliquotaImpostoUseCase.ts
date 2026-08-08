@@ -9,6 +9,7 @@ import {
   ContaSugeridaAliquotaImpostoNaoSinteticaError,
   ConflitoConcorrenciaError,
 } from '@/domain/plano-contas/errors';
+import { ehDataAnteriorAHoje } from '@/domain/shared/dataCalendario';
 
 type EditarAliquotaImpostoInput = {
   tenantId: string;
@@ -43,10 +44,8 @@ export class EditarAliquotaImpostoUseCase {
     if (input.nome.trim().toLowerCase() === 'iss' && (aliquotaPct.lessThan(2) || aliquotaPct.greaterThan(5))) {
       throw new AliquotaImpostoIssForaDaFaixaLegalError();
     }
-    // Comparação em UTC puro — ver comentário equivalente em CadastrarAliquotaImpostoUseCase
-    // (bug de fuso: setHours(0,0,0,0) usa hora local e volta a data em fusos negativos).
-    const inicioDoDiaUTC = (data: Date) => Date.UTC(data.getUTCFullYear(), data.getUTCMonth(), data.getUTCDate());
-    if (inicioDoDiaUTC(input.dataInicioVigencia) < inicioDoDiaUTC(new Date())) {
+    // Comparação por calendário puro (ver domain/shared/dataCalendario) — nunca por instante/fuso.
+    if (ehDataAnteriorAHoje(input.dataInicioVigencia)) {
       throw new AliquotaImpostoDataInicioRetroativaError();
     }
     if (input.dataFimVigencia && input.dataFimVigencia <= input.dataInicioVigencia) {

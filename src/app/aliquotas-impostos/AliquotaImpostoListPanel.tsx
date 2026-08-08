@@ -26,6 +26,16 @@ const STATUS_BADGE: Record<StatusFiltro, string> = {
   EXPIRADA: 'bg-amber-100 text-amber-800',
 };
 
+// Data de calendário local do navegador — nunca toISOString(), que é sempre UTC e à noite no
+// Brasil (UTC-3) já representa o dia seguinte.
+function dataLocalDeHoje(): string {
+  const agora = new Date();
+  const ano = agora.getFullYear();
+  const mes = String(agora.getMonth() + 1).padStart(2, '0');
+  const dia = String(agora.getDate()).padStart(2, '0');
+  return `${ano}-${mes}-${dia}`;
+}
+
 type FormState = {
   nome: string;
   aliquotaPct: string;
@@ -42,7 +52,7 @@ const FORM_VAZIO: FormState = {
   nome: '',
   aliquotaPct: '',
   tipoIncidencia: 'AMBOS',
-  dataInicioVigencia: new Date().toISOString().slice(0, 10),
+  dataInicioVigencia: dataLocalDeHoje(),
   dataFimVigencia: '',
   limiteMinimoPct: '',
   limiteMaximoPct: '',
