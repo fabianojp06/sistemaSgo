@@ -49,6 +49,10 @@ import { AprovarTermoAjusteN1UseCase } from './AprovarTermoAjusteN1UseCase';
 import { HomologarTermoAjusteUseCase } from './HomologarTermoAjusteUseCase';
 import { RejeitarTermoAjusteUseCase } from './RejeitarTermoAjusteUseCase';
 import { ListarTermosAjusteUseCase } from './ListarTermosAjusteUseCase';
+import { ListarAliquotasImpostoUseCase } from './ListarAliquotasImpostoUseCase';
+import { CadastrarAliquotaImpostoUseCase } from './CadastrarAliquotaImpostoUseCase';
+import { EditarAliquotaImpostoUseCase } from './EditarAliquotaImpostoUseCase';
+import { ExcluirAliquotaImpostoUseCase } from './ExcluirAliquotaImpostoUseCase';
 
 export function getSincronizarPlanoContasUseCase(): SincronizarPlanoContasUseCase {
   return new SincronizarPlanoContasUseCase(
@@ -237,4 +241,20 @@ export function getRejeitarTermoAjusteUseCase(): RejeitarTermoAjusteUseCase {
 
 export function getListarTermosAjusteUseCase(): ListarTermosAjusteUseCase {
   return new ListarTermosAjusteUseCase(prisma);
+}
+
+export function getListarAliquotasImpostoUseCase(): ListarAliquotasImpostoUseCase {
+  return new ListarAliquotasImpostoUseCase(prisma);
+}
+
+export function getCadastrarAliquotaImpostoUseCase(): CadastrarAliquotaImpostoUseCase {
+  return new CadastrarAliquotaImpostoUseCase(prisma);
+}
+
+export function getEditarAliquotaImpostoUseCase(): EditarAliquotaImpostoUseCase {
+  return new EditarAliquotaImpostoUseCase(prisma);
+}
+
+export function getExcluirAliquotaImpostoUseCase(): ExcluirAliquotaImpostoUseCase {
+  return new ExcluirAliquotaImpostoUseCase(prisma);
 }

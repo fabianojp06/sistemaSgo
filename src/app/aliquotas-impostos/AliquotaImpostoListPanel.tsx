@@ -1,0 +1,507 @@
+'use client';
+
+import { useMemo, useState, useTransition } from 'react';
+import {
+  listarAliquotasImposto,
+  cadastrarAliquotaImposto,
+  editarAliquotaImposto,
+  excluirAliquotaImposto,
+  type AliquotaImpostoResultado,
+} from './actions';
+import { exportarParaPDF, exportarParaXLSX } from '@/lib/export/exportarRelatorio';
+
+type ContaOpcao = { id: string; label: string };
+type TipoIncidencia = 'CONTRATO' | 'TERMO_DE_PARCERIA' | 'AMBOS';
+type StatusFiltro = 'ATIVO' | 'INATIVO' | 'EXPIRADA';
+
+const TIPO_LABEL: Record<TipoIncidencia, string> = {
+  CONTRATO: 'Contrato',
+  TERMO_DE_PARCERIA: 'Termo de Parceria',
+  AMBOS: 'Ambos',
+};
+
+const STATUS_BADGE: Record<StatusFiltro, string> = {
+  ATIVO: 'bg-green-100 text-green-800',
+  INATIVO: 'bg-gray-100 text-gray-600',
+  EXPIRADA: 'bg-amber-100 text-amber-800',
+};
+
+type FormState = {
+  nome: string;
+  aliquotaPct: string;
+  tipoIncidencia: TipoIncidencia;
+  dataInicioVigencia: string;
+  dataFimVigencia: string;
+  limiteMinimoPct: string;
+  limiteMaximoPct: string;
+  observacao: string;
+  contaSinteticaId: string;
+};
+
+const FORM_VAZIO: FormState = {
+  nome: '',
+  aliquotaPct: '',
+  tipoIncidencia: 'AMBOS',
+  dataInicioVigencia: new Date().toISOString().slice(0, 10),
+  dataFimVigencia: '',
+  limiteMinimoPct: '',
+  limiteMaximoPct: '',
+  observacao: '',
+  contaSinteticaId: '',
+};
+
+// Datas de vigência são calendário puro (sem hora), persistidas como meia-noite UTC.
+// `toLocaleDateString` usaria o fuso do navegador e voltaria a data em 1 dia em fusos
+// negativos (ex: UTC-3) — além de divergir entre SSR (fuso do servidor) e o client
+// (fuso do usuário), causando hydration mismatch. Formatação sempre em UTC, determinística.
+function formatarData(iso: string | null) {
+  if (!iso) return '—';
+  const data = new Date(iso);
+  const dia = String(data.getUTCDate()).padStart(2, '0');
+  const mes = String(data.getUTCMonth() + 1).padStart(2, '0');
+  return `${dia}/${mes}/${data.getUTCFullYear()}`;
+}
+
+/** UC03.39-42 — grid com filtros + modal de criação/edição + confirmação de exclusão. */
+export function AliquotaImpostoListPanel({
+  aliquotasIniciais,
+  opcoesContaSintetica,
+  podeCriar,
+  podeEditar,
+  podeExcluir,
+}: {
+  aliquotasIniciais: AliquotaImpostoResultado[];
+  opcoesContaSintetica: ContaOpcao[];
+  podeCriar: boolean;
+  podeEditar: boolean;
+  podeExcluir: boolean;
+}) {
+  const [aliquotas, setAliquotas] = useState(aliquotasIniciais);
+  const [filtroNome, setFiltroNome] = useState('');
+  const [filtroTipo, setFiltroTipo] = useState<TipoIncidencia | ''>('');
+  const [filtroStatus, setFiltroStatus] = useState<StatusFiltro | ''>('');
+  const [pending, startTransition] = useTransition();
+
+  const [modalAberto, setModalAberto] = useState<'novo' | 'editar' | null>(null);
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [editandoVersion, setEditandoVersion] = useState(0);
+  const [form, setForm] = useState<FormState>(FORM_VAZIO);
+  const [erroForm, setErroForm] = useState<string | null>(null);
+
+  const [confirmandoExclusaoId, setConfirmandoExclusaoId] = useState<string | null>(null);
+  const [erroExclusao, setErroExclusao] = useState<string | null>(null);
+
+  function pesquisar() {
+    startTransition(async () => {
+      const resposta = await listarAliquotasImposto({
+        nome: filtroNome.trim() || undefined,
+        tipoIncidencia: filtroTipo || undefined,
+        status: filtroStatus || undefined,
+      });
+      if (resposta.sucesso) setAliquotas(resposta.dados);
+    });
+  }
+
+  function abrirNovo() {
+    setForm(FORM_VAZIO);
+    setErroForm(null);
+    setModalAberto('novo');
+  }
+
+  function abrirEdicao(a: AliquotaImpostoResultado) {
+    setEditandoId(a.id);
+    setEditandoVersion(a.version);
+    setForm({
+      nome: a.nome,
+      aliquotaPct: a.aliquotaPct,
+      tipoIncidencia: a.tipoIncidencia,
+      dataInicioVigencia: a.dataInicioVigencia.slice(0, 10),
+      dataFimVigencia: a.dataFimVigencia?.slice(0, 10) ?? '',
+      limiteMinimoPct: a.limiteMinimoPct ?? '',
+      limiteMaximoPct: a.limiteMaximoPct ?? '',
+      observacao: a.observacao ?? '',
+      contaSinteticaId: a.contaSinteticaId ?? '',
+    });
+    setErroForm(null);
+    setModalAberto('editar');
+  }
+
+  function fecharModal() {
+    setModalAberto(null);
+    setEditandoId(null);
+  }
+
+  function salvar() {
+    setErroForm(null);
+    startTransition(async () => {
+      const payload = {
+        nome: form.nome,
+        aliquotaPct: form.aliquotaPct,
+        tipoIncidencia: form.tipoIncidencia,
+        dataInicioVigencia: form.dataInicioVigencia,
+        dataFimVigencia: form.dataFimVigencia || null,
+        limiteMinimoPct: form.limiteMinimoPct || null,
+        limiteMaximoPct: form.limiteMaximoPct || null,
+        observacao: form.observacao || null,
+        contaSinteticaId: form.contaSinteticaId || null,
+      };
+      const resposta =
+        modalAberto === 'editar' && editandoId
+          ? await editarAliquotaImposto(editandoId, editandoVersion, payload)
+          : await cadastrarAliquotaImposto(payload);
+
+      if (!resposta.sucesso) {
+        setErroForm(resposta.mensagem);
+        return;
+      }
+      fecharModal();
+      pesquisar();
+    });
+  }
+
+  function confirmarExclusao() {
+    if (!confirmandoExclusaoId) return;
+    setErroExclusao(null);
+    startTransition(async () => {
+      const resposta = await excluirAliquotaImposto(confirmandoExclusaoId);
+      if (!resposta.sucesso) {
+        setErroExclusao(resposta.mensagem);
+        return;
+      }
+      setConfirmandoExclusaoId(null);
+      pesquisar();
+    });
+  }
+
+  const colunasExport = useMemo(
+    () => [
+      { chave: 'nome', rotulo: 'Nome do Imposto' },
+      { chave: 'aliquotaPct', rotulo: 'Alíquota (%)' },
+      { chave: 'tipoIncidencia', rotulo: 'Tipo de Incidência' },
+      { chave: 'dataInicioVigencia', rotulo: 'Início Vigência' },
+      { chave: 'dataFimVigencia', rotulo: 'Fim Vigência' },
+      { chave: 'status', rotulo: 'Status' },
+    ],
+    [],
+  );
+
+  function subtituloFiltros() {
+    const partes = [
+      `Nome: ${filtroNome || '(todos)'}`,
+      `Tipo de Incidência: ${filtroTipo ? TIPO_LABEL[filtroTipo] : '(todos)'}`,
+      `Status: ${filtroStatus || '(todos)'}`,
+    ];
+    return partes.join(' — ');
+  }
+
+  function exportar(formato: 'PDF' | 'XLSX') {
+    const linhas = aliquotas.map((a) => ({
+      nome: a.nome,
+      aliquotaPct: `${a.aliquotaPct}%`,
+      tipoIncidencia: TIPO_LABEL[a.tipoIncidencia],
+      dataInicioVigencia: formatarData(a.dataInicioVigencia),
+      dataFimVigencia: formatarData(a.dataFimVigencia),
+      status: a.status,
+    }));
+    if (formato === 'PDF') {
+      exportarParaPDF({
+        nomeArquivo: 'aliquotas-impostos',
+        titulo: 'ALÍQUOTAS DE IMPOSTOS',
+        subtitulo: subtituloFiltros(),
+        colunas: colunasExport,
+        linhas,
+        rodape: 'ALÍQUOTAS DE IMPOSTOS',
+      });
+    } else {
+      void exportarParaXLSX({ nomeArquivo: 'aliquotas-impostos', titulo: 'ALÍQUOTAS DE IMPOSTOS', colunas: colunasExport, linhas });
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-end gap-3 rounded border p-4">
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">Nome do Imposto</label>
+          <input
+            type="text"
+            value={filtroNome}
+            onChange={(e) => setFiltroNome(e.target.value)}
+            placeholder="Ex: ISS"
+            className="rounded border px-2 py-1 text-sm"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">Tipo de Incidência</label>
+          <select
+            value={filtroTipo}
+            onChange={(e) => setFiltroTipo(e.target.value as TipoIncidencia | '')}
+            className="rounded border px-2 py-1 text-sm"
+          >
+            <option value="">Todos</option>
+            <option value="CONTRATO">Contrato</option>
+            <option value="TERMO_DE_PARCERIA">Termo de Parceria</option>
+            <option value="AMBOS">Ambos</option>
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">Status</label>
+          <select
+            value={filtroStatus}
+            onChange={(e) => setFiltroStatus(e.target.value as StatusFiltro | '')}
+            className="rounded border px-2 py-1 text-sm"
+          >
+            <option value="">Todos</option>
+            <option value="ATIVO">Ativo</option>
+            <option value="INATIVO">Inativo</option>
+            <option value="EXPIRADA">Expirada</option>
+          </select>
+        </div>
+        <button
+          type="button"
+          onClick={pesquisar}
+          disabled={pending}
+          className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white disabled:opacity-50"
+        >
+          Pesquisar
+        </button>
+        <button type="button" onClick={() => exportar('PDF')} className="rounded border px-3 py-1.5 text-sm">
+          Exportar PDF
+        </button>
+        <button type="button" onClick={() => exportar('XLSX')} className="rounded border px-3 py-1.5 text-sm">
+          Exportar XLSX
+        </button>
+        {podeCriar && (
+          <button
+            type="button"
+            onClick={abrirNovo}
+            className="ml-auto rounded bg-green-600 px-3 py-1.5 text-sm text-white"
+          >
+            + Novo
+          </button>
+        )}
+      </div>
+
+      <div className="overflow-x-auto rounded border">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 text-left text-xs font-medium text-gray-600">
+            <tr>
+              <th className="px-3 py-2">Nome</th>
+              <th className="px-3 py-2">Alíquota (%)</th>
+              <th className="px-3 py-2">Tipo de Incidência</th>
+              <th className="px-3 py-2">Início Vigência</th>
+              <th className="px-3 py-2">Fim Vigência</th>
+              <th className="px-3 py-2">Status</th>
+              <th className="px-3 py-2">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {aliquotas.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-3 py-6 text-center text-gray-500">
+                  Nenhuma alíquota encontrada para os filtros informados.
+                </td>
+              </tr>
+            ) : (
+              aliquotas.map((a) => (
+                <tr key={a.id} className="border-t">
+                  <td className="px-3 py-2">{a.nome}</td>
+                  <td className="px-3 py-2 tabular-nums">{Number(a.aliquotaPct).toFixed(2)}%</td>
+                  <td className="px-3 py-2">{TIPO_LABEL[a.tipoIncidencia]}</td>
+                  <td className="px-3 py-2">{formatarData(a.dataInicioVigencia)}</td>
+                  <td className="px-3 py-2">{formatarData(a.dataFimVigencia)}</td>
+                  <td className="px-3 py-2">
+                    <span className={`rounded px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[a.status]}`}>{a.status}</span>
+                  </td>
+                  <td className="px-3 py-2">
+                    <div className="flex gap-2">
+                      {podeEditar && (
+                        <button type="button" onClick={() => abrirEdicao(a)} className="text-xs text-blue-700 hover:underline">
+                          Editar
+                        </button>
+                      )}
+                      {podeExcluir && (
+                        <button
+                          type="button"
+                          onClick={() => setConfirmandoExclusaoId(a.id)}
+                          disabled={a.temReferenciaAtiva}
+                          title={a.temReferenciaAtiva ? 'Referenciada em Propostas ativas' : undefined}
+                          className="text-xs text-red-700 hover:underline disabled:cursor-not-allowed disabled:text-gray-400 disabled:no-underline"
+                        >
+                          Excluir
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {modalAberto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-lg rounded bg-white p-6 shadow-lg">
+            <h2 className="mb-4 text-lg font-semibold">{modalAberto === 'editar' ? 'Alterar Alíquota' : 'Cadastrar Alíquota'}</h2>
+
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="md:col-span-2">
+                <label className="mb-1 block text-xs font-medium text-gray-600">Nome do Imposto *</label>
+                <input
+                  type="text"
+                  maxLength={20}
+                  value={form.nome}
+                  onChange={(e) => setForm({ ...form, nome: e.target.value })}
+                  className="w-full rounded border px-2 py-1 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">Alíquota Padrão (%) *</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={form.aliquotaPct}
+                  onChange={(e) => setForm({ ...form, aliquotaPct: e.target.value })}
+                  className="w-full rounded border px-2 py-1 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">Tipo de Incidência *</label>
+                <select
+                  value={form.tipoIncidencia}
+                  onChange={(e) => setForm({ ...form, tipoIncidencia: e.target.value as TipoIncidencia })}
+                  className="w-full rounded border px-2 py-1 text-sm"
+                >
+                  <option value="CONTRATO">Contrato</option>
+                  <option value="TERMO_DE_PARCERIA">Termo de Parceria</option>
+                  <option value="AMBOS">Ambos</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">Data Início Vigência *</label>
+                <input
+                  type="date"
+                  value={form.dataInicioVigencia}
+                  onChange={(e) => setForm({ ...form, dataInicioVigencia: e.target.value })}
+                  className="w-full rounded border px-2 py-1 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">Data Fim Vigência</label>
+                <input
+                  type="date"
+                  value={form.dataFimVigencia}
+                  onChange={(e) => setForm({ ...form, dataFimVigencia: e.target.value })}
+                  className="w-full rounded border px-2 py-1 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">Limite Mínimo (%)</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={form.limiteMinimoPct}
+                  onChange={(e) => setForm({ ...form, limiteMinimoPct: e.target.value })}
+                  className="w-full rounded border px-2 py-1 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">Limite Máximo (%)</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={form.limiteMaximoPct}
+                  onChange={(e) => setForm({ ...form, limiteMaximoPct: e.target.value })}
+                  className="w-full rounded border px-2 py-1 text-sm"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="mb-1 block text-xs font-medium text-gray-600">
+                  Conta Sintética Sugerida (opcional — default de UX no rateio, ADR-038)
+                </label>
+                <select
+                  value={form.contaSinteticaId}
+                  onChange={(e) => setForm({ ...form, contaSinteticaId: e.target.value })}
+                  className="w-full rounded border px-2 py-1 text-sm"
+                >
+                  <option value="">— Nenhuma —</option>
+                  {opcoesContaSintetica.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="mb-1 block text-xs font-medium text-gray-600">Observação</label>
+                <textarea
+                  maxLength={500}
+                  value={form.observacao}
+                  onChange={(e) => setForm({ ...form, observacao: e.target.value })}
+                  className="w-full rounded border px-2 py-1 text-sm"
+                  rows={2}
+                />
+              </div>
+            </div>
+
+            {erroForm && <p className="mt-3 text-xs text-red-600">{erroForm}</p>}
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" onClick={fecharModal} className="rounded border px-3 py-1.5 text-sm">
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={salvar}
+                disabled={pending || !form.nome.trim() || !form.aliquotaPct.trim() || !form.dataInicioVigencia}
+                className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white disabled:opacity-50"
+              >
+                {pending ? 'Salvando...' : 'Salvar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmandoExclusaoId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-sm rounded bg-white p-6 shadow-lg">
+            <p className="text-sm">
+              Deseja realmente excluir a alíquota "{aliquotas.find((a) => a.id === confirmandoExclusaoId)?.nome}"? A alíquota
+              será inativada e não estará mais disponível para novas Propostas.
+            </p>
+            {erroExclusao && <p className="mt-2 text-xs text-red-600">{erroExclusao}</p>}
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmandoExclusaoId(null);
+                  setErroExclusao(null);
+                }}
+                className="rounded border px-3 py-1.5 text-sm"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={confirmarExclusao}
+                disabled={pending}
+                className="rounded bg-red-600 px-3 py-1.5 text-sm text-white disabled:opacity-50"
+              >
+                {pending ? 'Excluindo...' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

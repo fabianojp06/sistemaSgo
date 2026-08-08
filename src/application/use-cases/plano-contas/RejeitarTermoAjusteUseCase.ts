@@ -46,7 +46,7 @@ export class RejeitarTermoAjusteUseCase {
     }
     if (termoAjuste.status !== 'PENDENTE_APROVACAO_N1' && termoAjuste.status !== 'PENDENTE_APROVACAO_GESTOR_MASTER') {
       throw new TermoAjusteEstadoInvalidoError(
-        'Ação Negada [TRAVA O ERRO]: este Termo de Ajuste já foi homologado ou rejeitado.',
+        'Ação Negada: este Termo de Ajuste já foi homologado ou rejeitado.',
       );
     }
     if (input.tokenConcorrencia && input.tokenConcorrencia.getTime() !== termoAjuste.updatedAt.getTime()) {

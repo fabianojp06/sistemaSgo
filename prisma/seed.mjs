@@ -121,6 +121,34 @@ async function seedModuloPlanoContas() {
       tipo: 'CONTEXTUAL',
     },
   });
+
+  // US-123 (UC03.39, ADR-038) — Central de Alíquotas de Impostos. NAVEGAVEL: ganha link
+  // próprio no menu (seção "Cadastros" do docx de menu), rota /aliquotas-impostos.
+  await prisma.funcionalidade.upsert({
+    where: { moduloId_chave: { moduloId: modulo.id, chave: 'aliquotas-impostos.visualizar' } },
+    update: {},
+    create: { moduloId: modulo.id, chave: 'aliquotas-impostos.visualizar', nome: 'Visualizar Alíquotas de Impostos' },
+  });
+
+  // US-124/125/126 (UC03.40-42) — CRUD de alíquotas. [ADR-021] CONTEXTUAL: ações vivem
+  // dentro de /aliquotas-impostos, sem rota/link próprio no menu.
+  await prisma.funcionalidade.upsert({
+    where: { moduloId_chave: { moduloId: modulo.id, chave: 'aliquotas-impostos.criar' } },
+    update: {},
+    create: { moduloId: modulo.id, chave: 'aliquotas-impostos.criar', nome: 'Cadastrar Alíquota de Imposto', tipo: 'CONTEXTUAL' },
+  });
+
+  await prisma.funcionalidade.upsert({
+    where: { moduloId_chave: { moduloId: modulo.id, chave: 'aliquotas-impostos.editar' } },
+    update: {},
+    create: { moduloId: modulo.id, chave: 'aliquotas-impostos.editar', nome: 'Editar Alíquota de Imposto', tipo: 'CONTEXTUAL' },
+  });
+
+  await prisma.funcionalidade.upsert({
+    where: { moduloId_chave: { moduloId: modulo.id, chave: 'aliquotas-impostos.excluir' } },
+    update: {},
+    create: { moduloId: modulo.id, chave: 'aliquotas-impostos.excluir', nome: 'Excluir Alíquota de Imposto', tipo: 'CONTEXTUAL' },
+  });
 }
 
 // [EP48/26] Módulo Orçamentário — item 4 da estrutura de menu oficial (docs/

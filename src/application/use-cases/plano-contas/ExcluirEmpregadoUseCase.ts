@@ -28,7 +28,7 @@ export class ExcluirEmpregadoUseCase {
     });
     if (!proposta || (proposta.status !== 'RASCUNHO' && proposta.status !== 'EM_ELABORACAO')) {
       throw new VersaoPropostaInvalidaError(
-        'Ação Negada [TRAVA O ERRO]: esta Proposta está oficializada e seus dados estão congelados.',
+        'Ação Negada: esta Proposta está oficializada e seus dados estão congelados.',
       );
     }
 

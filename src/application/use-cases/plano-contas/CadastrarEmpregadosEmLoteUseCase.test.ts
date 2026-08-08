@@ -139,7 +139,7 @@ describe('CadastrarEmpregadosEmLoteUseCase [US-108b]', () => {
     );
   });
 
-  it('bloqueia quantidade zero ou negativa [TRAVA O ERRO]', async () => {
+  it('bloqueia quantidade zero ou negativa', async () => {
     const prisma = criarPrismaMock([propostaConsolidada], [cargo]);
     const useCase = new CadastrarEmpregadosEmLoteUseCase(prisma as never);
 
@@ -153,7 +153,7 @@ describe('CadastrarEmpregadosEmLoteUseCase [US-108b]', () => {
     expect(prisma.empregadoHeadcount.create).not.toHaveBeenCalled();
   });
 
-  it('bloqueia quantidade não-inteira [TRAVA O ERRO]', async () => {
+  it('bloqueia quantidade não-inteira', async () => {
     const prisma = criarPrismaMock([propostaConsolidada], [cargo]);
     const useCase = new CadastrarEmpregadosEmLoteUseCase(prisma as never);
 
@@ -162,7 +162,7 @@ describe('CadastrarEmpregadosEmLoteUseCase [US-108b]', () => {
     ).rejects.toThrow(QuantidadeEmpregadoLoteInvalidaError);
   });
 
-  it('bloqueia lançamento sem Cargo [TRAVA O ERRO]', async () => {
+  it('bloqueia lançamento sem Cargo', async () => {
     const prisma = criarPrismaMock([propostaConsolidada], [cargo]);
     const useCase = new CadastrarEmpregadosEmLoteUseCase(prisma as never);
 
@@ -171,17 +171,17 @@ describe('CadastrarEmpregadosEmLoteUseCase [US-108b]', () => {
     ).rejects.toThrow(CargoObrigatorioEmpregadoError);
   });
 
-  it('bloqueia Proposta oficializada [TRAVA O ERRO]', async () => {
+  it('bloqueia Proposta oficializada', async () => {
     const prisma = criarPrismaMock([propostaOficializada], [cargoOficializada]);
     const useCase = new CadastrarEmpregadosEmLoteUseCase(prisma as never);
 
     await expect(
       useCase.execute({ tenantId: 't1', usuarioId: 'u1', propostaId: 'p3', cargoId: 'c3', quantidade: 2, categoria: 'EMPREGADO', periodoInicio: new Date('2026-02-01') }),
-    ).rejects.toThrow('Ação Negada [TRAVA O ERRO]');
+    ).rejects.toThrow('Ação Negada');
     expect(prisma.empregadoHeadcount.create).not.toHaveBeenCalled();
   });
 
-  it('bloqueia Período Inicial retroativo [TRAVA O ERRO]', async () => {
+  it('bloqueia Período Inicial retroativo', async () => {
     const prisma = criarPrismaMock([propostaConsolidada], [cargo]);
     const useCase = new CadastrarEmpregadosEmLoteUseCase(prisma as never);
 
@@ -207,7 +207,7 @@ describe('CadastrarEmpregadosEmLoteUseCase [US-108b]', () => {
     expect(empregados.every((e) => e.metaId === 'm1')).toBe(true);
   });
 
-  it('bloqueia Proposta POR_META sem Meta cadastrada [TRAVA O ERRO]', async () => {
+  it('bloqueia Proposta POR_META sem Meta cadastrada', async () => {
     const prisma = criarPrismaMock([propostaPorMeta], [cargoPorMeta], [versaoVigentePorMeta], []);
     const useCase = new CadastrarEmpregadosEmLoteUseCase(prisma as never);
 

@@ -45,7 +45,7 @@ export class CadastrarQtdeEmpregadoUseCase {
     }
     if (proposta.status !== 'RASCUNHO' && proposta.status !== 'EM_ELABORACAO') {
       throw new VersaoPropostaInvalidaError(
-        'Ação Negada [TRAVA O ERRO]: esta Proposta está oficializada e seus dados estão congelados.',
+        'Ação Negada: esta Proposta está oficializada e seus dados estão congelados.',
       );
     }
     if (input.periodoInicio.getTime() < proposta.dataInicio.getTime() || input.periodoFim.getTime() > proposta.dataFim.getTime()) {

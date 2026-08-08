@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { prisma } from '@/infrastructure/db/prisma';
 import { getTenantId } from '@/infrastructure/tenant';
 import { usuarioTemFuncionalidade } from '@/application/use-cases/plano-contas/verificarPermissao';
+import { normalizarValorMonetario } from '@/lib/decimal/normalizarValorMonetario';
 import {
   getSincronizarPlanoContasUseCase,
   getCriarAgrupadorUseCase,
@@ -199,7 +200,8 @@ const ConfigurarRateioImpostoSchema = z.object({
   aliquotaParametroId: z.string().min(1),
   contaId: z.string().min(1),
   competencia: z.coerce.date(),
-  valorDeclarado: z.string().min(1),
+  // Bug de QA: aceitar formato brasileiro "1000,00", não só "1000.00".
+  valorDeclarado: z.string().min(1).transform(normalizarValorMonetario),
   tokenConcorrencia: z.coerce.date().optional(),
 });
 

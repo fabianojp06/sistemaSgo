@@ -52,7 +52,7 @@ export class ConfigurarValorOrcadoContaUseCase {
     }
     if (versao.status !== 'RASCUNHO' && versao.status !== 'EM_ELABORACAO') {
       throw new VersaoPropostaInvalidaError(
-        'Ação Negada [TRAVA O ERRO]: esta versão está oficializada ou encerrada e seus dados estão congelados. Nenhuma alteração é permitida.',
+        'Ação Negada: esta versão está oficializada ou encerrada e seus dados estão congelados. Nenhuma alteração é permitida.',
       );
     }
 

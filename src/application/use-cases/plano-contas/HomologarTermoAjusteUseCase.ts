@@ -45,7 +45,7 @@ export class HomologarTermoAjusteUseCase {
     }
     if (termoAjuste.status !== 'PENDENTE_APROVACAO_GESTOR_MASTER') {
       throw new TermoAjusteEstadoInvalidoError(
-        'Ação Negada [TRAVA O ERRO]: este Termo de Ajuste não está aguardando homologação do Gestor Master.',
+        'Ação Negada: este Termo de Ajuste não está aguardando homologação do Gestor Master.',
       );
     }
     if (input.tokenConcorrencia && input.tokenConcorrencia.getTime() !== termoAjuste.updatedAt.getTime()) {

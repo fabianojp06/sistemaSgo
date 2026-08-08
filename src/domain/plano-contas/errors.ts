@@ -16,7 +16,7 @@ export class SincronismoEmAndamentoError extends Error {
 export class ContasOrfasError extends Error {
   constructor(public readonly codigosOrfaos: string[]) {
     super(
-      `Erro de Sincronismo [TRAVA O ERRO]: Ingestão abortada. Contas sem conta pai correspondente: ${codigosOrfaos.join(', ')}.`,
+      `Erro de Sincronismo: Ingestão abortada. Contas sem conta pai correspondente: ${codigosOrfaos.join(', ')}.`,
     );
     this.name = 'ContasOrfasError';
   }
@@ -110,7 +110,7 @@ export class SemaforoPercentualForaDaFaixaError extends Error {
 export class VinculoHierarquicoInvalidoError extends Error {
   constructor() {
     super(
-      'Vínculo Hierárquico Inválido [TRAVA O ERRO]: Coordenadoria/Setor só pode ser subordinado a uma unidade do tipo Gerência. Assessoria só pode ser subordinado a uma unidade do tipo Diretoria.',
+      'Vínculo Hierárquico Inválido: Coordenadoria/Setor só pode ser subordinado a uma unidade do tipo Gerência. Assessoria só pode ser subordinado a uma unidade do tipo Diretoria.',
     );
     this.name = 'VinculoHierarquicoInvalidoError';
   }
@@ -120,7 +120,7 @@ export class VinculoHierarquicoInvalidoError extends Error {
 export class InativacaoUnidadeFuncionalBloqueadaError extends Error {
   constructor() {
     super(
-      'Inativação Bloqueada [TRAVA O ERRO]: Esta unidade possui cargos vinculados. Remova ou realoque os cargos antes de inativá-la.',
+      'Inativação Bloqueada: Esta unidade possui cargos vinculados. Remova ou realoque os cargos antes de inativá-la.',
     );
     this.name = 'InativacaoUnidadeFuncionalBloqueadaError';
   }
@@ -130,7 +130,7 @@ export class InativacaoUnidadeFuncionalBloqueadaError extends Error {
 export class PropostaImutavelError extends Error {
   constructor() {
     super(
-      'Ação Negada [TRAVA O ERRO]: Esta Proposta não está em Rascunho ou Em Elaboração. Nenhuma alteração é permitida.',
+      'Ação Negada: Esta Proposta não está em Rascunho ou Em Elaboração. Nenhuma alteração é permitida.',
     );
     this.name = 'PropostaImutavelError';
   }
@@ -150,7 +150,7 @@ export class ConflitoConcorrenciaError extends Error {
 export class ExclusaoCicloVidaInvalidoError extends Error {
   constructor() {
     super(
-      'Ação Negada [TRAVA O ERRO]: O ciclo de vida atual do projeto não permite exclusão. Documentos oficializados ou encerrados são estritamente imutáveis.',
+      'Ação Negada: O ciclo de vida atual do projeto não permite exclusão. Documentos oficializados ou encerrados são estritamente imutáveis.',
     );
     this.name = 'ExclusaoCicloVidaInvalidoError';
   }
@@ -159,7 +159,7 @@ export class ExclusaoCicloVidaInvalidoError extends Error {
 // US-103, Cenário 4 [TRAVA O ERRO] — não pode ser a única versão ativa da Proposta.
 export class VersaoUnicaNaoPodeSerExcluidaError extends Error {
   constructor() {
-    super('Exclusão Rejeitada [TRAVA O ERRO]: Não é possível excluir a única versão existente desta Proposta.');
+    super('Exclusão Rejeitada: Não é possível excluir a única versão existente desta Proposta.');
     this.name = 'VersaoUnicaNaoPodeSerExcluidaError';
   }
 }
@@ -168,7 +168,7 @@ export class VersaoUnicaNaoPodeSerExcluidaError extends Error {
 export class VinculosAtivosImpedemExclusaoError extends Error {
   constructor() {
     super(
-      'Exclusão Rejeitada [TRAVA O ERRO]: Operação bloqueada. A versão da proposta possui registros operacionais ou memórias de cálculo analíticas ativas vinculadas.',
+      'Exclusão Rejeitada: Operação bloqueada. A versão da proposta possui registros operacionais ou memórias de cálculo analíticas ativas vinculadas.',
     );
     this.name = 'VinculosAtivosImpedemExclusaoError';
   }
@@ -186,7 +186,7 @@ export class PropostaNaoEncontradaError extends Error {
 export class CamposObrigatoriosPropostaError extends Error {
   constructor() {
     super(
-      'Operação Rejeitada [TRAVA O ERRO]: Os campos Tipo, Nome/Objeto, Data de Início, Data de Término e Categoria são obrigatórios e não podem ser nulos.',
+      'Operação Rejeitada: Os campos Tipo, Nome/Objeto, Data de Início, Data de Término e Categoria são obrigatórios e não podem ser nulos.',
     );
     this.name = 'CamposObrigatoriosPropostaError';
   }
@@ -196,7 +196,7 @@ export class CamposObrigatoriosPropostaError extends Error {
 export class DatasPropostaInvalidasError extends Error {
   constructor() {
     super(
-      'Erro de Validação [TRAVA O ERRO]: A Data de Término não pode ser inferior ou igual à Data de Início configurada para o Termo de Parceria.',
+      'Erro de Validação: A Data de Término não pode ser inferior ou igual à Data de Início configurada para o Termo de Parceria.',
     );
     this.name = 'DatasPropostaInvalidasError';
   }
@@ -231,7 +231,7 @@ export class AliquotaImpostoNaoEncontradaError extends Error {
 export class VersaoOficializadaCongeladaError extends Error {
   constructor() {
     super(
-      'Ação Negada [TRAVA O ERRO]: Esta Proposta está oficializada e seus dados fiscais estão congelados. Nenhuma alteração é permitida.',
+      'Ação Negada: Esta Proposta está oficializada e seus dados fiscais estão congelados. Nenhuma alteração é permitida.',
     );
     this.name = 'VersaoOficializadaCongeladaError';
   }
@@ -260,7 +260,7 @@ export class VersaoJaVigenteError extends Error {
 export class NaturezaHierarquiaInvalidaError extends Error {
   constructor(public readonly naturezaAncestral: 'OPEX' | 'CAPEX', public readonly naturezaTentativa: 'OPEX' | 'CAPEX') {
     super(
-      `Classificação Inválida [TRAVA O ERRO]: A conta sintética pai desta conta está classificada como ${naturezaAncestral}. Não é permitido classificar uma conta filha como ${naturezaTentativa} — a natureza deve ser consistente com a hierarquia.`,
+      `Classificação Inválida: A conta sintética pai desta conta está classificada como ${naturezaAncestral}. Não é permitido classificar uma conta filha como ${naturezaTentativa} — a natureza deve ser consistente com a hierarquia.`,
     );
     this.name = 'NaturezaHierarquiaInvalidaError';
   }
@@ -660,7 +660,7 @@ export class ContaComponenteCustoNaoAnaliticaError extends Error {
 export class ExclusaoCargoBloqueadaError extends Error {
   constructor(public readonly codigosCargosBloqueados: string[]) {
     super(
-      `Exclusão Bloqueada [TRAVA O ERRO]: ${
+      `Exclusão Bloqueada: ${
         codigosCargosBloqueados.length === 1
           ? `O cargo "${codigosCargosBloqueados[0]}" possui`
           : `Os cargos ${codigosCargosBloqueados.join(', ')} possuem`
@@ -675,5 +675,73 @@ export class ContaRateioImpostoNaoAnaliticaError extends Error {
   constructor() {
     super('Selecione uma conta analítica (nível folha) para o rateio de imposto.');
     this.name = 'ContaRateioImpostoNaoAnaliticaError';
+  }
+}
+
+// UC03.39-42 — CRUD de AliquotaImpostoParametro (Central de Alíquotas de Impostos).
+
+// UC03.40/41, RN_IMP_005 — nome único (case-insensitive) na base de parâmetros fiscais.
+export class AliquotaImpostoNomeDuplicadoError extends Error {
+  constructor(nome: string) {
+    super(`Operação Rejeitada: Já existe uma alíquota cadastrada com o nome ${nome}. Utilize um nome único.`);
+    this.name = 'AliquotaImpostoNomeDuplicadoError';
+  }
+}
+
+// UC03.40/41, RN_IMP_006 — 0,00% <= alíquota <= 100,00%.
+export class AliquotaImpostoForaDaFaixaError extends Error {
+  constructor() {
+    super('Alíquota Inválida: O valor deve estar entre 0,00% e 100,00%.');
+    this.name = 'AliquotaImpostoForaDaFaixaError';
+  }
+}
+
+// UC03.40/41, RN_IMP_006/RN_TAX_01 — ISS (case-insensitive) deve estar entre 2,00% e 5,00% (LC 116/2003).
+export class AliquotaImpostoIssForaDaFaixaLegalError extends Error {
+  constructor() {
+    super('Alíquota de ISS Inválida: A alíquota de ISS deve estar entre 2,00% e 5,00% conforme a LC 116/2003.');
+    this.name = 'AliquotaImpostoIssForaDaFaixaLegalError';
+  }
+}
+
+// UC03.40/41, RN_IMP_007 — Data de Início da Vigência não pode ser retroativa.
+export class AliquotaImpostoDataInicioRetroativaError extends Error {
+  constructor() {
+    super('Data Inválida: A data de início da vigência não pode ser retroativa à data atual.');
+    this.name = 'AliquotaImpostoDataInicioRetroativaError';
+  }
+}
+
+// UC03.40/41 — Data de Fim, se informada, deve ser posterior à Data de Início.
+export class AliquotaImpostoDataFimInvalidaError extends Error {
+  constructor() {
+    super('Data Inválida: A data de fim da vigência deve ser posterior à data de início.');
+    this.name = 'AliquotaImpostoDataFimInvalidaError';
+  }
+}
+
+// UC03.39/40/41/42 — parâmetro não encontrado para o tenant (edição/exclusão de registro inexistente).
+export class AliquotaImpostoParametroNaoEncontradaError extends Error {
+  constructor() {
+    super('Alíquota de imposto não encontrada.');
+    this.name = 'AliquotaImpostoParametroNaoEncontradaError';
+  }
+}
+
+// UC03.42, RN_IMP_009 [TRAVA O ERRO] — exclusão bloqueada por referência ativa em Proposta não congelada.
+export class AliquotaImpostoReferenciadaError extends Error {
+  constructor() {
+    super(
+      'Exclusão Bloqueada: Esta alíquota está sendo utilizada em Propostas ativas. Remova as referências antes de excluir.',
+    );
+    this.name = 'AliquotaImpostoReferenciadaError';
+  }
+}
+
+// ADR-038 — contaSinteticaId, quando informado, deve apontar para conta SINTÉTICA (não analítica).
+export class ContaSugeridaAliquotaImpostoNaoSinteticaError extends Error {
+  constructor() {
+    super('A conta sugerida deve ser uma conta sintética (não analítica) — ela é apenas um valor padrão para o rateio.');
+    this.name = 'ContaSugeridaAliquotaImpostoNaoSinteticaError';
   }
 }

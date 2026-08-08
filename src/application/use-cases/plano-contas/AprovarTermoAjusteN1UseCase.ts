@@ -41,7 +41,7 @@ export class AprovarTermoAjusteN1UseCase {
     }
     if (termoAjuste.status !== 'PENDENTE_APROVACAO_N1') {
       throw new TermoAjusteEstadoInvalidoError(
-        'Ação Negada [TRAVA O ERRO]: este Termo de Ajuste não está aguardando aprovação de 1º nível.',
+        'Ação Negada: este Termo de Ajuste não está aguardando aprovação de 1º nível.',
       );
     }
     if (input.tokenConcorrencia && input.tokenConcorrencia.getTime() !== termoAjuste.updatedAt.getTime()) {

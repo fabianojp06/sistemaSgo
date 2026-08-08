@@ -647,6 +647,63 @@ Sessão longa iniciando o Módulo Orçamentário de verdade, além dos ajustes v
 
 ---
 
+## 2026-08-07 (cont. 12) — registrada às 21:20 UTC — ADR-038 + US-123 a US-126 (UC03.39-42, Central de Alíquotas de Impostos)
+
+Usuário perguntou se o Módulo de Cadastros menciona um submódulo de Cadastro de Impostos/Alíquotas — resposta: sim, `SGO2_Estrutura_Menu_Relacionamentos.docx` lista UC03.01-03 "Central de Alíquotas, Totalizadores e Rateio/ISS" no menu de Cadastros, mas o que existe hoje (US-101/101a) é só a aba "Rateio de Impostos" contextual à Proposta — não há tela de manutenção do parâmetro global `AliquotaImpostoParametro` (só populável via seed). Usuário trouxe documento próprio já pronto: `docs/Especificacao_UC03.39_a_UC03.42_Aliquotas_Impostos.md` (UC03.39-42, gap formalizado, pendente de validação com André/SCOR).
+
+1. **[AN/PO] Análise do documento contra o código real:** confirmado gap 100% real — nenhum use case de create/update/delete existe para `AliquotaImpostoParametro`, só o upsert do `seed.mjs`. O único ponto do documento não confirmado no código é o "Fluxo C (atalho inline)" do UC03.01 — descrito como já existente, não encontrado; fica como pendência a esclarecer antes de codificar US-124.
+2. **[Tech Lead] ADR-038 — vínculo de conta no parâmetro de alíquota.** Pergunta do usuário: o vínculo do imposto com a Proposta é via conta sintética/analítica? Resposta: o vínculo obrigatório **já existe e continua** em `RateioImpostoGrade.contaId` (analítica, ADR-027) — isso não muda. A decisão nova é se `AliquotaImpostoParametro` (o parâmetro global) também deveria carregar uma conta. Optou-se por adicionar `contaSinteticaId` (nullable, sintética N1-N6, nunca analítica) como **sugestão de UX** para pré-preencher o formulário de rateio — sem trava, sem obrigatoriedade, sem alterar a validação de `ContaRateioImpostoNaoAnaliticaError` já existente em `ConfigurarRateioImpostoUseCase`. Motivo de ser sintética e não analítica: contas analíticas (N7) vêm do ERP Senior por Plano de Contas específico e podem não repetir entre Propostas — fixá-las no parâmetro global quebraria a portabilidade do tributo entre Propostas diferentes. Usuário aprovou a recomendação sem alteração.
+3. **[AN/PO] 4 User Stories escritas** cobrindo UC03.39-42, com renumeração por colisão detectada (US-119 a US-122 já estavam em uso — Criar/Restaurar Versão, Ranking, Cronograma de Desembolso — próximo ID livre real era US-123):
+   - `docs/US-123 - Manter Alíquotas de Impostos.pt-BR.md` (UC03.39, listagem/filtros/exportação)
+   - `docs/US-124 - Cadastrar Alíquota de Imposto.pt-BR.md` (UC03.40, inclui a migration de schema do ADR-038: `ativo`, `dataFimVigencia`, `limiteMinimoPct`/`limiteMaximoPct`, `observacao`, `contaSinteticaId`, `version`)
+   - `docs/US-125 - Alterar Alíquota de Imposto.pt-BR.md` (UC03.41, Optimistic Locking via `version`, mesmo padrão de US-105; confirma que edição de alíquota nunca recalcula `RateioImpostoGrade.aliquotaAplicadaSnapshot` de rateios já existentes — RN_TAX_03/06)
+   - `docs/US-126 - Excluir Alíquota de Imposto.pt-BR.md` (UC03.42, soft delete com trava de referência ativa em `RateioImpostoGrade`)
+4. Backlog Kanban (`BACKLOG - Kanban EP118-24 Módulo de Cadastros.md`) atualizado: US-123 a US-126 adicionadas em "Próximo da Fila" (itens 3-6, depois de US-116/US-117 já priorizadas).
+
+**Estado ao final:** apenas documentação/refinamento — nenhum código, migration ou teste ainda. Nenhum arquivo de `src/` ou `prisma/schema.prisma` alterado nesta rodada. Servidor de dev segue no ar (porta 3000) desde o início da sessão, sem mudança de runtime.
+
+**Próximo passo natural:** aplicar a migration do ADR-038 (schema) e implementar US-123 (tela Manter) como primeira peça, ou primeiro esclarecer com o usuário a pendência do "Fluxo C" citada no item 1 antes de codificar US-124. Não decidido ainda — depende do que o usuário priorizar na próxima interação.
+
+## 2026-08-07 (cont. 13) — registrada às 23:50 UTC — US-123 a US-126 implementadas ponta a ponta (Central de Alíquotas de Impostos)
+
+Usuário confirmou "vamos construir o submódulo" após o refinamento anterior (ADR-038 + US-123-126). **[Full Stack Dev]** implementou tudo de ponta a ponta na mesma sessão:
+
+1. **Schema (ADR-038):** `AliquotaImpostoParametro` ganhou `ativo`, `dataFimVigencia`, `limiteMinimoPct`/`limiteMaximoPct`, `observacao`, `contaSinteticaId` (FK opcional para `ContaContabil`), `version`. 3 novos valores em `TipoOperacao` (`ALIQUOTA_IMPOSTO_CRIADA/EDITADA/INATIVADA`). Migration `20260807233738_add_aliquota_imposto_manutencao` aplicada direto em produção (Supabase) sem backfill — tabela já tinha registros do seed, mas os campos novos são nullable/com default, sem risco.
+2. **Domain errors:** 7 novas em `src/domain/plano-contas/errors.ts` (nome duplicado, faixa geral, faixa legal ISS, data retroativa, data fim inválida, não encontrada, referenciada, conta sugerida não sintética). Reaproveitado `ConflitoConcorrenciaError` já existente para o Optimistic Locking.
+3. **4 use cases** em `src/application/use-cases/plano-contas/`: `ListarAliquotasImpostoUseCase` (status "Expirada" calculado em runtime via RN_IMP_003, não persistido), `CadastrarAliquotaImpostoUseCase`, `EditarAliquotaImpostoUseCase` (Optimistic Locking via `updateMany` condicionado a `version`), `ExcluirAliquotaImpostoUseCase` (soft delete, bloqueia só referência ativa em Proposta RASCUNHO/EM_ELABORACAO — Proposta Oficializada não bloqueia, pois o snapshot já é imutável). 15 testes novos, todos verdes.
+4. **Wiring:** 4 funções `getXUseCase()` em `container.ts`; novo `src/app/aliquotas-impostos/actions.ts` (próprio, não misturado em `plano-contas/actions.ts` — mesmo padrão de `/propostas`, cada módulo standalone tem seu `actions.ts`); 4 `Funcionalidade` seedadas (`aliquotas-impostos.visualizar` NAVEGAVEL, `.criar`/`.editar`/`.excluir` CONTEXTUAL); seed rodado e aplicado em produção; rota mapeada em `MenuLateral.tsx`.
+5. **UI:** `src/app/aliquotas-impostos/page.tsx` (Server Component, busca contas sintéticas para o seletor de sugestão) + `AliquotaImpostoListPanel.tsx` (Client Component — grid com filtros nome/tipo/status, modal de criar/editar com todos os campos do UC03.40/41 incluindo o seletor opcional de Conta Sintética Sugerida do ADR-038, modal de confirmação de exclusão, exportação PDF/XLSX reaproveitando `exportarRelatorio.ts` do ADR-037 sem lib nova).
+
+**Estado ao final:** `tsc --noEmit` limpo. Suíte completa: 282/288 passando (mesmas 6 falhas pré-existentes do baseline, todas em `CadastrarEmpregadoUseCase`/`CadastrarEmpregadosEmLoteUseCase`/`EditarEmpregadoUseCase` — não relacionadas a esta entrega; 15 testes novos desta sessão, 0 falhas). Servidor de dev reiniciado com `.next/` limpo; `/aliquotas-impostos` validado (307 sem sessão, sem erro de runtime no log) — teste visual completo (login + CRUD no navegador) fica para o usuário, sessão remota do Codespace não tem acesso ao Clerk. **Não commitado ainda** — aguardando o usuário revisar/pedir commit.
+
+**Próximo passo natural:** usuário testar no navegador e pedir commit; depois, US-116/US-117 (Estrutura Funcional/Cargos, já estavam na fila antes desta interrupção) ou continuar o Módulo Orçamentário em UC04.02.
+
+## 2026-08-08 — registrada às 00:20 UTC — QA encontrou 3 bugs reais em Alíquotas de Impostos, 2 corrigidos
+
+Usuário rodou o script de teste (Claude in Chrome) na Central de Alíquotas de Impostos e reportou 3 achados fora do escopo dos cenários roteirizados:
+
+1. **[CORRIGIDO] Bug de fuso horário (off-by-one) nas datas de vigência.** Causa raiz: `validarFaixaEDataOuLanca`/`EditarAliquotaImpostoUseCase` comparavam `dataInicioVigencia` (meia-noite UTC, vinda de `<input type="date">` via `z.coerce.date()`) contra `new Date(); setHours(0,0,0,0)` — que zera a hora em fuso LOCAL do processo, não UTC. Em fuso negativo, isso "voltava" a data em 1 dia, rejeitando "hoje" como retroativo (bloqueou Cenário 7 e parte do Cenário 4 do script de QA) e também distorcia a exibição na grid. Fix: todas as comparações de data-calendário agora usam `Date.UTC(...)` puro, sem tocar em hora local — em `CadastrarAliquotaImpostoUseCase`, `EditarAliquotaImpostoUseCase` e no cálculo de status "Expirada" em `ListarAliquotasImpostoUseCase`. `formatarData` no painel também passou a formatar em UTC (`getUTCDate/Month/FullYear`), o que resolveu de brinde o **erro de hydration mismatch** reportado (SSR e client formatavam a mesma data UTC de formas diferentes por causa do fuso). 2 testes de regressão novos, rodados explicitamente com `TZ='America/Sao_Paulo'` para reproduzir o cenário do bug — passam.
+2. **[CORRIGIDO] Vírgula decimal rejeitada ("[DecimalError] Invalid argument: 1000,00").** Campo "Valor Declarado" do Rateio de Impostos (e os campos de Alíquota/Limites da Central) só aceitavam ponto. Novo utilitário `src/lib/decimal/normalizarValorMonetario.ts` (remove separador de milhar, troca vírgula por ponto) aplicado nos Zod schemas de `configurarRateioImposto` (`plano-contas/actions.ts`) e `cadastrarAliquotaImposto`/`editarAliquotaImposto` (`aliquotas-impostos/actions.ts`).
+3. **[EM ABERTO — decisão de produto, não código]** Mensagens de erro expõem o rótulo "[TRAVA O ERRO]" na UI (ex: "Alíquota Inválida [TRAVA O ERRO]: ..."). Não é um bug introduzido nesta sessão — é convenção pré-existente em `errors.ts` (36 ocorrências) e reproduz literalmente o texto dos UCs originais (ex: UC03.40 especifica a mensagem exata com o rótulo). QA classificou como rótulo de debug vazando; não alterado sem decisão do PO, pois mudar isso é uma decisão de UX em todo o app, não só nesta feature.
+
+Registros de teste (CSLL-TESTE, TESTE-EXCLUSAO, rateio de ISS em PROP-2026-0001 "Teste A") ainda **não foram limpos do banco de produção** — aguardando confirmação do usuário antes de qualquer DELETE direto.
+
+**Estado ao final:** `tsc --noEmit` limpo. Suíte completa rodada com `TZ='America/Sao_Paulo'` (reproduzindo o fuso do bug): 283/289 passando, mesmas 6 falhas pré-existentes (não relacionadas). **Ainda não commitado.**
+
+**Atualização (mesmo dia, logo em seguida):** usuário decidiu os 2 pontos em aberto via AskUserQuestion — (a) remover "[TRAVA O ERRO]" de todo o app, não só da feature nova; (b) apagar os dados de teste do banco de produção.
+- Removido o rótulo de **18 mensagens de usuário** (`super(...)` em `errors.ts`) + **9 mensagens inline** em use cases fora de `errors.ts` (`AprovarTermoAjusteN1UseCase`, `CadastrarEmpregadoUseCase`, `CadastrarEmpregadosEmLoteUseCase`, `HomologarTermoAjusteUseCase`, `CadastrarQtdeEmpregadoUseCase`, `ConfigurarValorOrcadoContaUseCase`, `EditarEmpregadoUseCase`, `ExcluirEmpregadoUseCase`, `RejeitarTermoAjusteUseCase`) + 1 assertion de teste. **Preservados** os ~18 usos em comentários de código (`// [TRAVA O ERRO] ...`) — são anotação de design interna, não texto de UI. `tsc`+suíte completa (`TZ='America/Sao_Paulo'`) seguem limpos: 283/289, mesmas 6 falhas pré-existentes.
+- Apagados via script Node direto (Prisma, produção): `RateioImpostoGrade` do rateio de ISS na Proposta "Teste A" (PROP-2026-0001), e as 2 `AliquotaImpostoParametro` de teste (CSLL-TESTE, TESTE-EXCLUSAO). A Proposta "Teste A" em si **não foi apagada** — só o rateio de teste dentro dela.
+
+**Ainda não commitado** — aguardando o usuário pedir o commit.
+
+**Fechamento da sessão:** usuário pediu para salvar o script de QA como arquivo versionado —
+`docs/SCRIPT_QA_Aliquotas_Impostos_v2.md` (v2 do script original de scratchpad, já incorporando os
+Cenários 13-15 de regressão dos 3 bugs). Em seguida pediu commit + push de toda a entrega da sessão
+(US-123 a US-126 + ADR-038 + os 2 bugs corrigidos + remoção do rótulo "[TRAVA O ERRO]" em todo o
+app). `docs/UC04.01 — Cronograma de Desembolso.md` tem 1 linha em branco adicionada no início,
+não relacionada a este trabalho (provável edição incidental do usuário no IDE) — deixada de fora
+do commit desta sessão de propósito.
+
 ## Como usar este arquivo em sessões futuras
 
 No início de uma sessão, se o usuário perguntar "qual o contexto/status de X", leia este arquivo antes de assumir que a memória padrão (`~/.claude/.../memory/`) está atualizada — o ambiente deste projeto (Codespace) pode ter sido recriado desde a última sessão, apagando a memória padrão sem apagar o repositório.

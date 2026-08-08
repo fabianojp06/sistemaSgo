@@ -9,6 +9,7 @@ const ROTA_POR_FUNCIONALIDADE: Record<string, string> = {
   'plano-contas.sincronizar': '/plano-contas',
   'propostas.visualizar': '/propostas',
   'orcamentario.visualizar': '/orcamentario',
+  'aliquotas-impostos.visualizar': '/aliquotas-impostos',
 };
 
 /**

@@ -35,6 +35,11 @@
 | US-115 (UC03.06) | Tela de Proposta com Guias Analíticas | `/propostas/{id}/[[...guia]]` — capa Read-only + 8 abas (Valor Orçado, Semáforo, Meta, Empregados+Qtde.Empregado, Viagens, Bens, Rateio de Impostos, Termo de Ajuste), deep-link por URL; `podeEditarVersao()` centraliza o enforcement client-side de read-only; Cargo/UnidadeFuncional ficam fora (ciclo de vida por Proposta, não por Versão) |
 | ADR-032 | Valor Realizado do Semáforo = total do prazo do contrato | Empregado (único custo mensal recorrente) multiplicado pelos meses de sobreposição com o período da Proposta; `calcularMesesSobreposicao` corrigido (contrato de 1 ano contava 13 meses, não 12) |
 | US-118 | Guia Valor Orçado vira dashboard-resumo da Proposta | Valor Global + árvore de contas sintéticas expansível vêm do custo REALIZADO (Empregados+Viagens+Bens+Rateio, `ValorRealizadoService`, mesmo cálculo do Semáforo) — não do lançamento manual, que virou guia própria "Lançar Valor Orçado"; nº de Empregados; enfeitado com gráfico de ranking e ícones |
+| ADR-038 | AliquotaImpostoParametro ganha contaSinteticaId opcional | Sugestão de UX (default no rateio, US-101), nunca obrigatória; `RateioImpostoGrade.contaId` (analítica, ADR-027) continua sendo o único vínculo de fato obrigatório |
+| US-123 (UC03.39) | Manter Alíquotas de Impostos (listagem/filtros/exportação) | Nova rota `/aliquotas-impostos`, `ListarAliquotasImpostoUseCase`; status "Expirada" calculado em runtime (RN_IMP_003); exportação PDF/XLSX via `exportarRelatorio.ts` (ADR-037) |
+| US-124 (UC03.40) | Cadastrar Alíquota de Imposto | `CadastrarAliquotaImpostoUseCase`; migration com `ativo`, `dataFimVigencia`, `limiteMinimoPct`/`limiteMaximoPct`, `observacao`, `contaSinteticaId`, `version`; faixa legal de ISS (2-5%) e não-retroatividade validadas [TRAVA O ERRO] |
+| US-125 (UC03.41) | Alterar Alíquota de Imposto | `EditarAliquotaImpostoUseCase`; Optimistic Locking via `version` (mesmo padrão de US-105); edição nunca recalcula `RateioImpostoGrade.aliquotaAplicadaSnapshot` de Propostas já Oficializadas (RN_TAX_03/06) |
+| US-126 (UC03.42) | Excluir (Soft Delete) Alíquota de Imposto | `ExcluirAliquotaImpostoUseCase`; bloqueado por referência ativa em Proposta RASCUNHO/EM_ELABORACAO (RN_IMP_009), referência só em Proposta Oficializada não bloqueia (snapshot já é imutável) |
 
 ---
 
