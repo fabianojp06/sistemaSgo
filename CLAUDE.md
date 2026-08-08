@@ -21,3 +21,12 @@ Este projeto é conduzido com apoio das seguintes skills (perfis) da conta do us
 - **Banco de dados:** Supabase, também restrito ao plano gratuito.
 - **Documentação do módulo em desenvolvimento (`docs/`):** termo de abertura (TAP001_24), especificação (EP084_24), critérios de aceite (CA_UC01_01 a 05) e dicionário de dados (DC_EP084_24) do Módulo de Autenticação e Tela Principal.
 - **Protótipos/wireframes:** criados de forma colaborativa diretamente na conversa (ex: via Artifact), não há arquivos de wireframe externos.
+
+## Fluxo de trabalho Git
+
+Decidido em 2026-08-08 (ADR informal, techlead-fsg): fluxo **híbrido por risco**, não "sempre PR" nem "sempre commit direto".
+
+- **Direto na `master`:** documentação (`docs/*.md`), fix pequeno e localizado (poucas linhas, sem migration, sem mudar contrato de use case/Server Action).
+- **Branch + Pull Request:** qualquer migration de banco, qualquer mudança em use case/regra de negócio financeira (empenho, liquidação, dotação, cálculo de impostos, etc.), e qualquer refatoração estrutural (mover/renomear muitos arquivos, criar/mudar layout compartilhado, mudar arquitetura de pastas). Nesses casos, a revisão antes do merge é o `/code-review` (não depende de revisão humana síncrona).
+- **Critério de corte é julgamento, não checklist fechado** — na dúvida entre as duas categorias, tratar como risco mais alto (branch + PR).
+- Justificativa: o CI (`.github/workflows/ci.yml`) já roda lint/tsc/test/build em push e em PR pra `master`, mas sem branch protection configurada, commit direto nunca aciona esse gate *antes* de ir pra produção — só avisa depois que já foi. Branch+PR reintroduz esse freio exatamente onde o risco financeiro é real, sem impor fricção a mudanças de baixo risco.
