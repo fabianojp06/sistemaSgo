@@ -8,7 +8,7 @@ export type CelulaPremissaSerializada =
 export type LinhaPremissaSerializada = {
   contaId: string;
   contaLabel: string;
-  blocos: BlocoPremissa[];
+  bloco: BlocoPremissa;
   temIndice: boolean;
   celulas: CelulaPremissaSerializada[];
 };

@@ -259,7 +259,7 @@ export default async function PropostaDetalhePage({
     linhasPremissas = linhas.map((l) => ({
       contaId: l.contaId,
       contaLabel: labelPorConta.get(l.contaId) ?? l.contaId,
-      blocos: l.blocos,
+      bloco: l.bloco,
       temIndice: l.temIndice,
       celulas: l.celulas.map((c) =>
         c.tag === 'PROJETADO'

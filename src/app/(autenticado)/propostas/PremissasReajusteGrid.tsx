@@ -66,15 +66,11 @@ export function PremissasReajusteGrid({
   const blocos: ('CONTRATOS' | 'PARCERIA_ACT')[] = ['CONTRATOS', 'PARCERIA_ACT'];
 
   function linhasExport() {
-    return linhasVisiveis.flatMap((linha) =>
-      linha.blocos.map((bloco) => ({
-        bloco: LABEL_BLOCO[bloco],
-        conta: linha.contaLabel,
-        ...Object.fromEntries(
-          linha.celulas.map((c, i) => [`mes_${i}`, linha.temIndice ? formatarCelula(c) : '0,00%']),
-        ),
-      })),
-    );
+    return linhasVisiveis.map((linha) => ({
+      bloco: LABEL_BLOCO[linha.bloco],
+      conta: linha.contaLabel,
+      ...Object.fromEntries(linha.celulas.map((c, i) => [`mes_${i}`, linha.temIndice ? formatarCelula(c) : '0,00%'])),
+    }));
   }
 
   function colunasExport() {
@@ -164,7 +160,7 @@ export function PremissasReajusteGrid({
         </p>
       ) : (
         blocos.map((bloco) => {
-          const linhasDoBloco = linhasVisiveis.filter((l) => l.blocos.includes(bloco));
+          const linhasDoBloco = linhasVisiveis.filter((l) => l.bloco === bloco);
           if (linhasDoBloco.length === 0) return null;
           return (
             <div key={bloco} className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm print:overflow-visible print:rounded-none print:border-0 print:shadow-none">

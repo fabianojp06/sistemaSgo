@@ -10,10 +10,12 @@ export type CelulaPremissa =
 
 export type LinhaPremissaReajuste = {
   contaId: string;
-  /** RN0239 — uma conta com histórico em CONTRATO e TERMO_DE_PARCERIA (ou algum AMBOS)
-   * aparece nos dois blocos; sem nenhum rateio cadastrado, aparece só em CONTRATOS
+  /** [Code review 2026-08-10] Uma linha por (conta, bloco) — não por conta sozinha. Uma
+   * conta com histórico em CONTRATO e TERMO_DE_PARCERIA (percentuais/vigências distintos
+   * por natureza) gera 2 linhas, cada uma com suas próprias células, nunca a mesma célula
+   * repetida nos 2 blocos. Sem nenhum rateio cadastrado, gera 1 linha em CONTRATOS
    * (convenção pragmática — o documento-fonte não especifica bloco para conta zerada). */
-  blocos: BlocoPremissa[];
+  bloco: BlocoPremissa;
   /** RN0383 — false quando a conta não tem nenhum AliquotaImpostoParametro vinculado
    * (via RateioImpostoGrade); usado pelo filtro "Exibir Contas Zeradas" na UI. */
   temIndice: boolean;
@@ -21,9 +23,15 @@ export type LinhaPremissaReajuste = {
 };
 
 type PeriodoVigencia = { dataInicio: Date; dataFim: Date };
+type ParametroConta = { id: string; tipoIncidencia: TipoIncidenciaImposto; aliquotaPct: Prisma.Decimal; dataInicioVigencia: Date; dataFimVigencia: Date | null };
 
 function primeiroDiaDoMes(ano: number, mesIndex0: number): Date {
   return new Date(Date.UTC(ano, mesIndex0, 1));
+}
+
+function pertenceAoBloco(tipo: TipoIncidenciaImposto, bloco: BlocoPremissa): boolean {
+  if (bloco === 'CONTRATOS') return tipo === 'CONTRATO' || tipo === 'AMBOS';
+  return tipo === 'TERMO_DE_PARCERIA' || tipo === 'AMBOS';
 }
 
 /**
@@ -32,12 +40,20 @@ function primeiroDiaDoMes(ano: number, mesIndex0: number): Date {
  * "Formula" do documento-fonte é reaproveitada de `AliquotaImpostoParametro`/
  * `RateioImpostoGrade` (Rateio de Impostos, US-101/ADR-027/ADR-038) — decisão do
  * usuário, sem entidade nova. Algoritmo de projeção (ADR-040, Decisão 1): para
- * cada conta analítica e cada mês da vigência da Proposta, busca entre os
- * `AliquotaImpostoParametro` já vinculados àquela conta (via qualquer
- * `RateioImpostoGrade.aliquotaParametroId` histórico) aquele cuja janela de
- * vigência cobre o mês. Mês <= mês corrente (fuso do sistema) sempre marca
- * "Realizado", independente de achar parâmetro (RN0225). Mês futuro sem nenhum
- * parâmetro cobrindo vira "SEM_INDICE" — sem herança entre reajustes sucessivos.
+ * cada conta analítica, cada bloco (RN0239) e cada mês da vigência da Proposta,
+ * busca entre os `AliquotaImpostoParametro` daquele bloco já vinculados àquela
+ * conta (via qualquer `RateioImpostoGrade.aliquotaParametroId` histórico) o de
+ * vigência mais recente cuja janela cobre o mês. Mês <= mês corrente (fuso do
+ * sistema) sempre marca "Realizado", independente de achar parâmetro (RN0225).
+ * Mês futuro sem nenhum parâmetro cobrindo vira "SEM_INDICE" — sem herança entre
+ * reajustes sucessivos.
+ *
+ * [Code review 2026-08-10] Antes, uma única série de células era computada por
+ * conta e reaproveitada nos 2 blocos — uma conta com parâmetros distintos de
+ * CONTRATO e TERMO_DE_PARCERIA mostrava a mesma projeção (errada para um dos
+ * dois) nos 2 blocos. Agora cada (conta, bloco) filtra só os parâmetros daquele
+ * tipo antes de projetar, e o `orderBy` na query + desempate por vigência mais
+ * recente tornam a escolha determinística quando há janelas sobrepostas.
  */
 export class ListarPremissasReajusteUseCase {
   constructor(private readonly prisma: PrismaClient) {}
@@ -59,12 +75,14 @@ export class ListarPremissasReajusteUseCase {
           select: { id: true, tipoIncidencia: true, aliquotaPct: true, dataInicioVigencia: true, dataFimVigencia: true },
         },
       },
+      // Determinismo — ordem estável de desempate quando há vigências sobrepostas do mesmo tipo.
+      orderBy: { aliquotaParametro: { dataInicioVigencia: 'asc' } },
     });
 
     // Cenário 6 — proposta sem nenhum rateio cadastrado é "resultado vazio": não loga (RN0232).
     if (rateios.length === 0) return [];
 
-    const parametrosPorConta = new Map<string, Map<string, (typeof rateios)[number]['aliquotaParametro']>>();
+    const parametrosPorConta = new Map<string, Map<string, ParametroConta>>();
     for (const rateio of rateios) {
       const porId = parametrosPorConta.get(rateio.contaId) ?? new Map();
       porId.set(rateio.aliquotaParametro.id, rateio.aliquotaParametro);
@@ -82,26 +100,37 @@ export class ListarPremissasReajusteUseCase {
     const [anoCorrente, mesCorrente] = hojeNoFusoDoSistema().split('-').map(Number);
     const competenciaCorrente = primeiroDiaDoMes(anoCorrente, mesCorrente - 1);
 
-    const linhas = contaIds.map((contaId) => {
+    const linhas: LinhaPremissaReajuste[] = [];
+    for (const contaId of contaIds) {
       const parametros = [...(parametrosPorConta.get(contaId)?.values() ?? [])];
-
+      const temIndice = parametros.length > 0;
       const tiposIncidencia = new Set(parametros.map((p) => p.tipoIncidencia));
       const blocos = this.determinarBlocos(tiposIncidencia);
 
-      const celulas: CelulaPremissa[] = meses.map((competencia) => {
-        if (competencia.getTime() <= competenciaCorrente.getTime()) {
-          return { competencia, tag: 'REALIZADO' };
-        }
-        const vigente = parametros.find(
-          (p) =>
-            p.dataInicioVigencia.getTime() <= competencia.getTime() &&
-            (p.dataFimVigencia === null || p.dataFimVigencia.getTime() >= competencia.getTime()),
-        );
-        return vigente ? { competencia, tag: 'PROJETADO', aliquotaPct: vigente.aliquotaPct } : { competencia, tag: 'SEM_INDICE' };
-      });
+      for (const bloco of blocos) {
+        const parametrosDoBloco = parametros.filter((p) => pertenceAoBloco(p.tipoIncidencia, bloco));
 
-      return { contaId, blocos, temIndice: parametros.length > 0, celulas };
-    });
+        const celulas: CelulaPremissa[] = meses.map((competencia) => {
+          if (competencia.getTime() <= competenciaCorrente.getTime()) {
+            return { competencia, tag: 'REALIZADO' };
+          }
+          const vigentes = parametrosDoBloco.filter(
+            (p) =>
+              p.dataInicioVigencia.getTime() <= competencia.getTime() &&
+              (p.dataFimVigencia === null || p.dataFimVigencia.getTime() >= competencia.getTime()),
+          );
+          // Desempate determinístico: entre parâmetros com janela sobreposta cobrindo o
+          // mesmo mês, vale o de vigência mais recente (o reajuste negociado por último).
+          const vigente = vigentes.reduce<ParametroConta | null>(
+            (mais, atual) => (mais === null || atual.dataInicioVigencia.getTime() > mais.dataInicioVigencia.getTime() ? atual : mais),
+            null,
+          );
+          return vigente ? { competencia, tag: 'PROJETADO', aliquotaPct: vigente.aliquotaPct } : { competencia, tag: 'SEM_INDICE' };
+        });
+
+        linhas.push({ contaId, bloco, temIndice, celulas });
+      }
+    }
 
     // RN0232 — log síncrono só quando há resultado (rateios.length > 0, checado acima).
     await this.prisma.historicoOperacao.create({
