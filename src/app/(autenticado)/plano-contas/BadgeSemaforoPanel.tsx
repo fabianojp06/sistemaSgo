@@ -1,5 +1,5 @@
 import { getCalcularValorRealizadoUseCase } from '@/application/use-cases/plano-contas/container';
-import { ColumnChartRanking } from './ColumnChartRanking';
+import { StackedColumnChartLimite } from './StackedColumnChartLimite';
 
 type ContaOpcao = { id: string; label: string };
 
@@ -17,23 +17,6 @@ const COR_HEX: Record<string, string> = {
   LARANJA: '#f97316',
   VERMELHO: '#dc2626',
 };
-// Paleta categórica (identidade por conta) — usada no gráfico enquanto não há
-// Valor Orçado cadastrado para a conta, ou seja, ainda não existe confronto
-// orçado x realizado que justifique a cor de status do Semáforo. Assim que o
-// Valor Orçado existir, `badge.cor` deixa de ser null e a cor de status
-// assume automaticamente. Ordem fixa, nunca ciclada — acima de 8 contas
-// simultâneas sem Valor Orçado, repete o último slot (caso raro).
-const PALETA_CATEGORICA_HEX = [
-  '#2a78d6', // blue
-  '#eb6834', // orange
-  '#1baf7a', // aqua
-  '#eda100', // yellow
-  '#e87ba4', // magenta
-  '#008300', // green
-  '#4a3aa7', // violet
-  '#e34948', // red
-];
-
 const formatadorMoeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 function formatarMoeda(valor: number | string): string {
   return formatadorMoeda.format(Number(valor));
@@ -63,29 +46,24 @@ export async function BadgeSemaforoPanel({
     contasAnaliticas.map((c) => c.id),
   );
 
-  // Ranking do gráfico — mesmo Map já retornado pelo use case, sem cálculo novo.
-  // Cor de cada coluna: se já há confronto orçado x realizado (badge.cor
-  // definido), usa a cor de status do Semáforo (mesma da lista abaixo). Sem
-  // Valor Orçado ainda (fase de montagem do orçamento), usa cor categórica
-  // por identidade da conta, em ordem fixa e estável (índice na lista
-  // original de contas analíticas, não no ranking por valor).
-  const contasComLancamento = contasAnaliticas
+  // Barras empilhadas de limite — só faz sentido para contas com Valor Orçado
+  // cadastrado (badge.cor definido), já que a barra representa % consumido
+  // de um limite. Contas sem Valor Orçado não têm o que empilhar aqui; elas
+  // seguem representadas no ranking categórico acima.
+  const barrasLimite = contasAnaliticas
     .map((conta) => ({ conta, badge: badges.get(conta.id) }))
-    .filter((c): c is { conta: ContaOpcao; badge: NonNullable<typeof c.badge> } => !!c.badge && !c.badge.valorRealizado.isZero());
-
-  const colunasRanking = contasComLancamento.map(({ conta, badge }, i) => {
-    // Índice categórico = posição entre as contas sem cor de status até aqui (estável, não cicla por render).
-    const indiceCategorico = contasComLancamento.slice(0, i).filter((c) => !c.badge.cor).length;
-    const cor = badge.cor
-      ? COR_HEX[badge.cor]
-      : PALETA_CATEGORICA_HEX[Math.min(indiceCategorico, PALETA_CATEGORICA_HEX.length - 1)];
-    return {
+    .filter(
+      (c): c is { conta: ContaOpcao; badge: NonNullable<typeof c.badge> } =>
+        !!c.badge && c.badge.cor !== null && c.badge.percentual !== null,
+    )
+    .map(({ conta, badge }) => ({
       id: conta.id,
       label: conta.label,
-      valor: badge.valorRealizado.toNumber(),
-      cor,
-    };
-  });
+      valorOrcado: badge.valorOrcado.toNumber(),
+      valorRealizado: badge.valorRealizado.toNumber(),
+      percentual: badge.percentual!,
+      cor: COR_HEX[badge.cor!],
+    }));
 
   // Só contas com valor lançado, decrescente por valor realizado.
   const contasComValor = contasAnaliticas
@@ -101,8 +79,8 @@ export async function BadgeSemaforoPanel({
 
   return (
     <div className="flex flex-col gap-6 rounded-xl bg-slate-50 p-4 md:p-6">
-      {colunasRanking.length > 0 && (
-        <ColumnChartRanking titulo="Ranking de Contas — Valor Realizado" colunas={colunasRanking} />
+      {barrasLimite.length > 0 && (
+        <StackedColumnChartLimite titulo="Consumo do Limite por Conta (Valor Orçado)" barras={barrasLimite} />
       )}
 
       <div className="overflow-hidden rounded-lg border border-gray-100 bg-white shadow-sm">

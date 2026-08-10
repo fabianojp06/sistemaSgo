@@ -47,6 +47,17 @@ function IconeDownload() {
     </svg>
   );
 }
+function IconeImpressora() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-4 w-4">
+      <path
+        d="M6 9V3h12v6M6 18H4a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2M6 14h12v7H6z"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 /** US-122/UC04.01 — Cronograma de Desembolso: matriz temporal Somente Leitura, com
  * exportação PDF/XLSX (ADR-037, geração client-side). Cenário 3 (Anexo) fora de escopo.
@@ -72,14 +83,17 @@ export function CronogramaDesembolsoPanel({
 
   const rotuloMeta = metaNome ?? 'Todos'; // RN0250 — nunca dado nulo
 
+  // Rótulos literais do documento de especificação (UC04.01) — usados tanto no
+  // cabeçalho da grade em tela quanto na exportação PDF/XLSX, para não haver
+  // dois textos diferentes descrevendo a mesma coluna.
   const colunas = [
     { chave: 'evento', rotulo: 'Evento' },
     { chave: 'data', rotulo: 'Data' },
-    { chave: 'descricao', rotulo: 'Descrição' },
+    { chave: 'descricao', rotulo: 'Descrição do Evento' },
     { chave: 'desembolsoMensal', rotulo: 'Desembolso Mensal (R$)' },
     { chave: 'desembolsoAcumulado', rotulo: 'Desembolso Acumulado (R$)' },
-    { chave: 'percentualAcumulado', rotulo: '% Financeiro Acumulado' },
-    { chave: 'repasse12Meses', rotulo: 'Valor Repassado a cada 12 meses (R$)' },
+    { chave: 'percentualAcumulado', rotulo: '% Financeiro Acumulado (%)' },
+    { chave: 'repasse12Meses', rotulo: 'Valor Repassado a cada 12 meses de execução (R$)' },
   ];
 
   const linhasFormatadas = linhas.map((l) => ({
@@ -114,6 +128,10 @@ export function CronogramaDesembolsoPanel({
     });
   }
 
+  function imprimir() {
+    window.print();
+  }
+
   function exportarPDF() {
     setErro(null);
     try {
@@ -139,17 +157,27 @@ export function CronogramaDesembolsoPanel({
   }
 
   return (
-    <div className="flex flex-col gap-4 rounded-xl bg-[#F7F8FA] p-4 dark:bg-[#12151C] md:p-6">
-      {/* Cabeçalho: identificação da Proposta + ações de exportação */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="flex flex-col gap-4 rounded-xl bg-[#F7F8FA] p-4 dark:bg-[#12151C] md:p-6 print:bg-white print:p-0 print:text-black">
+      {/* Cabeçalho impresso — título centralizado fixo, só existe na versão para impressão/PDF (cabeçalho do documento, RN0259/layout do relatório). */}
+      <h1 className="hidden text-center text-lg font-bold tracking-wide uppercase print:block">Cronograma de Desembolso</h1>
+
+      {/* Cabeçalho: identificação da Proposta + ações de exportação/impressão */}
+      <div className="flex flex-wrap items-start justify-between gap-3 print:hidden">
         <div>
           <h2 className="text-base font-semibold text-[#1A1F29] dark:text-[#EBEDF2]">Cronograma de Desembolso</h2>
           <p className="mt-0.5 text-sm text-[#5B6270] dark:text-[#A4AAB6]">
-            <span className="font-mono text-xs text-[#8A8F98] dark:text-[#767C89]">{codigoProposta}</span> {nomeProposta} · Meta:{' '}
-            {rotuloMeta} · Versão {versaoNumero}
+            <span className="font-mono text-xs text-[#8A8F98] dark:text-[#767C89]">{codigoProposta}</span> {nomeProposta}
           </p>
         </div>
         <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={imprimir}
+            className="flex items-center gap-1.5 rounded-[7px] border border-[#DDE2EA] bg-white px-3 py-1.5 text-xs font-medium text-[#5B6270] shadow-sm hover:bg-[#EEF1F6] dark:border-[#2B303C] dark:bg-[#191D26] dark:text-[#A4AAB6] dark:hover:bg-[#1F2430]"
+          >
+            <IconeImpressora />
+            Imprimir
+          </button>
           <button
             type="button"
             onClick={exportarXLSX}
@@ -170,10 +198,28 @@ export function CronogramaDesembolsoPanel({
         </div>
       </div>
 
-      {erro && <p className="text-xs text-[#C43D3D] dark:text-[#E0716B]">{erro}</p>}
+      {erro && <p className="text-xs text-[#C43D3D] dark:text-[#E0716B] print:hidden">{erro}</p>}
 
-      {/* Faixa de KPIs — mesmo padrão de EmpregadoPanel/ViagemPanel */}
-      <div className="rounded-xl bg-slate-900 p-5 shadow-md md:p-6">
+      {/* Painel de Filtros Aplicados (RN0200/RN0250) — rótulo + valor por item, sempre visível (tela e impressão). */}
+      <div className="flex flex-wrap gap-x-6 gap-y-1.5 rounded-lg border border-[#DDE2EA] bg-white px-4 py-3 text-sm dark:border-[#2B303C] dark:bg-[#191D26] print:rounded-none print:border-0 print:border-b print:border-black print:px-0 print:py-2">
+        <span>
+          <span className="text-[#8A8F98] dark:text-[#767C89]">Termo de Parceria:</span>{' '}
+          <span className="font-medium text-[#1A1F29] dark:text-[#EBEDF2]">
+            {codigoProposta} — {nomeProposta}
+          </span>
+        </span>
+        <span>
+          <span className="text-[#8A8F98] dark:text-[#767C89]">Meta:</span>{' '}
+          <span className="font-medium text-[#1A1F29] dark:text-[#EBEDF2]">{rotuloMeta}</span>
+        </span>
+        <span>
+          <span className="text-[#8A8F98] dark:text-[#767C89]">Versão do TP:</span>{' '}
+          <span className="font-medium text-[#1A1F29] dark:text-[#EBEDF2]">{versaoNumero}</span>
+        </span>
+      </div>
+
+      {/* Faixa de KPIs — mesmo padrão de EmpregadoPanel/ViagemPanel; não faz parte do documento oficial, só da tela. */}
+      <div className="rounded-xl bg-slate-900 p-5 shadow-md md:p-6 print:hidden">
         <div className="grid grid-cols-1 gap-5 md:grid-cols-3 md:gap-4">
           <div className="flex items-start gap-3">
             <span className="mt-0.5 text-slate-400">
@@ -206,18 +252,18 @@ export function CronogramaDesembolsoPanel({
       </div>
 
       {/* Matriz temporal — Somente Leitura */}
-      <div className="overflow-hidden rounded-lg border border-gray-100 bg-white shadow-sm dark:border-[#2B303C] dark:bg-[#191D26]">
-        <div className="max-h-[560px] overflow-auto">
-          <table className="w-full min-w-[900px] border-collapse text-left text-xs">
-            <thead className="sticky top-0 z-10 bg-slate-50 text-slate-600 dark:bg-[#1F2430] dark:text-[#A4AAB6]">
+      <div className="overflow-hidden rounded-lg border border-gray-100 bg-white shadow-sm dark:border-[#2B303C] dark:bg-[#191D26] print:overflow-visible print:rounded-none print:border-0 print:shadow-none">
+        <div className="max-h-[560px] overflow-auto print:max-h-none print:overflow-visible">
+          <table className="w-full min-w-[900px] border-collapse text-left text-xs print:min-w-0">
+            <thead className="sticky top-0 z-10 bg-slate-50 text-slate-600 dark:bg-[#1F2430] dark:text-[#A4AAB6] print:static print:bg-white print:text-black">
               <tr>
                 <th className="px-3 py-2.5 font-semibold whitespace-nowrap">Evento</th>
                 <th className="px-3 py-2.5 font-semibold whitespace-nowrap">Data</th>
-                <th className="px-3 py-2.5 font-semibold whitespace-nowrap">Descrição</th>
-                <th className="px-3 py-2.5 text-right font-semibold whitespace-nowrap">Desembolso Mensal</th>
-                <th className="px-3 py-2.5 text-right font-semibold whitespace-nowrap">Desembolso Acumulado</th>
-                <th className="px-3 py-2.5 text-right font-semibold whitespace-nowrap">% Financeiro Acumulado</th>
-                <th className="px-3 py-2.5 text-right font-semibold whitespace-nowrap">Repasse a cada 12 meses</th>
+                <th className="px-3 py-2.5 font-semibold whitespace-nowrap">Descrição do Evento</th>
+                <th className="px-3 py-2.5 text-right font-semibold whitespace-nowrap">Desembolso Mensal (R$)</th>
+                <th className="px-3 py-2.5 text-right font-semibold whitespace-nowrap">Desembolso Acumulado (R$)</th>
+                <th className="px-3 py-2.5 text-right font-semibold whitespace-nowrap">% Financeiro Acumulado (%)</th>
+                <th className="px-3 py-2.5 text-right font-semibold whitespace-nowrap">Valor Repassado a cada 12 meses de execução (R$)</th>
               </tr>
             </thead>
             <tbody>
@@ -265,9 +311,11 @@ export function CronogramaDesembolsoPanel({
           </table>
         </div>
       </div>
-      <p className="text-[11px] text-[#8A8F98] dark:text-[#767C89]">
+      <p className="text-[11px] text-[#8A8F98] dark:text-[#767C89] print:hidden">
         Linhas destacadas em azul marcam o fechamento de cada ciclo de 12 meses (RN0254).
       </p>
+      {/* Rodapé do documento impresso — título unificado fixo, conforme layout do relatório. */}
+      <p className="hidden text-center text-[10px] uppercase print:block">Cronograma de Desembolso</p>
     </div>
   );
 }
