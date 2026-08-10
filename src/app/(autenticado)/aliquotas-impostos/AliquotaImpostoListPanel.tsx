@@ -14,6 +14,18 @@ type ContaOpcao = { id: string; label: string };
 type TipoIncidencia = 'CONTRATO' | 'TERMO_DE_PARCERIA' | 'AMBOS';
 type StatusFiltro = 'ATIVO' | 'INATIVO' | 'EXPIRADA';
 
+// ADR-040 — aliquotaPct ampliado para Decimal(9,4) (reaproveitado também como índice de
+// reajuste, UC04.02). Exibe só as casas decimais que carregam informação: tributos comuns
+// (2 casas, ex. 9,25%) não ganham zeros à direita; índices com mais precisão (ex. IPCA
+// 4,5125%) aparecem por completo.
+function formatarAliquotaPct(valor: string): string {
+  const numero = Number(valor);
+  const com4Casas = numero.toFixed(4);
+  const semZerosFinais = com4Casas.replace(/0+$/, '').replace(/\.$/, '');
+  const casasDecimais = semZerosFinais.includes('.') ? semZerosFinais.split('.')[1].length : 0;
+  return numero.toFixed(Math.max(casasDecimais, 2));
+}
+
 const TIPO_LABEL: Record<TipoIncidencia, string> = {
   CONTRATO: 'Contrato',
   TERMO_DE_PARCERIA: 'Termo de Parceria',
@@ -325,7 +337,7 @@ export function AliquotaImpostoListPanel({
               aliquotas.map((a) => (
                 <tr key={a.id} className="border-t">
                   <td className="px-3 py-2">{a.nome}</td>
-                  <td className="px-3 py-2 tabular-nums">{Number(a.aliquotaPct).toFixed(2)}%</td>
+                  <td className="px-3 py-2 tabular-nums">{formatarAliquotaPct(a.aliquotaPct)}%</td>
                   <td className="px-3 py-2">{TIPO_LABEL[a.tipoIncidencia]}</td>
                   <td className="px-3 py-2">{formatarData(a.dataInicioVigencia)}</td>
                   <td className="px-3 py-2">{formatarData(a.dataFimVigencia)}</td>

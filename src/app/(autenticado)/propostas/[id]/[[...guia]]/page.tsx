@@ -18,6 +18,9 @@ import { ViagemPanel } from '../../ViagemPanel';
 import { ItemPatrimonialPanel } from '../../ItemPatrimonialPanel';
 import { CronogramaDesembolsoPanel } from '../../CronogramaDesembolsoPanel';
 import { montarCronogramaDesembolso } from '@/domain/plano-contas/montarCronogramaDesembolso';
+import { PremissasReajusteGrid } from '../../PremissasReajusteGrid';
+import { getListarPremissasReajusteUseCase } from '@/application/use-cases/plano-contas/container';
+import type { LinhaPremissaSerializada } from '../../premissasReajusteTipos';
 
 const GUIAS = [
   { slug: 'valor-orcado', label: 'Valor Orçado' },
@@ -30,6 +33,7 @@ const GUIAS = [
   { slug: 'rateio-impostos', label: 'Rateio de Impostos' },
   { slug: 'termo-ajuste', label: 'Termo de Ajuste' },
   { slug: 'cronograma-desembolso', label: 'Cronograma de Desembolso' },
+  { slug: 'premissas-reajustes', label: 'Premissas e Reajustes' },
 ] as const;
 
 /** US-115 (UC03.06) — capa Read-only + guias analíticas por Versão de Proposta. */
@@ -242,6 +246,29 @@ export default async function PropostaDetalhePage({
     }
   }
 
+  let linhasPremissas: LinhaPremissaSerializada[] = [];
+  if (guiaAtiva === 'premissas-reajustes') {
+    const linhas = await getListarPremissasReajusteUseCase().execute(
+      tenantId,
+      usuario.id,
+      versao.id,
+      contasAnaliticas.map((c) => c.id),
+      { dataInicio: proposta.dataInicio, dataFim: proposta.dataFim },
+    );
+    const labelPorConta = new Map(contasAnaliticas.map((c) => [c.id, c.label]));
+    linhasPremissas = linhas.map((l) => ({
+      contaId: l.contaId,
+      contaLabel: labelPorConta.get(l.contaId) ?? l.contaId,
+      blocos: l.blocos,
+      temIndice: l.temIndice,
+      celulas: l.celulas.map((c) =>
+        c.tag === 'PROJETADO'
+          ? { competencia: c.competencia.toISOString(), tag: c.tag, aliquotaPct: c.aliquotaPct.toString() }
+          : { competencia: c.competencia.toISOString(), tag: c.tag },
+      ),
+    }));
+  }
+
   return (
     <main className="flex min-h-screen flex-col gap-6 p-6">
       <header>
@@ -335,6 +362,15 @@ export default async function PropostaDetalhePage({
             linhas={cronogramaLinhas}
           />
         )}
+
+        {guiaAtiva === 'premissas-reajustes' && (
+          <PremissasReajusteGrid
+            nomeProposta={proposta.nome}
+            codigoProposta={proposta.codigo}
+            versaoNumero={versao.numeroVersao}
+            linhas={linhasPremissas}
+          />
+        )}
       </section>
     </main>
   );
@@ -366,7 +402,7 @@ async function RateioImpostoPanelHost({
     return <p className="text-sm text-gray-500">Sem permissão para visualizar Rateio de Impostos.</p>;
   }
 
-  const aliquotasOpcoes = aliquotas.map((a) => ({ id: a.id, label: `${a.nome} (${a.aliquotaPct.toString()}%)` }));
+  const aliquotasOpcoes = aliquotas.map((a) => ({ id: a.id, label: `${a.nome} (${Number(a.aliquotaPct)}%)` }));
 
   return (
     <RateioImpostoPanel versaoId={versaoId} contasAnaliticas={contasAnaliticas} aliquotas={aliquotasOpcoes} readOnly={readOnly} />

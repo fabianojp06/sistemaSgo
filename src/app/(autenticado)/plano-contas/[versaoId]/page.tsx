@@ -58,7 +58,7 @@ export default async function VersaoPropostaPage({ params }: { params: Promise<{
   ]);
 
   const contasAnaliticas = contas.map((c) => ({ id: c.id, label: `${c.codigoErp} — ${c.nomeConta}` }));
-  const aliquotasOpcoes = aliquotas.map((a) => ({ id: a.id, label: `${a.nome} (${a.aliquotaPct.toString()}%)` }));
+  const aliquotasOpcoes = aliquotas.map((a) => ({ id: a.id, label: `${a.nome} (${Number(a.aliquotaPct)}%)` }));
 
   return (
     <main className="flex min-h-screen flex-col gap-6 p-6">
