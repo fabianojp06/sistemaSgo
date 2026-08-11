@@ -1,7 +1,13 @@
 'use client';
 
-import { useState, useTransition } from 'react';
-import { criarUnidadeFuncional, inativarUnidadeFuncional, type UnidadeFuncionalResultado } from './estrutura-actions';
+import { useEffect, useState, useTransition } from 'react';
+import {
+  criarUnidadeFuncional,
+  importarEstruturaOrganizacional,
+  inativarUnidadeFuncional,
+  listarPropostasParaImportarEstrutura,
+  type UnidadeFuncionalResultado,
+} from './estrutura-actions';
 
 type TipoNivel = UnidadeFuncionalResultado['tipoNivel'];
 
@@ -40,6 +46,39 @@ export function OrganogramaPanel({
   const [idPai, setIdPai] = useState('');
   const [erro, setErro] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  const [importOpen, setImportOpen] = useState(false);
+  const [propostasOrigem, setPropostasOrigem] = useState<{ id: string; codigo: string; nome: string }[] | null>(null);
+  const [propostaOrigemId, setPropostaOrigemId] = useState('');
+  const [importErro, setImportErro] = useState<string | null>(null);
+  const [importPending, startImportTransition] = useTransition();
+
+  useEffect(() => {
+    if (!importOpen || propostasOrigem !== null) return;
+    listarPropostasParaImportarEstrutura(propostaId).then((resposta) => {
+      if (resposta.sucesso) {
+        setPropostasOrigem(resposta.dados);
+      } else {
+        setImportErro(resposta.mensagem);
+        setPropostasOrigem([]);
+      }
+    });
+  }, [importOpen, propostasOrigem, propostaId]);
+
+  function importar() {
+    if (!propostaOrigemId) return;
+    setImportErro(null);
+    startImportTransition(async () => {
+      const resposta = await importarEstruturaOrganizacional({ propostaOrigemId, propostaDestinoId: propostaId });
+      if (!resposta.sucesso) {
+        setImportErro(resposta.mensagem);
+        return;
+      }
+      // Substituição total — a lista local não reflete o resultado item a item,
+      // então recarrega a página para trazer a árvore importada já persistida.
+      window.location.reload();
+    });
+  }
 
   function atualizar(novas: UnidadeFuncionalResultado[]) {
     setUnidades(novas);
@@ -85,7 +124,69 @@ export function OrganogramaPanel({
 
   return (
     <div className="flex flex-col gap-4 rounded border p-4">
-      <h3 className="font-medium">Estrutura Funcional (Organograma)</h3>
+      <div className="flex items-center justify-between">
+        <h3 className="font-medium">Estrutura Funcional (Organograma)</h3>
+        {!readOnly && (
+          <button
+            type="button"
+            onClick={() => setImportOpen(true)}
+            className="rounded border border-blue-600 px-3 py-1 text-xs text-blue-700 hover:bg-blue-50"
+          >
+            Importar de outra Proposta
+          </button>
+        )}
+      </div>
+
+      {importOpen && (
+        <div className="rounded border border-blue-200 bg-blue-50 p-3">
+          <p className="mb-2 text-xs text-gray-700">
+            A importação <strong>substitui</strong> toda a Estrutura Organizacional já cadastrada nesta Proposta pela
+            estrutura da Proposta selecionada. É uma cópia independente — alterações futuras na origem não afetam esta
+            Proposta.
+          </p>
+          {propostasOrigem === null && <p className="text-xs text-gray-500">Carregando Propostas disponíveis...</p>}
+          {propostasOrigem !== null && propostasOrigem.length === 0 && (
+            <p className="text-xs text-gray-500">Nenhuma outra Proposta com Estrutura Organizacional cadastrada.</p>
+          )}
+          {propostasOrigem !== null && propostasOrigem.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={propostaOrigemId}
+                onChange={(e) => setPropostaOrigemId(e.target.value)}
+                className="rounded border px-2 py-1 text-sm"
+              >
+                <option value="">Selecione a Proposta de origem...</option>
+                {propostasOrigem.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.codigo} — {p.nome}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={importar}
+                disabled={importPending || !propostaOrigemId}
+                className="rounded bg-blue-600 px-3 py-1 text-xs text-white disabled:opacity-50"
+              >
+                {importPending ? 'Importando...' : 'Confirmar Importação'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setImportOpen(false);
+                  setImportErro(null);
+                  setPropostaOrigemId('');
+                }}
+                disabled={importPending}
+                className="text-xs text-gray-500 hover:underline disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+            </div>
+          )}
+          {importErro && <p className="mt-2 text-xs text-red-600">{importErro}</p>}
+        </div>
+      )}
 
       <table className="w-full text-sm">
         <thead>
