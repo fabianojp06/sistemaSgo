@@ -13,6 +13,14 @@ import { exportarParaPDF, exportarParaXLSX } from '@/lib/export/exportarRelatori
 type ContaOpcao = { id: string; label: string };
 type TipoIncidencia = 'CONTRATO' | 'TERMO_DE_PARCERIA' | 'AMBOS';
 type StatusFiltro = 'ATIVO' | 'INATIVO' | 'EXPIRADA';
+type Periodicidade = 'MENSAL' | 'TRIMESTRAL' | 'SEMESTRAL' | 'ANUAL';
+
+const PERIODICIDADE_LABEL: Record<Periodicidade, string> = {
+  MENSAL: 'Mensal',
+  TRIMESTRAL: 'Trimestral',
+  SEMESTRAL: 'Semestral',
+  ANUAL: 'Anual',
+};
 
 // ADR-040 — aliquotaPct ampliado para Decimal(9,4) (reaproveitado também como índice de
 // reajuste, UC04.02). Exibe só as casas decimais que carregam informação: tributos comuns
@@ -58,6 +66,7 @@ type FormState = {
   limiteMaximoPct: string;
   observacao: string;
   contaSinteticaId: string;
+  periodicidadeReajuste: Periodicidade;
 };
 
 const FORM_VAZIO: FormState = {
@@ -70,6 +79,7 @@ const FORM_VAZIO: FormState = {
   limiteMaximoPct: '',
   observacao: '',
   contaSinteticaId: '',
+  periodicidadeReajuste: 'MENSAL',
 };
 
 // Datas de vigência são calendário puro (sem hora), persistidas como meia-noite UTC.
@@ -145,6 +155,7 @@ export function AliquotaImpostoListPanel({
       limiteMaximoPct: a.limiteMaximoPct ?? '',
       observacao: a.observacao ?? '',
       contaSinteticaId: a.contaSinteticaId ?? '',
+      periodicidadeReajuste: a.periodicidadeReajuste,
     });
     setErroForm(null);
     setModalAberto('editar');
@@ -168,6 +179,7 @@ export function AliquotaImpostoListPanel({
         limiteMaximoPct: form.limiteMaximoPct || null,
         observacao: form.observacao || null,
         contaSinteticaId: form.contaSinteticaId || null,
+        periodicidadeReajuste: form.periodicidadeReajuste,
       };
       const resposta =
         modalAberto === 'editar' && editandoId
@@ -202,6 +214,7 @@ export function AliquotaImpostoListPanel({
       { chave: 'nome', rotulo: 'Nome do Imposto' },
       { chave: 'aliquotaPct', rotulo: 'Alíquota (%)' },
       { chave: 'tipoIncidencia', rotulo: 'Tipo de Incidência' },
+      { chave: 'periodicidadeReajuste', rotulo: 'Periodicidade do Reajuste' },
       { chave: 'dataInicioVigencia', rotulo: 'Início Vigência' },
       { chave: 'dataFimVigencia', rotulo: 'Fim Vigência' },
       { chave: 'status', rotulo: 'Status' },
@@ -225,6 +238,7 @@ export function AliquotaImpostoListPanel({
         nome: a.nome,
         aliquotaPct: `${a.aliquotaPct}%`,
         tipoIncidencia: TIPO_LABEL[a.tipoIncidencia],
+        periodicidadeReajuste: PERIODICIDADE_LABEL[a.periodicidadeReajuste],
         dataInicioVigencia: formatarData(a.dataInicioVigencia),
         dataFimVigencia: formatarData(a.dataFimVigencia),
         status: a.status,
@@ -320,6 +334,7 @@ export function AliquotaImpostoListPanel({
               <th className="px-3 py-2">Nome</th>
               <th className="px-3 py-2">Alíquota (%)</th>
               <th className="px-3 py-2">Tipo de Incidência</th>
+              <th className="px-3 py-2">Periodicidade</th>
               <th className="px-3 py-2">Início Vigência</th>
               <th className="px-3 py-2">Fim Vigência</th>
               <th className="px-3 py-2">Status</th>
@@ -329,7 +344,7 @@ export function AliquotaImpostoListPanel({
           <tbody>
             {aliquotas.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-3 py-6 text-center text-gray-500">
+                <td colSpan={8} className="px-3 py-6 text-center text-gray-500">
                   Nenhuma alíquota encontrada para os filtros informados.
                 </td>
               </tr>
@@ -339,6 +354,7 @@ export function AliquotaImpostoListPanel({
                   <td className="px-3 py-2">{a.nome}</td>
                   <td className="px-3 py-2 tabular-nums">{formatarAliquotaPct(a.aliquotaPct)}%</td>
                   <td className="px-3 py-2">{TIPO_LABEL[a.tipoIncidencia]}</td>
+                  <td className="px-3 py-2">{PERIODICIDADE_LABEL[a.periodicidadeReajuste]}</td>
                   <td className="px-3 py-2">{formatarData(a.dataInicioVigencia)}</td>
                   <td className="px-3 py-2">{formatarData(a.dataFimVigencia)}</td>
                   <td className="px-3 py-2">
@@ -409,6 +425,20 @@ export function AliquotaImpostoListPanel({
                   <option value="CONTRATO">Contrato</option>
                   <option value="TERMO_DE_PARCERIA">Termo de Parceria</option>
                   <option value="AMBOS">Ambos</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">Periodicidade do Reajuste *</label>
+                <select
+                  value={form.periodicidadeReajuste}
+                  onChange={(e) => setForm({ ...form, periodicidadeReajuste: e.target.value as Periodicidade })}
+                  className="w-full rounded border px-2 py-1 text-sm"
+                >
+                  <option value="MENSAL">Mensal</option>
+                  <option value="TRIMESTRAL">Trimestral</option>
+                  <option value="SEMESTRAL">Semestral</option>
+                  <option value="ANUAL">Anual</option>
                 </select>
               </div>
 

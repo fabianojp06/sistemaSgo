@@ -745,3 +745,19 @@ export class ContaSugeridaAliquotaImpostoNaoSinteticaError extends Error {
     this.name = 'ContaSugeridaAliquotaImpostoNaoSinteticaError';
   }
 }
+
+// US-129 — escopo (Agrupador) do reajuste em lote não existe (ou não pertence ao tenant).
+export class AgrupadorReajusteNaoEncontradoError extends Error {
+  constructor() {
+    super('Agrupador não encontrado.');
+    this.name = 'AgrupadorReajusteNaoEncontradoError';
+  }
+}
+
+// US-129, Cenário 9/10 — escopo do reajuste não resolveu em nenhuma conta analítica.
+export class EscopoReajusteVazioError extends Error {
+  constructor() {
+    super('Nenhuma conta analítica encontrada para o escopo selecionado. Verifique o filtro e tente novamente.');
+    this.name = 'EscopoReajusteVazioError';
+  }
+}

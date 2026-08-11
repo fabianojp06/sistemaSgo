@@ -19,6 +19,7 @@ import { ItemPatrimonialPanel } from '../../ItemPatrimonialPanel';
 import { CronogramaDesembolsoPanel } from '../../CronogramaDesembolsoPanel';
 import { montarCronogramaDesembolso } from '@/domain/plano-contas/montarCronogramaDesembolso';
 import { PremissasReajusteGrid } from '../../PremissasReajusteGrid';
+import { ReajusteLoteModal } from '../../ReajusteLoteModal';
 import { getListarPremissasReajusteUseCase } from '@/application/use-cases/plano-contas/container';
 import type { LinhaPremissaSerializada } from '../../premissasReajusteTipos';
 
@@ -364,12 +365,15 @@ export default async function PropostaDetalhePage({
         )}
 
         {guiaAtiva === 'premissas-reajustes' && (
-          <PremissasReajusteGrid
-            nomeProposta={proposta.nome}
-            codigoProposta={proposta.codigo}
-            versaoNumero={versao.numeroVersao}
-            linhas={linhasPremissas}
-          />
+          <div className="flex flex-col gap-3">
+            <ReajusteLoteHost tenantId={tenantId} usuarioId={usuario.id} versaoId={versao.id} contasAnaliticas={contasAnaliticas} />
+            <PremissasReajusteGrid
+              nomeProposta={proposta.nome}
+              codigoProposta={proposta.codigo}
+              versaoNumero={versao.numeroVersao}
+              linhas={linhasPremissas}
+            />
+          </div>
         )}
       </section>
     </main>
@@ -406,6 +410,64 @@ async function RateioImpostoPanelHost({
 
   return (
     <RateioImpostoPanel versaoId={versaoId} contasAnaliticas={contasAnaliticas} aliquotas={aliquotasOpcoes} readOnly={readOnly} />
+  );
+}
+
+/** US-129 — botão só aparece com a permissão CONTEXTUAL dedicada (mesmo padrão de
+ * RateioImpostoPanelHost); some silenciosamente se o usuário não tiver acesso. */
+async function ReajusteLoteHost({
+  tenantId,
+  usuarioId,
+  versaoId,
+  contasAnaliticas,
+}: {
+  tenantId: string;
+  usuarioId: string;
+  versaoId: string;
+  contasAnaliticas: { id: string; label: string }[];
+}) {
+  const [podeAplicarReajuste, podeEditarIndice, podeExcluirIndice, aliquotas] = await Promise.all([
+    usuarioTemFuncionalidade(prisma, tenantId, usuarioId, 'orcamentario.premissas-reajustes.aplicar'),
+    usuarioTemFuncionalidade(prisma, tenantId, usuarioId, 'aliquotas-impostos.editar'),
+    usuarioTemFuncionalidade(prisma, tenantId, usuarioId, 'aliquotas-impostos.excluir'),
+    prisma.aliquotaImpostoParametro.findMany({
+      where: { tenantId },
+      orderBy: { nome: 'asc' },
+      select: { id: true, nome: true, aliquotaPct: true, periodicidadeReajuste: true },
+    }),
+  ]);
+
+  if (!podeAplicarReajuste) return null;
+
+  // [ultrareview 2026-08-11] contas sintéticas só alimentam o sub-form Editar
+  // Índice do modal — buscar só quando o usuário tem a permissão que mostra o
+  // botão Editar, em vez de sempre, poupa a query pra quem nunca vai usar.
+  const contasSinteticas = podeEditarIndice
+    ? await prisma.contaContabil.findMany({
+        where: { tenantId, isAnalitica: false },
+        select: { id: true, codigoErp: true, nomeConta: true },
+        orderBy: { codigoErp: 'asc' },
+      })
+    : [];
+
+  const aliquotasOpcoes = aliquotas.map((a) => ({
+    id: a.id,
+    label: `${a.nome} (${Number(a.aliquotaPct)}%)`,
+    periodicidadeReajuste: a.periodicidadeReajuste,
+  }));
+  const opcoesContaSintetica = contasSinteticas.map((c) => ({ id: c.id, label: `${c.codigoErp} — ${c.nomeConta}` }));
+
+  return (
+    <div className="flex justify-end print:hidden">
+      <ReajusteLoteModal
+        versaoId={versaoId}
+        contasAnaliticas={contasAnaliticas}
+        aliquotas={aliquotasOpcoes}
+        opcoesContaSintetica={opcoesContaSintetica}
+        podeEditarIndice={podeEditarIndice}
+        podeExcluirIndice={podeExcluirIndice}
+      />
+    </div>
   );
 }
 
