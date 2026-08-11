@@ -1,10 +1,12 @@
 ## ADR-041: Sequenciamento US-116/US-130 e padrão de remapeamento de hierarquia para importação de Estrutura Organizacional
 
-**Status**: Aceito
+**Status**: Aceito (premissa de sequenciamento corrigida — ver Errata)
 **Data**: 2026-08-11
 **Módulo SGO**: Cadastros — Empregados / Estrutura Funcional (EP118/24)
 
-### Contexto
+> **Errata (2026-08-11, mesmo dia)**: a premissa desta ADR de que "US-116 ainda não tem UI" estava **errada** — US-116/US-117 (Estrutura Funcional + Cargos) já estavam implementadas em produção desde 2026-08-08 (commits `347b7ef`/`830e6bf`/`5e7c3c8`), sobre a rota `/propostas/{id}/estrutura` (`EstruturaFuncionalPanel.tsx`/`OrganogramaPanel.tsx`/`CargoPanel.tsx`). O item ficou fora do backlog Kanban por engano e a memória do projeto refletia esse gap, então a investigação que originou esta ADR não checou a árvore de arquivos antes de propor sequenciamento. **Corrigido durante a implementação de US-130**, quando o fullstack-dev foi checar a UI existente antes de criar uma nova e encontrou tudo já pronto. **Consequência prática: a Decisão de sequenciamento (Opção A) fica sem objeto — não há mais "US-116 primeiro" para esperar.** US-130 pode ser codificada diretamente sobre a tela existente. As seções de **padrão de remapeamento de hierarquia** e **trava de Cargo vinculado em lote** abaixo continuam válidas e são o desenho técnico real usado na implementação — só a premissa de sequenciamento (contexto e decisão) ficou obsoleta.
+
+### Contexto (histórico — premissa corrigida pela Errata acima)
 
 US-116 (UI de Estrutura Funcional — `/propostas/{id}/estrutura`) e US-130 (Importar Estrutura Organizacional entre Propostas) estão as duas na fila, ainda não codificadas. O backend de US-106 (`UnidadeFuncional`, `CriarUnidadeFuncionalUseCase`, `InativarUnidadeFuncionalUseCase`) já está em produção; só falta a tela.
 

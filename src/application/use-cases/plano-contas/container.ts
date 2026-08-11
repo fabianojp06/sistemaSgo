@@ -21,6 +21,7 @@ import { ExcluirVersaoPropostaUseCase } from './ExcluirVersaoPropostaUseCase';
 import { DuplicarPropostaUseCase } from './DuplicarPropostaUseCase';
 import { CriarUnidadeFuncionalUseCase } from './CriarUnidadeFuncionalUseCase';
 import { InativarUnidadeFuncionalUseCase } from './InativarUnidadeFuncionalUseCase';
+import { ImportarEstruturaOrganizacionalUseCase } from './ImportarEstruturaOrganizacionalUseCase';
 import { CargoRubiFixtureProvider } from '@/infrastructure/integrations/rubi/CargoRubiFixtureProvider';
 import { CadastrarCargoUseCase } from './CadastrarCargoUseCase';
 import { EditarCargoUseCase } from './EditarCargoUseCase';
@@ -136,6 +137,10 @@ export function getCriarUnidadeFuncionalUseCase(): CriarUnidadeFuncionalUseCase 
 
 export function getInativarUnidadeFuncionalUseCase(): InativarUnidadeFuncionalUseCase {
   return new InativarUnidadeFuncionalUseCase(prisma);
+}
+
+export function getImportarEstruturaOrganizacionalUseCase(): ImportarEstruturaOrganizacionalUseCase {
+  return new ImportarEstruturaOrganizacionalUseCase(prisma);
 }
 
 export function getCadastrarCargoUseCase(): CadastrarCargoUseCase {

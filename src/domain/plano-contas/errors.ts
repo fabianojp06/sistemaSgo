@@ -761,3 +761,23 @@ export class EscopoReajusteVazioError extends Error {
     this.name = 'EscopoReajusteVazioError';
   }
 }
+
+// US-130, Cenário 7 — Proposta origem não tem nenhuma UnidadeFuncional ativa para importar.
+export class EstruturaOrigemVaziaError extends Error {
+  constructor() {
+    super('A Proposta de origem não tem Estrutura Organizacional cadastrada para importar.');
+    this.name = 'EstruturaOrigemVaziaError';
+  }
+}
+
+// US-130, Cenário 4 [TRAVA O ERRO] — ADR-041: checagem em lote (não reaproveita RN_EST_04
+// unidade-a-unidade) — bloqueia a importação inteira antes de qualquer escrita se a Proposta
+// destino tiver Cargo vinculado a unidades que seriam substituídas.
+export class ImportacaoEstruturaBloqueadaPorCargoVinculadoError extends Error {
+  constructor(nomesUnidades: string[]) {
+    super(
+      `Importação Bloqueada: as seguintes unidades da Proposta destino têm Cargo vinculado e não podem ser substituídas: ${nomesUnidades.join(', ')}. Remova ou realoque os cargos antes de importar.`,
+    );
+    this.name = 'ImportacaoEstruturaBloqueadaPorCargoVinculadoError';
+  }
+}

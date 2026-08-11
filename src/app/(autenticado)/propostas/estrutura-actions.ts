@@ -10,6 +10,7 @@ import { usuarioTemFuncionalidade } from '@/application/use-cases/plano-contas/v
 import {
   getCriarUnidadeFuncionalUseCase,
   getInativarUnidadeFuncionalUseCase,
+  getImportarEstruturaOrganizacionalUseCase,
   getCadastrarCargoUseCase,
   getEditarCargoUseCase,
   getConfigurarBeneficiosCargoUseCase,
@@ -87,6 +88,55 @@ export async function inativarUnidadeFuncional(propostaId: string, unidadeId: st
     await getInativarUnidadeFuncionalUseCase().execute({ ...contexto, unidadeId });
     revalidatePath('/', 'layout'); // invalida toda a árvore de /propostas (não há layout.tsx aninhado ali) — dropdown de Cargo em Empregados, etc.
     return { sucesso: true };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+/** US-130 — Propostas elegíveis como origem de importação: qualquer Proposta com Estrutura Organizacional ativa, exceto a própria destino. */
+export async function listarPropostasParaImportarEstrutura(
+  propostaDestinoId: string,
+): Promise<ActionResultComDados<{ id: string; codigo: string; nome: string }[]>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const propostas = await prisma.proposta.findMany({
+    where: {
+      tenantId: contexto.tenantId,
+      id: { not: propostaDestinoId },
+      unidadesFuncionais: { some: { ativa: true } },
+    },
+    orderBy: { nome: 'asc' },
+    select: { id: true, codigo: true, nome: true },
+  });
+  return { sucesso: true, dados: propostas };
+}
+
+const ImportarEstruturaSchema = z.object({
+  propostaOrigemId: z.string().min(1),
+  propostaDestinoId: z.string().min(1),
+});
+
+/** US-130 (ADR-041) — Importar Estrutura Organizacional de outra Proposta, substituindo a existente na destino. */
+export async function importarEstruturaOrganizacional(input: {
+  propostaOrigemId: string;
+  propostaDestinoId: string;
+}): Promise<ActionResultComDados<{ unidadesInativadas: number; unidadesCriadas: number }>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const entrada = ImportarEstruturaSchema.safeParse(input);
+  if (!entrada.success) {
+    return { sucesso: false, mensagem: 'Selecione a Proposta de origem.' };
+  }
+
+  const temPermissao = await usuarioTemFuncionalidade(prisma, contexto.tenantId, contexto.usuarioId, 'propostas.gerenciar-estrutura');
+  if (!temPermissao) return { sucesso: false, mensagem: 'Perfil sem permissão para gerenciar Estrutura Funcional.' };
+
+  try {
+    const resultado = await getImportarEstruturaOrganizacionalUseCase().execute({ ...contexto, ...entrada.data });
+    revalidatePath('/', 'layout');
+    return { sucesso: true, dados: resultado };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
   }
