@@ -67,6 +67,7 @@ enum TipoOperacao {
   ALIQUOTA_IMPOSTO_CRIADA
   ALIQUOTA_IMPOSTO_EDITADA
   ALIQUOTA_IMPOSTO_INATIVADA
+  PREMISSA_REAJUSTE_CONSULTADA
 }
 
 model Usuario {
@@ -531,7 +532,9 @@ model AliquotaImpostoParametro {
   tenantId           String
   nome               String
   nomeNormalizado    String
-  aliquotaPct        Decimal               @db.Decimal(5, 2)
+  // ADR-040 — ampliado de Decimal(5,2) para Decimal(9,4): reaproveitado também como índice
+  // de reajuste (UC04.02/US-128/129), que exige até 4 casas decimais (ex: IPCA 4,5125%).
+  aliquotaPct        Decimal               @db.Decimal(9, 4)
   dataInicioVigencia DateTime
   // NULL = vigência em aberto (alíquota atual).
   dataFimVigencia    DateTime?

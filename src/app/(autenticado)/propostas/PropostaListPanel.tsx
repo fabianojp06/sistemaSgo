@@ -529,8 +529,41 @@ function LinhaProposta({
   );
 }
 
+function SeletorTipoProposta({ onSelecionar }: { onSelecionar: (tipo: PropostaListada['tipo']) => void }) {
+  const opcoes: { tipo: PropostaListada['tipo']; descricao: string }[] = [
+    { tipo: 'CONTRATO', descricao: 'Propostas vinculadas a Contrato.' },
+    { tipo: 'TERMO_DE_PARCERIA', descricao: 'Propostas vinculadas a Termo de Parceria.' },
+  ];
+
+  return (
+    <div className="flex flex-col gap-4 py-6">
+      <div>
+        <h2 className="text-[0.95rem] font-semibold text-[#1A1F29] dark:text-[#EBEDF2]">Selecione o tipo</h2>
+        <p className="mt-0.5 text-sm text-[#5B6270] dark:text-[#A4AAB6]">
+          Escolha Contrato ou Termo de Parceria para ver as Propostas correspondentes. É possível trocar depois.
+        </p>
+      </div>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        {opcoes.map((opcao) => (
+          <button
+            key={opcao.tipo}
+            type="button"
+            onClick={() => onSelecionar(opcao.tipo)}
+            className="flex flex-col items-start gap-1 rounded-[10px] border border-[#DDE2EA] bg-white p-4 text-left shadow-[0_1px_2px_rgba(20,24,33,0.05),0_1px_1px_rgba(20,24,33,0.04)] hover:border-[#2B5FD9] dark:border-[#2B303C] dark:bg-[#191D26] dark:hover:border-[#6D93F0]"
+          >
+            <span className="text-[0.95rem] font-semibold text-[#1A1F29] dark:text-[#EBEDF2]">{LABEL_TIPO[opcao.tipo]}</span>
+            <span className="text-xs text-[#5B6270] dark:text-[#A4AAB6]">{opcao.descricao}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /** US-114 — Lista de Propostas + ações de Cadastrar/Duplicar/Excluir Versão/Criar Versão/Restaurar
- * (redesign visual da sessão 2026-08-07, mesma lógica de dados). */
+ * (redesign visual da sessão 2026-08-07, mesma lógica de dados).
+ * Filtro de tipo (Contrato/Termo de Parceria) é o primeiro passo: nada da lista é exibido antes
+ * da escolha, e trocar de tipo exige voltar a esse passo explicitamente. */
 export function PropostaListPanel({
   propostasIniciais,
   podeCriar,
@@ -547,6 +580,7 @@ export function PropostaListPanel({
   podeRestaurarVersao: boolean;
 }) {
   const [propostas, setPropostas] = useState(propostasIniciais);
+  const [tipoFiltro, setTipoFiltro] = useState<PropostaListada['tipo'] | null>(null);
   const [, startTransition] = useTransition();
 
   function recarregar() {
@@ -557,20 +591,38 @@ export function PropostaListPanel({
     });
   }
 
+  if (tipoFiltro === null) {
+    return <SeletorTipoProposta onSelecionar={setTipoFiltro} />;
+  }
+
+  const propostasFiltradas = propostas.filter((p) => p.tipo === tipoFiltro);
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#E8EEFC] px-2.5 py-1 text-xs font-semibold text-[#2B5FD9] dark:bg-[#1D2A48] dark:text-[#6D93F0]">
+            {LABEL_TIPO[tipoFiltro]}
+          </span>
+          <button
+            type="button"
+            onClick={() => setTipoFiltro(null)}
+            className="text-xs font-medium text-[#5B6270] underline-offset-2 hover:text-[#2B5FD9] hover:underline dark:text-[#A4AAB6] dark:hover:text-[#6D93F0]"
+          >
+            Trocar filtro
+          </button>
+        </div>
         <span className="text-[0.825rem] tabular-nums text-[#8A8F98] dark:text-[#767C89]">
-          {propostas.length} {propostas.length === 1 ? 'proposta' : 'propostas'}
+          {propostasFiltradas.length} {propostasFiltradas.length === 1 ? 'proposta' : 'propostas'}
         </span>
         <NovaPropostaForm podeCriar={podeCriar} onCriada={recarregar} />
       </div>
 
-      {propostas.length === 0 ? (
-        <p className="text-sm text-[#8A8F98] dark:text-[#767C89]">Nenhuma Proposta cadastrada ainda.</p>
+      {propostasFiltradas.length === 0 ? (
+        <p className="text-sm text-[#8A8F98] dark:text-[#767C89]">Nenhuma Proposta de {LABEL_TIPO[tipoFiltro]} cadastrada ainda.</p>
       ) : (
         <div className="flex flex-col gap-2.5">
-          {propostas.map((proposta) => (
+          {propostasFiltradas.map((proposta) => (
             <LinhaProposta
               key={proposta.id}
               proposta={proposta}
