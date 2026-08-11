@@ -41,6 +41,7 @@
 | US-125 (UC03.41) | Alterar Alíquota de Imposto | `EditarAliquotaImpostoUseCase`; Optimistic Locking via `version` (mesmo padrão de US-105); edição nunca recalcula `RateioImpostoGrade.aliquotaAplicadaSnapshot` de Propostas já Oficializadas (RN_TAX_03/06) |
 | US-126 (UC03.42) | Excluir (Soft Delete) Alíquota de Imposto | `ExcluirAliquotaImpostoUseCase`; bloqueado por referência ativa em Proposta RASCUNHO/EM_ELABORACAO (RN_IMP_009), referência só em Proposta Oficializada não bloqueia (snapshot já é imutável) |
 | US-116/US-117 (UC03.18/03.19) | Estrutura Funcional (Organograma) + Cargos — UI | Tela `/propostas/{id}/estrutura` (`EstruturaFuncionalPanel.tsx`/`OrganogramaPanel.tsx`/`CargoPanel.tsx`), permissão `propostas.gerenciar-estrutura`; implementadas nos commits `347b7ef`/`830e6bf`/`5e7c3c8` (2026-08-08) — **este item ficou fora do backlog por engano; corrigido em 2026-08-11 ao refinar US-130**, que assumia (incorretamente) que ainda estavam pendentes |
+| US-130 (novo, refinado e implementado 2026-08-11) | Importar Estrutura Organizacional entre Propostas | `ImportarEstruturaOrganizacionalUseCase` (ADR-041): cópia congelada, substitui organograma existente na destino, remapeamento de hierarquia em 2 passos (Sintéticas→Analíticas), trava em lote se destino tem Cargo vinculado; botão em `OrganogramaPanel.tsx`; migration (`TipoOperacao.ESTRUTURA_ORGANIZACIONAL_IMPORTADA`); testado manualmente pelo usuário; PR #3 mergeado (`6132be4`) |
 
 ---
 
@@ -48,8 +49,7 @@
 
 | Ordem | Item | Por que é o próximo | Esforço estimado |
 |---|---|---|---|
-| 1 | **US-130 (refinado 2026-08-11) — Importar Estrutura Organizacional entre Propostas** | Demanda direta do usuário: reaproveitar organograma já cadastrado em uma Proposta ao criar/editar outra (Contrato ou Termo de Parceria), em vez de recriar do zero. Cópia congelada, substitui organograma existente na destino, sem restrição por tipo de Proposta, bloqueada se a destino tiver Cargo vinculado às unidades existentes. **Correção 2026-08-11: US-116/US-117 (UI) já estavam implementadas desde 2026-08-08 — o "bloqueio" da ADR-041 não existe mais, US-130 pode ser codificada diretamente sobre a tela `/propostas/{id}/estrutura` já existente.** Ver `docs/US-130 - Importar Estrutura Organizacional entre Propostas.pt-BR.md` e `docs/ADR-041 - Sequenciamento US-116-US-130 e Remapeamento de Hierarquia.pt-BR.md`. | M |
-| 2 | **US-127 (UC03.01, Fluxo C) — Cadastro Rápido de Imposto no Rateio** | Atalho `[+ Novo Imposto]` inline em `RateioImpostoPanel.tsx`, reaproveitando `CadastrarAliquotaImpostoUseCase` (US-124) — evita sair da tela da Proposta para cadastrar um tributo ainda não existente. Prioridade baixa; bloqueada até o refinamento decidir se o modal usa todos os campos do cadastro completo ou um subconjunto reduzido (ver US doc). | P |
+| 1 | **US-127 (UC03.01, Fluxo C) — Cadastro Rápido de Imposto no Rateio** | Atalho `[+ Novo Imposto]` inline em `RateioImpostoPanel.tsx`, reaproveitando `CadastrarAliquotaImpostoUseCase` (US-124) — evita sair da tela da Proposta para cadastrar um tributo ainda não existente. Prioridade baixa; bloqueada até o refinamento decidir se o modal usa todos os campos do cadastro completo ou um subconjunto reduzido (ver US doc). | P |
 
 ---
 
