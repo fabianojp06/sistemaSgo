@@ -19,7 +19,7 @@ Esta US cobre o UC03.18 (Estrutura Funcional) da Minuta V5, na fatia que já pod
 
 Essas três regras devem ser revisitadas quando UC03.19/UC03.24-27 forem implementados — não como retrabalho desta US, mas como extensão natural dela (a árvore já vai existir; só falta o lado do `Cargo` apontar para ela).
 
-**Suposição de escopo a confirmar com o Tech Lead**: seguindo o mesmo padrão de `ValorOrcadoConta`/`RateioImpostoGrade` (dados analíticos vinculados a `VersaoProposta`, não à `Proposta` diretamente), esta US assume que a árvore de Estrutura Funcional também é escopada por `VersaoProposta` — cada versão da Proposta tem seu próprio organograma, e ao criar uma nova versão (US-007, `CriarVersaoPropostaUseCase`) o organograma da origem também deveria ser copiado, do mesmo jeito que `ValorOrcadoConta` já é. Esta é uma suposição, não uma decisão fechada — o Tech Lead deve confirmar antes da modelagem.
+**Decisão de escopo (fechada, confirmada pelo usuário em 2026-08-11 ao refinar [US-130](US-130%20-%20Importar%20Estrutura%20Organizacional%20entre%20Propostas.pt-BR.md))**: diferente da suposição original desta US (escopo por `VersaoProposta`, seguindo o padrão de `ValorOrcadoConta`/`RateioImpostoGrade`), `UnidadeFuncional` é escopada por **`Proposta` inteira** — o organograma não muda entre versões de uma mesma Proposta, e `CriarVersaoPropostaUseCase` (US-007) não precisa clonar a árvore ao criar nova versão. É assim que já está implementado (`propostaId` direto no schema, não `versaoId`) e permanece assim.
 
 Estrutura hierárquica (fixa, 2 níveis):
 - **Nível 1 — Sintético** (`DIRETORIA` ou `GERENCIA`): existe apenas para consolidar custos das unidades abaixo dela. Nunca recebe alocação de cargo diretamente (RN_EST_02).

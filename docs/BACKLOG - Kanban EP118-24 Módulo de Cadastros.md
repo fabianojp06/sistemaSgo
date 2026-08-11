@@ -1,4 +1,4 @@
-# Backlog / Kanban — EP118/24 Módulo de Cadastros
+# Backlog / Kanban —    EP118/24 Módulo de Ca   dastros
 
 **Fonte:** Minuta da Especificação do Módulo de Cadastros V5 (UC03.01 a UC03.38) + US-001 a US-008a (Plano de Contas, especificadas separadamente).
 **Elaborado por:** AN/PO, com base no histórico de implementação e nas descobertas de qualidade documental levantadas durante o refinamento (2026-07-31).
@@ -47,9 +47,10 @@
 
 | Ordem | Item | Por que é o próximo | Esforço estimado |
 |---|---|---|---|
-| 1 | **US-116 — Gerenciar Estrutura Funcional (Organograma)** | UC03.18/ADR-015 nunca ganhou UI, só Server Action (`CriarUnidadeFuncionalUseCase`/`InativarUnidadeFuncionalUseCase`, já testados). Bloqueia US-117 (Cargo precisa de Unidade Analítica para o rateio). Nova tela `/propostas/{id}/estrutura`, fora do catch-all de guias de US-115 (ciclo de vida por Proposta, não por Versão). | M |
+| 1 | **US-116 — Gerenciar Estrutura Funcional (Organograma)** | UC03.18/ADR-015 nunca ganhou UI, só Server Action (`CriarUnidadeFuncionalUseCase`/`InativarUnidadeFuncionalUseCase`, já testados). Bloqueia US-117 (Cargo precisa de Unidade Analítica para o rateio) e US-130 (importação precisa da tela para expor o botão). Nova tela `/propostas/{id}/estrutura`, fora do catch-all de guias de US-115 (ciclo de vida por Proposta, não por Versão). | M |
 | 2 | **US-117 — Gerenciar Cargos (dados de mercado, conta, rateio, benefícios)** | UC03.19/ADR-016/ADR-019/ADR-027 nunca ganharam UI, só Server Actions (`cadastrarCargo`/`editarCargo`/`configurarBeneficiosCargo`, já testados). Mesma tela de US-116, sub-seção "Cargos". | G |
-| 3 | **US-127 (UC03.01, Fluxo C) — Cadastro Rápido de Imposto no Rateio** | Atalho `[+ Novo Imposto]` inline em `RateioImpostoPanel.tsx`, reaproveitando `CadastrarAliquotaImpostoUseCase` (US-124) — evita sair da tela da Proposta para cadastrar um tributo ainda não existente. Prioridade baixa; bloqueada até o refinamento decidir se o modal usa todos os campos do cadastro completo ou um subconjunto reduzido (ver US doc). | P |
+| 3 | **US-130 (novo, refinado 2026-08-11) — Importar Estrutura Organizacional entre Propostas** | Demanda direta do usuário: reaproveitar organograma já cadastrado em uma Proposta ao criar/editar outra (Contrato ou Termo de Parceria), em vez de recriar do zero. Cópia congelada, substitui organograma existente na destino, sem restrição por tipo de Proposta, bloqueada se a destino tiver Cargo vinculado às unidades existentes. **Sequenciamento fechado via ADR-041: só começa depois de US-116 mergeada (branch/PR próprio, não entram juntas)**. Ver `docs/US-130 - Importar Estrutura Organizacional entre Propostas.pt-BR.md`. | M |
+| 4 | **US-127 (UC03.01, Fluxo C) — Cadastro Rápido de Imposto no Rateio** | Atalho `[+ Novo Imposto]` inline em `RateioImpostoPanel.tsx`, reaproveitando `CadastrarAliquotaImpostoUseCase` (US-124) — evita sair da tela da Proposta para cadastrar um tributo ainda não existente. Prioridade baixa; bloqueada até o refinamento decidir se o modal usa todos os campos do cadastro completo ou um subconjunto reduzido (ver US doc). | P |
 
 ---
 
