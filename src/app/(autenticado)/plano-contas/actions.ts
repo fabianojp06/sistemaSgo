@@ -44,7 +44,11 @@ import {
   getHomologarTermoAjusteUseCase,
   getRejeitarTermoAjusteUseCase,
   getListarTermosAjusteUseCase,
+  getSimularReajusteUseCase,
+  getAplicarReajusteUseCase,
 } from '@/application/use-cases/plano-contas/container';
+import type { EscopoReajuste } from '@/application/use-cases/plano-contas/reajusteLoteTipos';
+import type { PlanoReajusteLote } from '@/application/use-cases/plano-contas/prepararPlanoReajuste';
 
 type ActionResult = { sucesso: true } | { sucesso: false; mensagem: string };
 
@@ -1382,6 +1386,123 @@ export async function obterBadgesSemaforo(
         parcial: b.parcial,
       })),
     };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+// US-129 — Simular e Aplicar Reajuste em Lote.
+
+const EscopoReajusteSchema = z.discriminatedUnion('modo', [
+  z.object({ modo: z.literal('CONTA'), contaId: z.string().min(1) }),
+  z.object({ modo: z.literal('AGRUPADOR'), agrupadorId: z.string().min(1) }),
+  z.object({ modo: z.literal('GLOBAL') }),
+]);
+
+const ReajusteLoteSchema = z.object({
+  versaoId: z.string().min(1),
+  aliquotaParametroId: z.string().min(1),
+  escopo: EscopoReajusteSchema,
+});
+
+export type LinhaReajusteFuturaResultado = {
+  competencia: string;
+  valorAnterior: string | null;
+  valorNovo: string;
+  aliquotaAnterior: string | null;
+  aliquotaNova: string;
+};
+
+export type AjusteRetroativoResultado = {
+  competenciaAjuste: string;
+  valorBaseExistente: string | null;
+  valorAjuste: string;
+  valorFinal: string;
+  mesesAfetados: string[];
+};
+
+export type PlanoReajusteLoteResultado = {
+  aliquotaParametroNome: string;
+  aliquotaAplicadaPct: string;
+  planos: {
+    contaId: string;
+    linhasFuturas: LinhaReajusteFuturaResultado[];
+    ajusteRetroativo: AjusteRetroativoResultado | null;
+  }[];
+};
+
+function serializarPlanoReajuste(plano: PlanoReajusteLote): PlanoReajusteLoteResultado {
+  return {
+    aliquotaParametroNome: plano.aliquotaParametro.nome,
+    aliquotaAplicadaPct: plano.aliquotaParametro.aliquotaPct.toString(),
+    planos: plano.planos.map((p) => ({
+      contaId: p.contaId,
+      linhasFuturas: p.linhasFuturas.map((l) => ({
+        competencia: l.competencia.toISOString(),
+        valorAnterior: l.valorAnterior?.toString() ?? null,
+        valorNovo: l.valorNovo.toString(),
+        aliquotaAnterior: l.aliquotaAnterior?.toString() ?? null,
+        aliquotaNova: l.aliquotaNova.toString(),
+      })),
+      ajusteRetroativo: p.ajusteRetroativo
+        ? {
+            competenciaAjuste: p.ajusteRetroativo.competenciaAjuste.toISOString(),
+            valorBaseExistente: p.ajusteRetroativo.valorBaseExistente?.toString() ?? null,
+            valorAjuste: p.ajusteRetroativo.valorAjuste.toString(),
+            valorFinal: p.ajusteRetroativo.valorFinal.toString(),
+            mesesAfetados: p.ajusteRetroativo.mesesAfetados,
+          }
+        : null,
+    })),
+  };
+}
+
+/** US-129, Cenário 9 — preview sem persistir. */
+export async function simularReajuste(input: {
+  versaoId: string;
+  aliquotaParametroId: string;
+  escopo: EscopoReajuste;
+}): Promise<ActionResultComDados<PlanoReajusteLoteResultado>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const entrada = ReajusteLoteSchema.safeParse(input);
+  if (!entrada.success) {
+    return { sucesso: false, mensagem: 'Selecione o índice de reajuste e o escopo antes de simular.' };
+  }
+
+  const temPermissao = await usuarioTemFuncionalidade(prisma, contexto.tenantId, contexto.usuarioId, 'orcamentario.premissas-reajustes.aplicar');
+  if (!temPermissao) return { sucesso: false, mensagem: 'Perfil sem permissão para simular reajuste em lote.' };
+
+  try {
+    const plano = await getSimularReajusteUseCase().execute({ ...contexto, ...entrada.data });
+    return { sucesso: true, dados: serializarPlanoReajuste(plano) };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+/** US-129, Cenários 8, 10-14 — confirma a aplicação do reajuste em lote. */
+export async function aplicarReajuste(input: {
+  versaoId: string;
+  aliquotaParametroId: string;
+  escopo: EscopoReajuste;
+}): Promise<ActionResultComDados<PlanoReajusteLoteResultado>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const entrada = ReajusteLoteSchema.safeParse(input);
+  if (!entrada.success) {
+    return { sucesso: false, mensagem: 'Selecione o índice de reajuste e o escopo antes de confirmar.' };
+  }
+
+  const temPermissao = await usuarioTemFuncionalidade(prisma, contexto.tenantId, contexto.usuarioId, 'orcamentario.premissas-reajustes.aplicar');
+  if (!temPermissao) return { sucesso: false, mensagem: 'Perfil sem permissão para aplicar reajuste em lote.' };
+
+  try {
+    const plano = await getAplicarReajusteUseCase().execute({ ...contexto, ...entrada.data });
+    revalidatePath('/', 'layout');
+    return { sucesso: true, dados: serializarPlanoReajuste(plano) };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
   }

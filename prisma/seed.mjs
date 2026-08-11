@@ -21,10 +21,12 @@ async function seedModuloPlanoContas() {
     create: { moduloId: modulo.id, chave: 'plano-contas.visualizar', nome: 'Visualizar Plano de Contas' },
   });
 
+  // [2026-08-11] Ocultada do menu a pedido do usuário — ativo:false some da navegação
+  // (CA-01.03.02/03, ObterMenuUsuarioUseCase), sem remover rota/action/use case.
   await prisma.funcionalidade.upsert({
     where: { moduloId_chave: { moduloId: modulo.id, chave: 'plano-contas.sincronizar' } },
-    update: {},
-    create: { moduloId: modulo.id, chave: 'plano-contas.sincronizar', nome: 'Sincronizar Plano de Contas com ERP' },
+    update: { ativo: false },
+    create: { moduloId: modulo.id, chave: 'plano-contas.sincronizar', nome: 'Sincronizar Plano de Contas com ERP', ativo: false },
   });
 
   // ADR-021 — CONTEXTUAL: ação vive dentro de /plano-contas, sem rota/link próprio no menu.
@@ -167,6 +169,19 @@ async function seedModuloOrcamentario() {
     where: { moduloId_chave: { moduloId: modulo.id, chave: 'orcamentario.visualizar' } },
     update: {},
     create: { moduloId: modulo.id, chave: 'orcamentario.visualizar', nome: 'Orçamentário' },
+  });
+
+  // US-129 (UC04.02) — Simular e Aplicar Reajuste em Lote. [ADR-021] CONTEXTUAL,
+  // operação financeira crítica dentro da tela de Premissas e Reajustes.
+  await prisma.funcionalidade.upsert({
+    where: { moduloId_chave: { moduloId: modulo.id, chave: 'orcamentario.premissas-reajustes.aplicar' } },
+    update: {},
+    create: {
+      moduloId: modulo.id,
+      chave: 'orcamentario.premissas-reajustes.aplicar',
+      nome: 'Simular e Aplicar Reajuste em Lote',
+      tipo: 'CONTEXTUAL',
+    },
   });
 }
 

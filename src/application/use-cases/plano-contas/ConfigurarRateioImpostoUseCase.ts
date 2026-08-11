@@ -71,10 +71,11 @@ export class ConfigurarRateioImpostoUseCase {
 
     const registroAnterior = await this.prisma.rateioImpostoGrade.findUnique({
       where: {
-        tenantId_versaoId_aliquotaParametroId_competencia: {
+        tenantId_versaoId_aliquotaParametroId_contaId_competencia: {
           tenantId: input.tenantId,
           versaoId: input.versaoId,
           aliquotaParametroId: input.aliquotaParametroId,
+          contaId: input.contaId,
           competencia: input.competencia,
         },
       },
@@ -114,7 +115,6 @@ export class ConfigurarRateioImpostoUseCase {
             valorDeclarado: valor,
             aliquotaAplicadaSnapshot: aliquotaParametro.aliquotaPct,
             ativo: true,
-            contaId: input.contaId,
           },
         });
         if (resultado.count === 0) {

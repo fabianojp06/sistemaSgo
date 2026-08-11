@@ -68,6 +68,8 @@ enum TipoOperacao {
   ALIQUOTA_IMPOSTO_EDITADA
   ALIQUOTA_IMPOSTO_INATIVADA
   PREMISSA_REAJUSTE_CONSULTADA
+  REAJUSTE_LOTE_SIMULADO
+  REAJUSTE_LOTE_APLICADO
 }
 
 model Usuario {
@@ -526,6 +528,15 @@ enum TipoIncidenciaImposto {
   AMBOS
 }
 
+// US-129 [2026-08-11] — de quanto em quanto tempo um índice reaplica o crescimento
+// percentual numa conta ao rodar o reajuste em lote.
+enum PeriodicidadeReajuste {
+  MENSAL
+  TRIMESTRAL
+  SEMESTRAL
+  ANUAL
+}
+
 // UC03.39-42 (ADR-038) — Central de Manutenção de Alíquotas de Impostos.
 model AliquotaImpostoParametro {
   id                 String                @id @default(uuid())
@@ -539,6 +550,12 @@ model AliquotaImpostoParametro {
   // NULL = vigência em aberto (alíquota atual).
   dataFimVigencia    DateTime?
   tipoIncidencia     TipoIncidenciaImposto
+  // [US-129, 2026-08-11] De quanto em quanto tempo o reajuste em lote reaplica o
+  // crescimento percentual numa conta — ex: Dissídio é ANUAL (cresce 1x por ano,
+  // fica estável nos outros meses), IPCA costuma ser MENSAL. Âncora do ciclo é
+  // dataInicioVigencia. Default MENSAL preserva o comportamento anterior a este
+  // campo (crescia todo mês) para índices já cadastrados.
+  periodicidadeReajuste PeriodicidadeReajuste @default(MENSAL)
   // Relevantes para ISS (faixa legal 2,00%-5,00%, LC 116/2003); opcionais para outros tributos.
   limiteMinimoPct    Decimal?              @db.Decimal(5, 2)
   limiteMaximoPct    Decimal?              @db.Decimal(5, 2)
@@ -574,16 +591,24 @@ model RateioImpostoGrade {
   aliquotaParametro        AliquotaImpostoParametro @relation(fields: [aliquotaParametroId], references: [id])
   // ADR-027 — 1 conta analítica por linha de rateio (mesma granularidade
   // de aliquotaParametroId x competencia).
+  // [US-129] contaId entrou na chave única: antes só existia 1 linha por
+  // (parametro, competencia) no tenant/versão inteiros, o que impedia o efeito
+  // cascata (RN_PR_001) de um mesmo AliquotaImpostoParametro sobre N contas
+  // filhas na mesma competência. Migration segura — o conjunto antigo já era
+  // único, então o superconjunto com contaId continua único.
   contaId                  String
   conta                    ContaContabil            @relation(fields: [contaId], references: [id])
   competencia              DateTime
   valorDeclarado           Decimal                  @db.Decimal(15, 2)
-  aliquotaAplicadaSnapshot Decimal                  @db.Decimal(5, 2)
+  // [US-129/RNF_PR_004] ampliado de Decimal(5,2) para Decimal(9,4) — mesma
+  // razão da ADR-040 em AliquotaImpostoParametro.aliquotaPct: o snapshot
+  // precisa reter até 4 casas decimais do índice de reajuste aplicado.
+  aliquotaAplicadaSnapshot Decimal                  @db.Decimal(9, 4)
   ativo                    Boolean                  @default(true)
   createdAt                DateTime                 @default(now())
   updatedAt                DateTime                 @updatedAt
 
-  @@unique([tenantId, versaoId, aliquotaParametroId, competencia])
+  @@unique([tenantId, versaoId, aliquotaParametroId, contaId, competencia])
   @@index([tenantId, versaoId])
 }
 

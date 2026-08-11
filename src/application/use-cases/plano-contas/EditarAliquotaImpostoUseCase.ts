@@ -1,4 +1,4 @@
-import { Prisma, type PrismaClient, type TipoIncidenciaImposto } from '@prisma/client';
+import { Prisma, type PrismaClient, type TipoIncidenciaImposto, type PeriodicidadeReajuste } from '@prisma/client';
 import {
   AliquotaImpostoNomeDuplicadoError,
   AliquotaImpostoForaDaFaixaError,
@@ -25,6 +25,7 @@ type EditarAliquotaImpostoInput = {
   limiteMaximoPct?: Prisma.Decimal.Value | null;
   observacao?: string | null;
   contaSinteticaId?: string | null;
+  periodicidadeReajuste?: PeriodicidadeReajuste;
 };
 
 /**
@@ -93,6 +94,7 @@ export class EditarAliquotaImpostoUseCase {
           limiteMaximoPct: input.limiteMaximoPct != null ? new Prisma.Decimal(input.limiteMaximoPct) : null,
           observacao: input.observacao ?? null,
           contaSinteticaId: input.contaSinteticaId ?? null,
+          periodicidadeReajuste: input.periodicidadeReajuste ?? atual.periodicidadeReajuste,
           version: { increment: 1 },
         },
       });

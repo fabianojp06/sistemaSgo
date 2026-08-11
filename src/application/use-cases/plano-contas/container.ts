@@ -54,6 +54,8 @@ import { ListarAliquotasImpostoUseCase } from './ListarAliquotasImpostoUseCase';
 import { CadastrarAliquotaImpostoUseCase } from './CadastrarAliquotaImpostoUseCase';
 import { EditarAliquotaImpostoUseCase } from './EditarAliquotaImpostoUseCase';
 import { ExcluirAliquotaImpostoUseCase } from './ExcluirAliquotaImpostoUseCase';
+import { SimularReajusteUseCase } from './SimularReajusteUseCase';
+import { AplicarReajusteUseCase } from './AplicarReajusteUseCase';
 
 export function getSincronizarPlanoContasUseCase(): SincronizarPlanoContasUseCase {
   return new SincronizarPlanoContasUseCase(
@@ -262,4 +264,12 @@ export function getEditarAliquotaImpostoUseCase(): EditarAliquotaImpostoUseCase 
 
 export function getExcluirAliquotaImpostoUseCase(): ExcluirAliquotaImpostoUseCase {
   return new ExcluirAliquotaImpostoUseCase(prisma);
+}
+
+export function getSimularReajusteUseCase(): SimularReajusteUseCase {
+  return new SimularReajusteUseCase(prisma);
+}
+
+export function getAplicarReajusteUseCase(): AplicarReajusteUseCase {
+  return new AplicarReajusteUseCase(prisma);
 }

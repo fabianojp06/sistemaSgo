@@ -21,6 +21,7 @@ type RateioMock = {
   tenantId: string;
   versaoId: string;
   aliquotaParametroId: string;
+  contaId: string;
   competencia: Date;
   valorDeclarado: Prisma.Decimal;
   aliquotaAplicadaSnapshot: Prisma.Decimal;
@@ -38,6 +39,7 @@ function criarPrismaMock(versoes: VersaoMock[], aliquotas: AliquotaMock[], ratei
     tenantId: r.tenantId!,
     versaoId: r.versaoId!,
     aliquotaParametroId: r.aliquotaParametroId!,
+    contaId: r.contaId ?? 'conta1',
     competencia: r.competencia!,
     valorDeclarado: r.valorDeclarado!,
     aliquotaAplicadaSnapshot: r.aliquotaAplicadaSnapshot ?? new Prisma.Decimal(0),
@@ -45,8 +47,8 @@ function criarPrismaMock(versoes: VersaoMock[], aliquotas: AliquotaMock[], ratei
     updatedAt: r.updatedAt ?? new Date('2026-01-01T00:00:00Z'),
   }));
 
-  const chave = (r: Pick<RateioMock, 'tenantId' | 'versaoId' | 'aliquotaParametroId' | 'competencia'>) =>
-    `${r.tenantId}|${r.versaoId}|${r.aliquotaParametroId}|${r.competencia.getTime()}`;
+  const chave = (r: Pick<RateioMock, 'tenantId' | 'versaoId' | 'aliquotaParametroId' | 'contaId' | 'competencia'>) =>
+    `${r.tenantId}|${r.versaoId}|${r.aliquotaParametroId}|${r.contaId}|${r.competencia.getTime()}`;
 
   const base = {
     versaoProposta: {
@@ -63,8 +65,8 @@ function criarPrismaMock(versoes: VersaoMock[], aliquotas: AliquotaMock[], ratei
       }),
     },
     rateioImpostoGrade: {
-      findUnique: vi.fn(({ where }: { where: { tenantId_versaoId_aliquotaParametroId_competencia: RateioMock } }) => {
-        const k = chave(where.tenantId_versaoId_aliquotaParametroId_competencia);
+      findUnique: vi.fn(({ where }: { where: { tenantId_versaoId_aliquotaParametroId_contaId_competencia: RateioMock } }) => {
+        const k = chave(where.tenantId_versaoId_aliquotaParametroId_contaId_competencia);
         return Promise.resolve(rateios.find((r) => chave(r) === k) ?? null);
       }),
       create: vi.fn(({ data }: { data: Omit<RateioMock, 'id' | 'updatedAt'> }) => {

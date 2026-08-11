@@ -41,6 +41,7 @@ export type AliquotaImpostoResultado = {
   limiteMaximoPct: string | null;
   observacao: string | null;
   contaSinteticaId: string | null;
+  periodicidadeReajuste: 'MENSAL' | 'TRIMESTRAL' | 'SEMESTRAL' | 'ANUAL';
   ativo: boolean;
   status: StatusAliquotaImposto;
   version: number;
@@ -84,6 +85,7 @@ export async function listarAliquotasImposto(filtro: {
         limiteMaximoPct: r.limiteMaximoPct?.toString() ?? null,
         observacao: r.observacao,
         contaSinteticaId: r.contaSinteticaId,
+        periodicidadeReajuste: r.periodicidadeReajuste,
         ativo: r.ativo,
         status: r.status,
         version: r.version,
@@ -106,6 +108,7 @@ const AliquotaImpostoFormSchema = z
     limiteMaximoPct: z.string().optional().nullable(),
     observacao: z.string().max(500).optional().nullable(),
     contaSinteticaId: z.string().optional().nullable(),
+    periodicidadeReajuste: z.enum(['MENSAL', 'TRIMESTRAL', 'SEMESTRAL', 'ANUAL']).optional(),
   })
   .transform((v) => ({
     ...v,
@@ -128,6 +131,7 @@ type AliquotaImpostoFormInput = {
   limiteMaximoPct?: string | null;
   observacao?: string | null;
   contaSinteticaId?: string | null;
+  periodicidadeReajuste?: 'MENSAL' | 'TRIMESTRAL' | 'SEMESTRAL' | 'ANUAL';
 };
 
 /** UC03.40 — Cadastrar Alíquota de Imposto. */

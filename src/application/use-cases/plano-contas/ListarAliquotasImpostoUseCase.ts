@@ -1,4 +1,4 @@
-import type { PrismaClient, Prisma, TipoIncidenciaImposto } from '@prisma/client';
+import type { PrismaClient, Prisma, TipoIncidenciaImposto, PeriodicidadeReajuste } from '@prisma/client';
 
 export type StatusAliquotaImposto = 'ATIVO' | 'INATIVO' | 'EXPIRADA';
 
@@ -13,6 +13,7 @@ export type AliquotaImpostoListada = {
   limiteMaximoPct: Prisma.Decimal | null;
   observacao: string | null;
   contaSinteticaId: string | null;
+  periodicidadeReajuste: PeriodicidadeReajuste;
   ativo: boolean;
   status: StatusAliquotaImposto;
   version: number;
@@ -79,6 +80,7 @@ export class ListarAliquotasImpostoUseCase {
           limiteMaximoPct: registro.limiteMaximoPct,
           observacao: registro.observacao,
           contaSinteticaId: registro.contaSinteticaId,
+          periodicidadeReajuste: registro.periodicidadeReajuste,
           ativo: registro.ativo,
           status,
           version: registro.version,
