@@ -95,6 +95,10 @@ export async function prepararPlanoReajuste(prisma: PrismaClient, input: Prepara
       versaoId: input.versaoId,
       aliquotaParametroId: input.aliquotaParametroId,
       contaId: { in: contasValidasIds },
+      // [ultrareview 2026-08-11] soft-delete (ADR-014) — linha desativada via
+      // DesativarTributoRateioUseCase nunca deve servir de base nem ser
+      // reativada de volta pelo reajuste em lote.
+      ativo: true,
     },
     orderBy: { competencia: 'asc' },
   });
@@ -161,7 +165,7 @@ async function resolverEscopo(prisma: PrismaClient, tenantId: string, versaoId: 
   // RN_PR_005 — Categoria nula aplica globalmente: toda conta analítica desta versão
   // que já tem algum rateio de imposto/índice parametrizado.
   const rateios = await prisma.rateioImpostoGrade.findMany({
-    where: { tenantId, versaoId },
+    where: { tenantId, versaoId, ativo: true },
     select: { contaId: true },
     distinct: ['contaId'],
   });

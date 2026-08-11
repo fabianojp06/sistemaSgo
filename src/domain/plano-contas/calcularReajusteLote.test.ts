@@ -188,4 +188,39 @@ describe('calcularPlanoReajusteConta [US-129/ADR-040]', () => {
     // 333.335 * 1 / 100 = 3.33335 → Half-Even em 2 casas = 3.33
     expect(plano.ajusteRetroativo?.valorAjuste.toString()).toBe('3.33');
   });
+
+  it('[ultrareview 2026-08-11] idempotência — linha futura já na taxa nova não cresce de novo (fica flat)', () => {
+    const plano = calcularPlanoReajusteConta({
+      contaId: 'c1',
+      // Simula o resultado JÁ persistido de uma 1ª aplicação: valor crescido e
+      // snapshot já na taxa nova (6%).
+      linhasExistentes: [{ competencia: m(2026, 9), valorDeclarado: d(1060), aliquotaAplicadaSnapshot: d(6) }],
+      aliquotaNova: d(6),
+      competencias: [m(2026, 9)],
+      competenciaCorrente: m(2026, 8),
+      periodicidadeMeses: 1,
+      ancoraVigencia: m(2026, 9),
+    });
+
+    expect(plano.linhasFuturas[0].valorNovo.toString()).toBe('1060');
+    expect(plano.deltasValorOrcadoPorExercicio).toEqual([]);
+  });
+
+  it('[ultrareview 2026-08-11] idempotência — ajuste retroativo não soma de novo se a linha do mês atual já está na taxa nova', () => {
+    const plano = calcularPlanoReajusteConta({
+      contaId: 'c1',
+      linhasExistentes: [
+        { competencia: m(2026, 1), valorDeclarado: d(1000), aliquotaAplicadaSnapshot: d(4) },
+        // Linha do mês atual já reflete o resultado de uma 1ª aplicação (snapshot == aliquotaNova).
+        { competencia: m(2026, 8), valorDeclarado: d(1020), aliquotaAplicadaSnapshot: d(6) },
+      ],
+      aliquotaNova: d(6),
+      competencias: [m(2026, 1)],
+      competenciaCorrente: m(2026, 8),
+      periodicidadeMeses: 1,
+      ancoraVigencia: m(2026, 1),
+    });
+
+    expect(plano.ajusteRetroativo).toBeNull();
+  });
 });

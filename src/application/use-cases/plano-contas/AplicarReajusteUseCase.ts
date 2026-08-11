@@ -31,23 +31,35 @@ export class AplicarReajusteUseCase {
       async (tx) => {
         for (const contaPlano of plano.planos) {
           for (const linha of contaPlano.linhasFuturas) {
+            const chave = {
+              tenantId: input.tenantId,
+              versaoId: input.versaoId,
+              aliquotaParametroId: input.aliquotaParametroId,
+              contaId: contaPlano.contaId,
+              competencia: linha.competencia,
+            };
+            // [ultrareview 2026-08-11] Uma linha soft-deletada (ADR-014) ocupa a
+            // mesma chave única — se existir, o reajuste em lote não escreve nada
+            // ali (nem reativa, nem sobrescreve o valor congelado no momento da
+            // desativação). `prepararPlanoReajuste` já filtra `ativo:true` na
+            // leitura, então o motor de cálculo nem sabe que essa linha existe;
+            // sem este guard, o upsert a encontraria pela chave e sobrescreveria
+            // valorDeclarado mesmo com a linha continuando ativo:false.
+            const linhaInativa = await tx.rateioImpostoGrade.findUnique({
+              where: { tenantId_versaoId_aliquotaParametroId_contaId_competencia: chave },
+              select: { ativo: true },
+            });
+            if (linhaInativa?.ativo === false) continue;
+
             await tx.rateioImpostoGrade.upsert({
-              where: {
-                tenantId_versaoId_aliquotaParametroId_contaId_competencia: {
-                  tenantId: input.tenantId,
-                  versaoId: input.versaoId,
-                  aliquotaParametroId: input.aliquotaParametroId,
-                  contaId: contaPlano.contaId,
-                  competencia: linha.competencia,
-                },
-              },
-              update: { aliquotaAplicadaSnapshot: linha.aliquotaNova, ativo: true },
+              where: { tenantId_versaoId_aliquotaParametroId_contaId_competencia: chave },
+              // valorDeclarado no update é simétrico ao create e ao ramo retroativo
+              // — antes faltava aqui, o que divergia o preview do persistido e
+              // quebrava idempotência (rerun recomputava o mesmo crescimento sobre
+              // o valor antigo, nunca atualizado).
+              update: { valorDeclarado: linha.valorNovo, aliquotaAplicadaSnapshot: linha.aliquotaNova },
               create: {
-                tenantId: input.tenantId,
-                versaoId: input.versaoId,
-                aliquotaParametroId: input.aliquotaParametroId,
-                contaId: contaPlano.contaId,
-                competencia: linha.competencia,
+                ...chave,
                 valorDeclarado: linha.valorNovo,
                 aliquotaAplicadaSnapshot: linha.aliquotaNova,
                 ativo: true,
@@ -57,28 +69,29 @@ export class AplicarReajusteUseCase {
 
           if (contaPlano.ajusteRetroativo) {
             const ajuste = contaPlano.ajusteRetroativo;
-            await tx.rateioImpostoGrade.upsert({
-              where: {
-                tenantId_versaoId_aliquotaParametroId_contaId_competencia: {
-                  tenantId: input.tenantId,
-                  versaoId: input.versaoId,
-                  aliquotaParametroId: input.aliquotaParametroId,
-                  contaId: contaPlano.contaId,
-                  competencia: ajuste.competenciaAjuste,
-                },
-              },
-              update: { valorDeclarado: ajuste.valorFinal, aliquotaAplicadaSnapshot: plano.aliquotaParametro.aliquotaPct, ativo: true },
-              create: {
-                tenantId: input.tenantId,
-                versaoId: input.versaoId,
-                aliquotaParametroId: input.aliquotaParametroId,
-                contaId: contaPlano.contaId,
-                competencia: ajuste.competenciaAjuste,
-                valorDeclarado: ajuste.valorFinal,
-                aliquotaAplicadaSnapshot: plano.aliquotaParametro.aliquotaPct,
-                ativo: true,
-              },
+            const chave = {
+              tenantId: input.tenantId,
+              versaoId: input.versaoId,
+              aliquotaParametroId: input.aliquotaParametroId,
+              contaId: contaPlano.contaId,
+              competencia: ajuste.competenciaAjuste,
+            };
+            const linhaInativa = await tx.rateioImpostoGrade.findUnique({
+              where: { tenantId_versaoId_aliquotaParametroId_contaId_competencia: chave },
+              select: { ativo: true },
             });
+            if (linhaInativa?.ativo !== false) {
+              await tx.rateioImpostoGrade.upsert({
+                where: { tenantId_versaoId_aliquotaParametroId_contaId_competencia: chave },
+                update: { valorDeclarado: ajuste.valorFinal, aliquotaAplicadaSnapshot: plano.aliquotaParametro.aliquotaPct },
+                create: {
+                  ...chave,
+                  valorDeclarado: ajuste.valorFinal,
+                  aliquotaAplicadaSnapshot: plano.aliquotaParametro.aliquotaPct,
+                  ativo: true,
+                },
+              });
+            }
           }
 
           // [Revisão 2026-08-11] Efeito monetário do reajuste precisa aparecer no

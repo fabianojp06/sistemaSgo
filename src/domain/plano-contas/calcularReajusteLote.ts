@@ -98,12 +98,21 @@ export function calcularPlanoReajusteConta(params: {
     deltaPorExercicio.set(ano, (deltaPorExercicio.get(ano) ?? new Prisma.Decimal(0)).plus(valor));
   }
 
+  // [ultrareview 2026-08-11] Idempotência — reabrir o modal e confirmar de novo o
+  // MESMO reajuste não pode duplicar valor. Como o ajuste retroativo (ADR-040)
+  // nunca atualiza o snapshot das linhas passadas, o único jeito de saber "esse
+  // índice já foi aplicado nesta taxa" é checar a PRÓPRIA linha de ajuste no mês
+  // atual: se o snapshot dela já é a taxa nova, o catch-up já rodou — não soma de
+  // novo.
+  const linhaAjusteAtual = porCompetencia.get(params.competenciaCorrente.getTime()) ?? null;
+  const reajusteRetroativoJaAplicado = linhaAjusteAtual !== null && linhaAjusteAtual.aliquotaAplicadaSnapshot.equals(params.aliquotaNova);
+
   for (const competencia of params.competencias) {
     const existente = porCompetencia.get(competencia.getTime()) ?? null;
     const ehPassado = competencia.getTime() <= params.competenciaCorrente.getTime();
 
     if (ehPassado) {
-      if (existente) {
+      if (existente && !reajusteRetroativoJaAplicado) {
         const delta = arredondar(existente.valorDeclarado.times(params.aliquotaNova.minus(existente.aliquotaAplicadaSnapshot)).dividedBy(100));
         deltaTotal = deltaTotal.plus(delta);
         mesesAfetados.push(competencia.toISOString().slice(0, 7));
@@ -112,10 +121,16 @@ export function calcularPlanoReajusteConta(params: {
       continue;
     }
 
+    // Idempotência (mesma razão do bloco acima) — se esta linha futura específica
+    // já está na taxa nova, não cresce de novo; fica flat no valor já aplicado.
+    const jaAplicadoNestaLinha = existente !== null && existente.aliquotaAplicadaSnapshot.equals(params.aliquotaNova);
     const valorBase = existente ? existente.valorDeclarado : baseCarregada;
     // Só cresce nos meses alinhados ao ciclo da periodicidade (RN nova, 2026-08-11) —
     // entre uma aplicação e a próxima, o valor fica estável (flat), sem crescer de novo.
-    const valorNovo = ehMesDeAplicacao(competencia) ? arredondar(valorBase.times(params.aliquotaNova.dividedBy(100).plus(1))) : arredondar(valorBase);
+    const valorNovo =
+      ehMesDeAplicacao(competencia) && !jaAplicadoNestaLinha
+        ? arredondar(valorBase.times(params.aliquotaNova.dividedBy(100).plus(1)))
+        : arredondar(valorBase);
     linhasFuturas.push({
       competencia,
       valorAnterior: existente?.valorDeclarado ?? null,

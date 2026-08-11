@@ -45,19 +45,26 @@ export class EditarAliquotaImpostoUseCase {
     if (input.nome.trim().toLowerCase() === 'iss' && (aliquotaPct.lessThan(2) || aliquotaPct.greaterThan(5))) {
       throw new AliquotaImpostoIssForaDaFaixaLegalError();
     }
-    // Comparação por calendário puro (ver domain/shared/dataCalendario) — nunca por instante/fuso.
-    if (ehDataAnteriorAHoje(input.dataInicioVigencia)) {
-      throw new AliquotaImpostoDataInicioRetroativaError();
-    }
-    if (input.dataFimVigencia && input.dataFimVigencia <= input.dataInicioVigencia) {
-      throw new AliquotaImpostoDataFimInvalidaError();
-    }
 
     const atual = await this.prisma.aliquotaImpostoParametro.findFirst({
       where: { tenantId: input.tenantId, id: input.aliquotaImpostoParametroId },
     });
     if (!atual) {
       throw new AliquotaImpostoParametroNaoEncontradaError();
+    }
+
+    // [ultrareview 2026-08-11] Só valida retroatividade se a data MUDOU — manter a
+    // data de vigência já salva de um índice antigo (ex: só trocando a
+    // periodicidade) nunca deve falhar. Antes disso rodava incondicionalmente e
+    // travava a edição de todo índice cadastrado há mais de 1 dia.
+    if (
+      input.dataInicioVigencia.getTime() !== atual.dataInicioVigencia.getTime() &&
+      ehDataAnteriorAHoje(input.dataInicioVigencia)
+    ) {
+      throw new AliquotaImpostoDataInicioRetroativaError();
+    }
+    if (input.dataFimVigencia && input.dataFimVigencia <= input.dataInicioVigencia) {
+      throw new AliquotaImpostoDataFimInvalidaError();
     }
 
     const nomeNormalizado = input.nome.trim().toLowerCase();

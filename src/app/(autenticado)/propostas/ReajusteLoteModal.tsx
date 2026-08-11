@@ -20,6 +20,10 @@ function formatarMoeda(valor: string): string {
   return formatadorMoeda.format(Number(valor));
 }
 
+// [ultrareview 2026-08-11] AGRUPADOR já existe de ponta a ponta no backend
+// (EscopoReajusteSchema, resolverEscopo em prepararPlanoReajuste.ts, testado em
+// AplicarReajusteUseCase.test.ts) mas ainda não tem seletor aqui — entrega
+// incremental deliberada, não esquecimento. UI pendente de US futura.
 type EscopoModo = 'CONTA' | 'GLOBAL';
 type ContaOpcao = { id: string; label: string };
 type TipoIncidencia = 'CONTRATO' | 'TERMO_DE_PARCERIA' | 'AMBOS';

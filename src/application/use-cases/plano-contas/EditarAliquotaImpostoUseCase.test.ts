@@ -14,6 +14,7 @@ type AliquotaMock = {
   nomeNormalizado: string;
   aliquotaPct: Prisma.Decimal;
   tipoIncidencia: string;
+  dataInicioVigencia: Date;
   version: number;
 };
 
@@ -53,6 +54,7 @@ const registroBase: AliquotaMock = {
   nomeNormalizado: 'pis',
   aliquotaPct: new Prisma.Decimal('0.65'),
   tipoIncidencia: 'AMBOS',
+  dataInicioVigencia: new Date('2024-01-01T00:00:00.000Z'),
   version: 0,
 };
 
@@ -96,11 +98,29 @@ describe('EditarAliquotaImpostoUseCase', () => {
   it('bloqueia renomear para nome já usado por outro registro', async () => {
     const base = criarPrismaMock([
       registroBase,
-      { id: 'a2', tenantId: 't1', nome: 'COFINS', nomeNormalizado: 'cofins', aliquotaPct: new Prisma.Decimal('3'), tipoIncidencia: 'AMBOS', version: 0 },
+      {
+        id: 'a2',
+        tenantId: 't1',
+        nome: 'COFINS',
+        nomeNormalizado: 'cofins',
+        aliquotaPct: new Prisma.Decimal('3'),
+        tipoIncidencia: 'AMBOS',
+        dataInicioVigencia: new Date('2024-01-01T00:00:00.000Z'),
+        version: 0,
+      },
     ]);
     const useCase = new EditarAliquotaImpostoUseCase(base as never);
 
     await expect(useCase.execute({ ...inputBase, nome: 'COFINS' })).rejects.toThrow(AliquotaImpostoNomeDuplicadoError);
+  });
+
+  it('[ultrareview 2026-08-11] mantém a dataInicioVigencia retroativa já salva sem lançar erro, quando ela não muda', async () => {
+    const base = criarPrismaMock([registroBase]);
+    const useCase = new EditarAliquotaImpostoUseCase(base as never);
+
+    const resultado = await useCase.execute({ ...inputBase, dataInicioVigencia: registroBase.dataInicioVigencia, periodicidadeReajuste: 'ANUAL' });
+
+    expect(resultado.version).toBe(1);
   });
 
   it('lança erro se o registro não existir', async () => {

@@ -98,16 +98,21 @@ function criarPrismaMock(opts: {
       }),
     },
     rateioImpostoGrade: {
-      findMany: vi.fn(({ where }: { where: { tenantId: string; versaoId?: string; aliquotaParametroId?: string; contaId?: { in: string[] } } }) => {
+      findMany: vi.fn(({ where }: { where: { tenantId: string; versaoId?: string; aliquotaParametroId?: string; contaId?: { in: string[] }; ativo?: boolean } }) => {
         return Promise.resolve(
           rateios.filter(
             (r) =>
               r.tenantId === where.tenantId &&
               (!where.versaoId || r.versaoId === where.versaoId) &&
               (!where.aliquotaParametroId || r.aliquotaParametroId === where.aliquotaParametroId) &&
-              (!where.contaId || where.contaId.in.includes(r.contaId)),
+              (!where.contaId || where.contaId.in.includes(r.contaId)) &&
+              (where.ativo === undefined || r.ativo === where.ativo),
           ),
         );
+      }),
+      findUnique: vi.fn(({ where }: { where: { tenantId_versaoId_aliquotaParametroId_contaId_competencia: RateioMock } }) => {
+        const k = chave(where.tenantId_versaoId_aliquotaParametroId_contaId_competencia);
+        return Promise.resolve(rateios.find((r) => chave(r) === k) ?? null);
       }),
       upsert: vi.fn(({ where, update, create }: { where: { tenantId_versaoId_aliquotaParametroId_contaId_competencia: RateioMock }; update: Partial<RateioMock>; create: Omit<RateioMock, 'id'> }) => {
         const k = chave(where.tenantId_versaoId_aliquotaParametroId_contaId_competencia);
@@ -148,7 +153,7 @@ function criarPrismaMock(opts: {
 const m = (ano: number, mes: number) => new Date(Date.UTC(ano, mes - 1, 1));
 
 describe('AplicarReajusteUseCase / SimularReajusteUseCase [US-129]', () => {
-  it('[Revisão 2026-08-11] reajuste incrementa ValorOrcadoConta do exercício afetado — gap achado em teste manual (dissídio sobre Salário)', async () => {
+  it('[Revisão 2026-08-11] sem linha anterior existente, nenhum delta em ValorOrcadoConta é gerado — smoke test de robustez', async () => {
     const { prisma, valoresOrcados } = criarPrismaMock({
       versao: { id: 'v1', status: 'RASCUNHO', ativa: true, propostaTipo: 'CONTRATO', dataInicio: m(2026, 1), dataFim: m(2026, 12) },
       aliquota: { id: 'idx1', nome: 'Dissídio', aliquotaPct: new Prisma.Decimal(5), tipoIncidencia: 'AMBOS', dataInicioVigencia: m(2026, 9), dataFimVigencia: null },
@@ -158,9 +163,10 @@ describe('AplicarReajusteUseCase / SimularReajusteUseCase [US-129]', () => {
 
     await useCase.execute({ tenantId: 't1', usuarioId: 'u1', versaoId: 'v1', aliquotaParametroId: 'idx1', escopo: { modo: 'CONTA', contaId: 'c-salario' } });
 
-    // Sem linha anterior — base 0 cresce 5% e continua 0, mas ainda assim cria a linha
-    // de ValorOrcadoConta (delta 0 é filtrado; o teste real de crescimento positivo é o
-    // próximo). Este primeiro caso só garante que a ausência de dado não quebra o fluxo.
+    // Sem linha anterior — base 0, crescimento 5% sobre 0 continua 0, delta filtrado
+    // (ver "existente" em calcularPlanoReajusteConta). Garante que ausência de dado
+    // não quebra o fluxo nem cria linha de ValorOrcadoConta à toa. O teste de
+    // crescimento positivo de verdade é o próximo.
     expect(valoresOrcados).toEqual([]);
   });
 
@@ -324,5 +330,54 @@ describe('AplicarReajusteUseCase / SimularReajusteUseCase [US-129]', () => {
     const useCase = new SimularReajusteUseCase(prisma as never);
 
     await expect(useCase.execute({ tenantId: 't1', versaoId: 'v1', aliquotaParametroId: 'idx1', escopo: { modo: 'GLOBAL' } })).rejects.toThrow(EscopoReajusteVazioError);
+  });
+
+  it('[ultrareview 2026-08-11] não reativa linha soft-deleted (ativo:false) nem usa como base de cálculo', async () => {
+    const { prisma, rateios } = criarPrismaMock({
+      versao: { id: 'v1', status: 'RASCUNHO', ativa: true, propostaTipo: 'CONTRATO', dataInicio: m(2026, 1), dataFim: m(2026, 12) },
+      aliquota: { id: 'idx1', nome: 'IPCA', aliquotaPct: new Prisma.Decimal(6), tipoIncidencia: 'AMBOS', dataInicioVigencia: m(2026, 1), dataFimVigencia: null },
+      contas: [{ id: 'c1', isAnalitica: true }],
+      rateiosIniciais: [
+        {
+          tenantId: 't1',
+          versaoId: 'v1',
+          aliquotaParametroId: 'idx1',
+          contaId: 'c1',
+          competencia: m(2026, 10),
+          valorDeclarado: new Prisma.Decimal(1000),
+          aliquotaAplicadaSnapshot: new Prisma.Decimal(4),
+          ativo: false,
+        },
+      ],
+    });
+    const useCase = new AplicarReajusteUseCase(prisma as never);
+
+    await useCase.execute({ tenantId: 't1', usuarioId: 'u1', versaoId: 'v1', aliquotaParametroId: 'idx1', escopo: { modo: 'CONTA', contaId: 'c1' } });
+
+    const linhaDesativada = rateios.find((r) => r.competencia.getTime() === m(2026, 10).getTime());
+    expect(linhaDesativada?.ativo).toBe(false);
+    expect(linhaDesativada?.valorDeclarado.toString()).toBe('1000');
+  });
+
+  it('[ultrareview 2026-08-11] idempotência — reaplicar o MESMO reajuste 2x não duplica o Valor Orçado', async () => {
+    const { prisma, valoresOrcados } = criarPrismaMock({
+      versao: { id: 'v1', status: 'RASCUNHO', ativa: true, propostaTipo: 'CONTRATO', dataInicio: m(2026, 1), dataFim: m(2026, 12) },
+      aliquota: { id: 'idx1', nome: 'IPCA', aliquotaPct: new Prisma.Decimal(6), tipoIncidencia: 'AMBOS', dataInicioVigencia: m(2026, 1), dataFimVigencia: null },
+      contas: [{ id: 'c1', isAnalitica: true }],
+      rateiosIniciais: [
+        { tenantId: 't1', versaoId: 'v1', aliquotaParametroId: 'idx1', contaId: 'c1', competencia: m(2026, 1), valorDeclarado: new Prisma.Decimal(1000), aliquotaAplicadaSnapshot: new Prisma.Decimal(4) },
+      ],
+    });
+    const useCase = new AplicarReajusteUseCase(prisma as never);
+    const input = { tenantId: 't1', usuarioId: 'u1', versaoId: 'v1', aliquotaParametroId: 'idx1', escopo: { modo: 'CONTA' as const, contaId: 'c1' } };
+
+    await useCase.execute(input);
+    const valorAposPrimeiraAplicacao = valoresOrcados.find((v) => v.contaId === 'c1' && v.exercicio === 2026)?.valor.toString();
+
+    await useCase.execute(input);
+    const valorAposSegundaAplicacao = valoresOrcados.find((v) => v.contaId === 'c1' && v.exercicio === 2026)?.valor.toString();
+
+    expect(valorAposPrimeiraAplicacao).toBeDefined();
+    expect(valorAposSegundaAplicacao).toBe(valorAposPrimeiraAplicacao);
   });
 });

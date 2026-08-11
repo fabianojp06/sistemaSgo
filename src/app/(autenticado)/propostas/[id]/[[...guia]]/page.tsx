@@ -426,7 +426,7 @@ async function ReajusteLoteHost({
   versaoId: string;
   contasAnaliticas: { id: string; label: string }[];
 }) {
-  const [podeAplicarReajuste, podeEditarIndice, podeExcluirIndice, aliquotas, contasSinteticas] = await Promise.all([
+  const [podeAplicarReajuste, podeEditarIndice, podeExcluirIndice, aliquotas] = await Promise.all([
     usuarioTemFuncionalidade(prisma, tenantId, usuarioId, 'orcamentario.premissas-reajustes.aplicar'),
     usuarioTemFuncionalidade(prisma, tenantId, usuarioId, 'aliquotas-impostos.editar'),
     usuarioTemFuncionalidade(prisma, tenantId, usuarioId, 'aliquotas-impostos.excluir'),
@@ -435,14 +435,20 @@ async function ReajusteLoteHost({
       orderBy: { nome: 'asc' },
       select: { id: true, nome: true, aliquotaPct: true, periodicidadeReajuste: true },
     }),
-    prisma.contaContabil.findMany({
-      where: { tenantId, isAnalitica: false },
-      select: { id: true, codigoErp: true, nomeConta: true },
-      orderBy: { codigoErp: 'asc' },
-    }),
   ]);
 
   if (!podeAplicarReajuste) return null;
+
+  // [ultrareview 2026-08-11] contas sintéticas só alimentam o sub-form Editar
+  // Índice do modal — buscar só quando o usuário tem a permissão que mostra o
+  // botão Editar, em vez de sempre, poupa a query pra quem nunca vai usar.
+  const contasSinteticas = podeEditarIndice
+    ? await prisma.contaContabil.findMany({
+        where: { tenantId, isAnalitica: false },
+        select: { id: true, codigoErp: true, nomeConta: true },
+        orderBy: { codigoErp: 'asc' },
+      })
+    : [];
 
   const aliquotasOpcoes = aliquotas.map((a) => ({
     id: a.id,
