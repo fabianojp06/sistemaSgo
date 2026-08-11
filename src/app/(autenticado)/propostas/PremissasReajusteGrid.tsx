@@ -64,9 +64,21 @@ export function PremissasReajusteGrid({
   );
 
   const blocos: ('CONTRATOS' | 'PARCERIA_ACT')[] = ['CONTRATOS', 'PARCERIA_ACT'];
+  const blocosDisponiveis = useMemo(
+    () => blocos.filter((bloco) => linhasVisiveis.some((l) => l.bloco === bloco)),
+    [linhasVisiveis],
+  );
+
+  const [blocoSelecionado, setBlocoSelecionado] = useState<'CONTRATOS' | 'PARCERIA_ACT' | null>(null);
+  const blocoAtivo = blocoSelecionado && blocosDisponiveis.includes(blocoSelecionado) ? blocoSelecionado : (blocosDisponiveis[0] ?? null);
+
+  const linhasDoBlocoAtivo = useMemo(
+    () => (blocoAtivo ? linhasVisiveis.filter((l) => l.bloco === blocoAtivo) : []),
+    [linhasVisiveis, blocoAtivo],
+  );
 
   function linhasExport() {
-    return linhasVisiveis.map((linha) => ({
+    return linhasDoBlocoAtivo.map((linha) => ({
       bloco: LABEL_BLOCO[linha.bloco],
       conta: linha.contaLabel,
       ...Object.fromEntries(linha.celulas.map((c, i) => [`mes_${i}`, linha.temIndice ? formatarCelula(c) : '0,00%'])),
@@ -133,11 +145,11 @@ export function PremissasReajusteGrid({
             <IconeImpressora />
             Imprimir
           </button>
-          <button type="button" onClick={exportarXLSX} disabled={linhasVisiveis.length === 0} className="flex items-center gap-1.5 rounded border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm hover:bg-gray-50 disabled:opacity-50">
+          <button type="button" onClick={exportarXLSX} disabled={linhasDoBlocoAtivo.length === 0} className="flex items-center gap-1.5 rounded border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm hover:bg-gray-50 disabled:opacity-50">
             <IconeDownload />
             XLSX
           </button>
-          <button type="button" onClick={exportarPDF} disabled={linhasVisiveis.length === 0} className="flex items-center gap-1.5 rounded bg-blue-700 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:brightness-110 disabled:opacity-50">
+          <button type="button" onClick={exportarPDF} disabled={linhasDoBlocoAtivo.length === 0} className="flex items-center gap-1.5 rounded bg-blue-700 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:brightness-110 disabled:opacity-50">
             <IconeDownload />
             PDF
           </button>
@@ -159,13 +171,32 @@ export function PremissasReajusteGrid({
           Nenhuma premissa de reajuste cadastrada para a proposta e versão selecionadas.
         </p>
       ) : (
-        blocos.map((bloco) => {
-          const linhasDoBloco = linhasVisiveis.filter((l) => l.bloco === bloco);
-          if (linhasDoBloco.length === 0) return null;
-          return (
-            <div key={bloco} className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm print:overflow-visible print:rounded-none print:border-0 print:shadow-none">
+        <>
+          {blocosDisponiveis.length > 1 && (
+            <div className="flex gap-2 print:hidden" role="tablist" aria-label="Filtrar por bloco">
+              {blocosDisponiveis.map((bloco) => (
+                <button
+                  key={bloco}
+                  type="button"
+                  role="tab"
+                  aria-selected={bloco === blocoAtivo}
+                  onClick={() => setBlocoSelecionado(bloco)}
+                  className={`rounded-full px-4 py-1.5 text-xs font-medium shadow-sm ${
+                    bloco === blocoAtivo
+                      ? 'bg-blue-700 text-white'
+                      : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  Premissas {LABEL_BLOCO[bloco]}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {blocoAtivo && linhasDoBlocoAtivo.length > 0 && (
+            <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm print:overflow-visible print:rounded-none print:border-0 print:shadow-none">
               <div className="border-b bg-slate-50 px-4 py-2.5 print:border-black">
-                <h3 className="text-sm font-semibold text-slate-800">Premissas {LABEL_BLOCO[bloco]}</h3>
+                <h3 className="text-sm font-semibold text-slate-800">Premissas {LABEL_BLOCO[blocoAtivo]}</h3>
               </div>
               <div className="max-h-[480px] overflow-auto print:max-h-none print:overflow-visible">
                 <table className="w-full min-w-[900px] border-collapse text-left text-xs print:min-w-0">
@@ -180,7 +211,7 @@ export function PremissasReajusteGrid({
                     </tr>
                   </thead>
                   <tbody>
-                    {linhasDoBloco.map((linha, indice) => (
+                    {linhasDoBlocoAtivo.map((linha, indice) => (
                       <tr key={linha.contaId} className={`border-b border-gray-100 ${indice % 2 === 1 ? 'bg-slate-50/60' : ''}`}>
                         <td className="px-3 py-2 text-slate-700">{linha.contaLabel}</td>
                         {linha.celulas.map((celula, i) => (
@@ -194,8 +225,8 @@ export function PremissasReajusteGrid({
                 </table>
               </div>
             </div>
-          );
-        })
+          )}
+        </>
       )}
 
       <p className="hidden text-center text-[10px] uppercase print:block">Premissas / Aplicações Reajustes (%)</p>
