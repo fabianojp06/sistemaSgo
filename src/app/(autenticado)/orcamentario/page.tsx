@@ -71,7 +71,7 @@ export default async function OrcamentarioPage() {
         )}
       </div>
 
-      <div className="max-w-lg rounded-[10px] border border-[#DDE2EA] bg-white shadow-[0_1px_2px_rgba(20,24,33,0.05),0_1px_1px_rgba(20,24,33,0.04)] dark:border-[#2B303C] dark:bg-[#191D26]">
+      <div id="premissas-reajustes" className="max-w-lg scroll-mt-6 rounded-[10px] border border-[#DDE2EA] bg-white shadow-[0_1px_2px_rgba(20,24,33,0.05),0_1px_1px_rgba(20,24,33,0.04)] dark:border-[#2B303C] dark:bg-[#191D26]">
         <div className="border-b border-[#DDE2EA] px-4 py-3 dark:border-[#2B303C]">
           <p className="text-sm font-semibold text-[#1A1F29] dark:text-[#EBEDF2]">Premissas e Reajustes — escolha a Proposta</p>
         </div>

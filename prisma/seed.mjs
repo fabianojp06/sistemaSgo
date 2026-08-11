@@ -171,6 +171,15 @@ async function seedModuloOrcamentario() {
     create: { moduloId: modulo.id, chave: 'orcamentario.visualizar', nome: 'Orçamentário' },
   });
 
+  // US-128/129 (UC04.02) — link direto no menu para Premissas e Reajustes, abaixo de
+  // "Orçamentário" no mesmo módulo (pedido do usuário 2026-08-11). NAVEGAVEL — a tela
+  // em si é proposta-scoped, então aponta para o seletor de Proposta em /orcamentario.
+  await prisma.funcionalidade.upsert({
+    where: { moduloId_chave: { moduloId: modulo.id, chave: 'orcamentario.premissas-reajustes.visualizar' } },
+    update: {},
+    create: { moduloId: modulo.id, chave: 'orcamentario.premissas-reajustes.visualizar', nome: 'Premissas e Reajustes' },
+  });
+
   // US-129 (UC04.02) — Simular e Aplicar Reajuste em Lote. [ADR-021] CONTEXTUAL,
   // operação financeira crítica dentro da tela de Premissas e Reajustes.
   await prisma.funcionalidade.upsert({
