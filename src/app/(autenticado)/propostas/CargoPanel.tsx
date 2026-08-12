@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { Fragment, useState, useTransition } from 'react';
 import {
   salvarCargoCompleto,
   ressincronizarSnapshotEmpregadosCargo,
@@ -89,13 +89,20 @@ function ContaComponenteSelect({
   contasAnaliticas,
   value,
   onChange,
+  disabled,
 }: {
   contasAnaliticas: { id: string; label: string }[];
   value: string;
   onChange: (value: string) => void;
+  disabled?: boolean;
 }) {
   return (
-    <select value={value} onChange={(e) => onChange(e.target.value)} className="rounded border px-2 py-1 text-xs text-gray-600">
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      disabled={disabled}
+      className="w-full rounded border px-2 py-1 text-xs text-gray-600 disabled:opacity-50"
+    >
       <option value="">Conta...</option>
       {contasAnaliticas.map((c) => (
         <option key={c.id} value={c.id}>
@@ -530,7 +537,7 @@ export function CargoPanel({
         <div className="flex flex-col gap-4 rounded-lg border border-gray-100 bg-white p-4 shadow-sm md:p-5">
           <h4 className="text-sm font-semibold text-slate-800">{cargoEmEdicaoId ? 'Editar Cargo' : 'Novo Cargo'}</h4>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <div className="grid grid-cols-1 items-start gap-x-4 gap-y-3 md:grid-cols-3">
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">Nome do Cargo (Mercado)</label>
               <input
@@ -590,11 +597,13 @@ export function CargoPanel({
                 onChange={(e) => setDados((d) => ({ ...d, funcaoGratificada: e.target.value }))}
                 className="w-full rounded border px-2 py-1 text-sm"
               />
-              <ContaComponenteSelect
-                contasAnaliticas={contasAnaliticas}
-                value={dados.contaGratificacaoId}
-                onChange={(v) => setDados((d) => ({ ...d, contaGratificacaoId: v }))}
-              />
+              <div className="mt-1">
+                <ContaComponenteSelect
+                  contasAnaliticas={contasAnaliticas}
+                  value={dados.contaGratificacaoId}
+                  onChange={(v) => setDados((d) => ({ ...d, contaGratificacaoId: v }))}
+                />
+              </div>
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">Fonte Ativa</label>
@@ -658,46 +667,50 @@ export function CargoPanel({
           <div className="flex flex-col gap-3 border-t pt-3">
             <p className="text-xs font-medium text-gray-600">Benefícios e Encargos</p>
 
-            <div className="flex items-end gap-3">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Encargos Sociais (%)</label>
-                <input
-                  type="number"
-                  value={dados.encargosSociaisPct}
-                  onChange={(e) => setDados((d) => ({ ...d, encargosSociaisPct: e.target.value }))}
-                  className="w-32 rounded border px-2 py-1 text-sm"
-                />
-              </div>
+            <div className="grid grid-cols-[minmax(180px,1fr)_128px_minmax(160px,1fr)] items-center gap-x-3 gap-y-2">
+              <label className="text-xs font-medium text-gray-600">Encargos Sociais (%)</label>
+              <div />
+              <div />
+              <input
+                type="number"
+                value={dados.encargosSociaisPct}
+                onChange={(e) => setDados((d) => ({ ...d, encargosSociaisPct: e.target.value }))}
+                className="w-full rounded border px-2 py-1 text-sm"
+              />
+              <div />
               <ContaComponenteSelect
                 contasAnaliticas={contasAnaliticas}
                 value={dados.contaEncargosSociaisId}
                 onChange={(v) => setDados((d) => ({ ...d, contaEncargosSociaisId: v }))}
               />
-            </div>
 
-            {BENEFICIOS_SIMPLES.map((b) => (
-              <div key={b.ativo} className="flex items-center gap-3">
-                <label className="flex items-center gap-1 text-xs text-gray-600">
-                  <input type="checkbox" checked={dados[b.ativo]} onChange={(e) => setDados((d) => ({ ...d, [b.ativo]: e.target.checked }))} />
-                  {b.label}
-                </label>
-                <input
-                  type="number"
-                  value={dados[b.valor]}
-                  onChange={(e) => setDados((d) => ({ ...d, [b.valor]: e.target.value }))}
-                  disabled={!dados[b.ativo]}
-                  className="w-32 rounded border px-2 py-1 text-sm disabled:opacity-50"
-                />
-                <ContaComponenteSelect
-                  contasAnaliticas={contasAnaliticas}
-                  value={dados[b.conta]}
-                  onChange={(v) => setDados((d) => ({ ...d, [b.conta]: v }))}
-                />
-              </div>
-            ))}
+              {BENEFICIOS_SIMPLES.map((b) => (
+                <Fragment key={b.ativo}>
+                  <label className="flex items-center gap-2 text-xs text-gray-600">
+                    <input
+                      type="checkbox"
+                      checked={dados[b.ativo]}
+                      onChange={(e) => setDados((d) => ({ ...d, [b.ativo]: e.target.checked }))}
+                    />
+                    {b.label}
+                  </label>
+                  <input
+                    type="number"
+                    value={dados[b.valor]}
+                    onChange={(e) => setDados((d) => ({ ...d, [b.valor]: e.target.value }))}
+                    disabled={!dados[b.ativo]}
+                    className="w-full rounded border px-2 py-1 text-sm disabled:opacity-50"
+                  />
+                  <ContaComponenteSelect
+                    contasAnaliticas={contasAnaliticas}
+                    value={dados[b.conta]}
+                    onChange={(v) => setDados((d) => ({ ...d, [b.conta]: v }))}
+                    disabled={!dados[b.ativo]}
+                  />
+                </Fragment>
+              ))}
 
-            <div className="flex items-center gap-3">
-              <label className="flex items-center gap-1 text-xs text-gray-600">
+              <label className="flex items-center gap-2 text-xs text-gray-600">
                 <input
                   type="checkbox"
                   checked={dados.planoSaudeAtivo}
@@ -705,28 +718,31 @@ export function CargoPanel({
                 />
                 Plano de Saúde
               </label>
-              <select
-                value={dados.planoSaudeFaixa ?? ''}
-                onChange={(e) => setDados((d) => ({ ...d, planoSaudeFaixa: (e.target.value || null) as typeof d.planoSaudeFaixa }))}
-                disabled={!dados.planoSaudeAtivo}
-                className="rounded border px-2 py-1 text-sm disabled:opacity-50"
-              >
-                <option value="">Faixa...</option>
-                <option value="BASICO">Básico</option>
-                <option value="INTERMEDIARIO">Intermediário</option>
-                <option value="EXECUTIVO">Executivo</option>
-              </select>
-              <input
-                type="number"
-                value={dados.planoSaudeValor}
-                onChange={(e) => setDados((d) => ({ ...d, planoSaudeValor: e.target.value }))}
-                disabled={!dados.planoSaudeAtivo}
-                className="w-32 rounded border px-2 py-1 text-sm disabled:opacity-50"
-              />
+              <div className="flex items-center gap-2">
+                <select
+                  value={dados.planoSaudeFaixa ?? ''}
+                  onChange={(e) => setDados((d) => ({ ...d, planoSaudeFaixa: (e.target.value || null) as typeof d.planoSaudeFaixa }))}
+                  disabled={!dados.planoSaudeAtivo}
+                  className="w-24 rounded border px-2 py-1 text-sm disabled:opacity-50"
+                >
+                  <option value="">Faixa...</option>
+                  <option value="BASICO">Básico</option>
+                  <option value="INTERMEDIARIO">Intermediário</option>
+                  <option value="EXECUTIVO">Executivo</option>
+                </select>
+                <input
+                  type="number"
+                  value={dados.planoSaudeValor}
+                  onChange={(e) => setDados((d) => ({ ...d, planoSaudeValor: e.target.value }))}
+                  disabled={!dados.planoSaudeAtivo}
+                  className="w-full rounded border px-2 py-1 text-sm disabled:opacity-50"
+                />
+              </div>
               <ContaComponenteSelect
                 contasAnaliticas={contasAnaliticas}
                 value={dados.contaPlanoSaudeId}
                 onChange={(v) => setDados((d) => ({ ...d, contaPlanoSaudeId: v }))}
+                disabled={!dados.planoSaudeAtivo}
               />
             </div>
           </div>
