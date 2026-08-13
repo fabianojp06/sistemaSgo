@@ -1,4 +1,4 @@
-import type { Cargo, FonteAtivaSalario, PrismaClient } from '@prisma/client';
+import type { Cargo, FonteAtivaSalario, OrigemSalarioMercado, PrismaClient } from '@prisma/client';
 import {
   CamposObrigatoriosCargoError,
   CargoNaoEncontradoError,
@@ -30,6 +30,9 @@ type EditarCargoInput = {
   periodoInicio: Date;
   salarioMercadoMinimo: number;
   salarioMercadoMaximo: number;
+  /** US-133, RN_TAB_04/05 — origem de cada campo (Tabela Salarial ou digitado manualmente). */
+  origemSalarioMinimo?: OrigemSalarioMercado;
+  origemSalarioMaximo?: OrigemSalarioMercado;
   fonteAtiva: FonteAtivaSalario;
   /**
    * Cenário 4 [TRAVA O ERRO / RN_CAR_03] — mesmo que o client envie um valor
@@ -114,12 +117,19 @@ export class EditarCargoUseCase {
         where: { id: input.cargoId },
         data: {
           nomeCargoMercado: nome,
+          // ADR-042 — todas as travas do formulário completo já passaram acima (Vínculo
+          // Funcional, Conta analítica); transição de mão única RASCUNHO→COMPLETO.
+          status: 'COMPLETO',
           contaId: input.contaId,
           funcaoGratificada: input.funcaoGratificada ?? null,
           contaGratificacaoId: input.contaGratificacaoId ?? null,
           periodoInicio: input.periodoInicio,
           salarioMercadoMinimo: input.salarioMercadoMinimo,
           salarioMercadoMaximo: input.salarioMercadoMaximo,
+          // Sem input explícito, preserva a origem já persistida — só o client sabe se o
+          // valor mudou desde o último carregamento (edição manual muda a origem lá).
+          origemSalarioMinimo: input.origemSalarioMinimo ?? cargoAtual.origemSalarioMinimo,
+          origemSalarioMaximo: input.origemSalarioMaximo ?? cargoAtual.origemSalarioMaximo,
           fonteAtiva: input.fonteAtiva,
           salarioTotal,
           // salarioReal/statusSyncSalario/syncedAt propositalmente ausentes daqui.

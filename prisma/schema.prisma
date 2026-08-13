@@ -71,6 +71,12 @@ enum TipoOperacao {
   REAJUSTE_LOTE_SIMULADO
   REAJUSTE_LOTE_APLICADO
   ESTRUTURA_ORGANIZACIONAL_IMPORTADA
+  SENIORIDADE_CRIADA
+  SENIORIDADE_EXCLUIDA
+  TABELA_SALARIAL_CADASTRADA
+  TABELA_SALARIAL_EDITADA
+  TABELA_SALARIAL_EXCLUIDA
+  CARGO_RASCUNHO_CRIADO
 }
 
 model Usuario {
@@ -222,17 +228,17 @@ model ContaContabil {
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
 
-  agrupadorItens      ContaAgrupadoraItem[]
-  valoresOrcados      ValorOrcadoConta[]
-  viagensPassagem     Viagem[]              @relation("ViagemContaPassagem")
-  viagensDiaria       Viagem[]              @relation("ViagemContaDiaria")
-  viagensTransporte   Viagem[]              @relation("ViagemContaTransporte")
-  itensPatrimoniais   ItemPatrimonial[]
-  termosAjusteOrigem  TermoAjuste[]         @relation("TermoAjusteContaOrigem")
-  termosAjusteDestino TermoAjuste[]         @relation("TermoAjusteContaDestino")
-  cargos              Cargo[]
-  empregados          EmpregadoHeadcount[]
-  rateiosImposto      RateioImpostoGrade[]
+  agrupadorItens            ContaAgrupadoraItem[]
+  valoresOrcados            ValorOrcadoConta[]
+  viagensPassagem           Viagem[]                   @relation("ViagemContaPassagem")
+  viagensDiaria             Viagem[]                   @relation("ViagemContaDiaria")
+  viagensTransporte         Viagem[]                   @relation("ViagemContaTransporte")
+  itensPatrimoniais         ItemPatrimonial[]
+  termosAjusteOrigem        TermoAjuste[]              @relation("TermoAjusteContaOrigem")
+  termosAjusteDestino       TermoAjuste[]              @relation("TermoAjusteContaDestino")
+  cargos                    Cargo[]
+  empregados                EmpregadoHeadcount[]
+  rateiosImposto            RateioImpostoGrade[]
   // ADR-038 — sugestão de conta sintética em AliquotaImpostoParametro (não obrigatória).
   aliquotasImpostoSugeridas AliquotaImpostoParametro[]
 
@@ -540,17 +546,17 @@ enum PeriodicidadeReajuste {
 
 // UC03.39-42 (ADR-038) — Central de Manutenção de Alíquotas de Impostos.
 model AliquotaImpostoParametro {
-  id                 String                @id @default(uuid())
-  tenantId           String
-  nome               String
-  nomeNormalizado    String
+  id                    String                @id @default(uuid())
+  tenantId              String
+  nome                  String
+  nomeNormalizado       String
   // ADR-040 — ampliado de Decimal(5,2) para Decimal(9,4): reaproveitado também como índice
   // de reajuste (UC04.02/US-128/129), que exige até 4 casas decimais (ex: IPCA 4,5125%).
-  aliquotaPct        Decimal               @db.Decimal(9, 4)
-  dataInicioVigencia DateTime
+  aliquotaPct           Decimal               @db.Decimal(9, 4)
+  dataInicioVigencia    DateTime
   // NULL = vigência em aberto (alíquota atual).
-  dataFimVigencia    DateTime?
-  tipoIncidencia     TipoIncidenciaImposto
+  dataFimVigencia       DateTime?
+  tipoIncidencia        TipoIncidenciaImposto
   // [US-129, 2026-08-11] De quanto em quanto tempo o reajuste em lote reaplica o
   // crescimento percentual numa conta — ex: Dissídio é ANUAL (cresce 1x por ano,
   // fica estável nos outros meses), IPCA costuma ser MENSAL. Âncora do ciclo é
@@ -558,20 +564,20 @@ model AliquotaImpostoParametro {
   // campo (crescia todo mês) para índices já cadastrados.
   periodicidadeReajuste PeriodicidadeReajuste @default(MENSAL)
   // Relevantes para ISS (faixa legal 2,00%-5,00%, LC 116/2003); opcionais para outros tributos.
-  limiteMinimoPct    Decimal?              @db.Decimal(5, 2)
-  limiteMaximoPct    Decimal?              @db.Decimal(5, 2)
-  observacao         String?
+  limiteMinimoPct       Decimal?              @db.Decimal(5, 2)
+  limiteMaximoPct       Decimal?              @db.Decimal(5, 2)
+  observacao            String?
   // ADR-038 — sugestão de UX para pré-preencher o rateio (US-101); NUNCA obrigatória e NUNCA
   // trava nada. O vínculo de fato obrigatório continua em RateioImpostoGrade.contaId (analítica,
   // ADR-027). Aponta para conta SINTÉTICA, não analítica (ver justificativa no ADR-038).
-  contaSinteticaId   String?
-  contaSintetica     ContaContabil?        @relation(fields: [contaSinteticaId], references: [id])
+  contaSinteticaId      String?
+  contaSintetica        ContaContabil?        @relation(fields: [contaSinteticaId], references: [id])
   // [SOFT DELETE] UC03.42 — inativação lógica, nunca DELETE físico.
-  ativo              Boolean               @default(true)
+  ativo                 Boolean               @default(true)
   // Optimistic Locking (RNF_TAX_006, UC03.41) — mesmo padrão de US-105.
-  version            Int                   @default(0)
-  createdAt          DateTime              @default(now())
-  updatedAt          DateTime              @updatedAt
+  version               Int                   @default(0)
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
 
   rateios RateioImpostoGrade[]
 
@@ -652,10 +658,24 @@ model UnidadeFuncional {
 // (ANALITICO_ASSESSOR/COORDENADORIA/SETOR, nunca SINTETICO_*) é feita no use case
 // (validarVinculoNoAnalitico), não em constraint de banco — mesmo padrão de
 // RN_PLA_003 (isAnalitica em ContaContabil).
+// ADR-042 — Cargo cadastrado só com nome (aba Tabela Salarial) nasce RASCUNHO; vira
+// COMPLETO só ao passar pelo formulário inteiro (aba Cargos), transição de mão única.
+enum StatusCargo {
+  RASCUNHO
+  COMPLETO
+}
+
 enum FonteAtivaSalario {
   MERCADO_MINIMO
   MERCADO_MAXIMO
   RUBI
+}
+
+// US-133 (RN_TAB_04/05) — rastreia se Salário Mínimo/Máximo de mercado veio de uma faixa
+// selecionada na Tabela Salarial (US-131) ou foi digitado manualmente.
+enum OrigemSalarioMercado {
+  TABELA_SALARIAL
+  MANUAL
 }
 
 model Cargo {
@@ -666,20 +686,35 @@ model Cargo {
 
   alocacoes CargoAlocacaoPercentual[]
 
+  // ADR-042 — Cargo "Rascunho" (cadastro só com nome, a partir da aba Tabela Salarial):
+  // COMPLETO é o único status que passou por todas as travas do formulário inteiro
+  // (Vínculo Funcional, Conta, salário). Transição é de mão única (RASCUNHO→COMPLETO,
+  // nunca o contrário), feita por EditarCargoUseCase ao salvar o formulário completo.
+  status StatusCargo @default(COMPLETO)
+
   // ADR-027 — natureza da despesa (ex: "Despesa com Pessoal"), 1 conta
   // analítica fixa por Cargo. Independente de `alocacoes` (organograma):
   // são dimensões distintas, plano de contas x estrutura funcional.
-  contaId String
-  conta   ContaContabil @relation(fields: [contaId], references: [id])
+  // Nullable desde ADR-042 — só um Cargo RASCUNHO tem contaId null.
+  contaId String?
+  conta   ContaContabil? @relation(fields: [contaId], references: [id])
 
   nomeCargoMercado  String
   codigoCargo       String // gerado internamente (CARGO-{ano}-{seq}), Read-only na UI
-  funcaoGratificada Decimal? @db.Decimal(15, 2)
-  periodoInicio     DateTime
+  funcaoGratificada Decimal?  @db.Decimal(15, 2)
+  // Nullable desde ADR-042 — Cargo RASCUNHO ainda não tem período definido.
+  periodoInicio     DateTime?
 
-  salarioMercadoMinimo Decimal           @db.Decimal(15, 2)
-  salarioMercadoMaximo Decimal           @db.Decimal(15, 2)
-  fonteAtiva           FonteAtivaSalario
+  // Nullable desde ADR-042 — Cargo RASCUNHO ainda não tem salário de mercado definido.
+  salarioMercadoMinimo Decimal?             @db.Decimal(15, 2)
+  salarioMercadoMaximo Decimal?             @db.Decimal(15, 2)
+  // US-133 (RN_TAB_04/05) — origem do valor: preenchido a partir de uma faixa da
+  // Tabela Salarial (US-131) ou digitado manualmente. Independente por campo — editar
+  // manualmente um dos dois campos depois de uma seleção não muda a origem do outro.
+  origemSalarioMinimo  OrigemSalarioMercado @default(MANUAL)
+  origemSalarioMaximo  OrigemSalarioMercado @default(MANUAL)
+  // Nullable desde ADR-042 — Cargo RASCUNHO ainda não tem Fonte Ativa definida.
+  fonteAtiva           FonteAtivaSalario?
 
   // Bloco "soberano" [RN_CAR_03] — nunca escrito por use case de Cargo, só pelo
   // CargoRubiFixtureProvider (fixture; não há integração real com Rubi ainda).
@@ -726,15 +761,15 @@ model Cargo {
   // padrão de "sem lock explícito" já usado em outros pontos — evita 9 relações
   // nomeadas + 9 campos de retorno em ContaContabil, desproporcional ao ganho).
   // Cada uma pode ficar null se o benefício correspondente nunca foi configurado.
-  contaGratificacaoId     String?
-  contaEncargosSociaisId  String?
-  contaValeAlimentacaoId  String?
-  contaValeRefeicaoId     String?
-  contaValeTransporteId   String?
+  contaGratificacaoId      String?
+  contaEncargosSociaisId   String?
+  contaValeAlimentacaoId   String?
+  contaValeRefeicaoId      String?
+  contaValeTransporteId    String?
   contaPlanoOdontologicoId String?
-  contaSeguroVidaId       String?
-  contaPlanoSaudeId       String?
-  contaAuxilioCrecheId    String?
+  contaSeguroVidaId        String?
+  contaPlanoSaudeId        String?
+  contaAuxilioCrecheId     String?
 
   // Calculado e persistido pelo use case a cada create/update — nunca input direto.
   custoTotalCargo Decimal @default(0) @db.Decimal(15, 2)
@@ -744,6 +779,9 @@ model Cargo {
   updatedAt DateTime @updatedAt
 
   empregados EmpregadoHeadcount[]
+
+  // US-131 — registros de pesquisa de mercado deste Cargo, agrupados por Senioridade.
+  tabelaSalarial TabelaSalarial[]
 
   @@unique([tenantId, codigoCargo])
   @@index([tenantId, propostaId])
@@ -769,6 +807,50 @@ model CargoAlocacaoPercentual {
   @@unique([tenantId, cargoId, unidadeFuncionalId])
   @@index([tenantId, cargoId])
   @@index([tenantId, unidadeFuncionalId])
+}
+
+// US-131 — UC03.19, seção 5.1 (RN_TAB_01). Catálogo de níveis de senioridade,
+// extensível por tenant. Júnior/Pleno/Sênior nascem protegidas (isPadrao=true,
+// nunca excluíveis); GRH pode cadastrar níveis customizados, excluíveis apenas
+// sem registro vinculado em TabelaSalarial (RN_TAB_01).
+model Senioridade {
+  id        String   @id @default(uuid())
+  tenantId  String
+  descricao String
+  isPadrao  Boolean  @default(false)
+  ativo     Boolean  @default(true) // soft delete
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tabelaSalarial TabelaSalarial[]
+
+  @@unique([tenantId, descricao])
+  @@index([tenantId])
+}
+
+// US-131 — UC03.19, seção 5. Tabela de mercado independente (pesquisa externa),
+// natureza distinta dos campos Tabela Salarial/Faixa/Nível vindos do Rubi (US-132),
+// que são dados soberanos do Senior. Cargo + Senioridade NÃO é chave única
+// (RN_TAB_03) — pode haver múltiplos registros do mesmo par (ex.: pesquisas em
+// datas diferentes); a tela de consulta exibe todos, agrupados por Senioridade.
+model TabelaSalarial {
+  id            String      @id @default(uuid())
+  tenantId      String
+  cargoId       String
+  cargo         Cargo       @relation(fields: [cargoId], references: [id])
+  senioridadeId String
+  senioridade   Senioridade @relation(fields: [senioridadeId], references: [id])
+  // RN_TAB_02 [TRAVA O ERRO]: salarioMinimo < salarioMaximo, validado no use case.
+  salarioMinimo Decimal     @db.Decimal(15, 2)
+  salarioMaximo Decimal     @db.Decimal(15, 2)
+  // Solto (sem relation), mesmo padrão de HistoricoOperacao.usuarioId — auditoria de "quem
+  // cadastrou", não um vínculo de domínio que precise de join garantido.
+  criadoPorId   String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([tenantId, cargoId])
+  @@index([tenantId, senioridadeId])
 }
 
 // ADR-019 — US-107a.
@@ -836,25 +918,25 @@ model EmpregadoHeadcount {
   // estavam ativos no Cargo no momento do snapshot. Conta null = componente
   // sem conta configurada no Cargo; nesse caso o valor cai dentro do valor de
   // salário (mesma conta contaId acima), nunca é perdido nem contado 2x.
-  valorSalarioSnapshot         Decimal @default(0) @db.Decimal(15, 2)
-  valorGratificacaoSnapshot    Decimal @default(0) @db.Decimal(15, 2)
-  contaGratificacaoId          String?
-  valorEncargosSociaisSnapshot Decimal @default(0) @db.Decimal(15, 2)
-  contaEncargosSociaisId       String?
-  valorValeAlimentacaoSnapshot Decimal @default(0) @db.Decimal(15, 2)
-  contaValeAlimentacaoId       String?
-  valorValeRefeicaoSnapshot    Decimal @default(0) @db.Decimal(15, 2)
-  contaValeRefeicaoId          String?
-  valorValeTransporteSnapshot  Decimal @default(0) @db.Decimal(15, 2)
-  contaValeTransporteId        String?
+  valorSalarioSnapshot           Decimal @default(0) @db.Decimal(15, 2)
+  valorGratificacaoSnapshot      Decimal @default(0) @db.Decimal(15, 2)
+  contaGratificacaoId            String?
+  valorEncargosSociaisSnapshot   Decimal @default(0) @db.Decimal(15, 2)
+  contaEncargosSociaisId         String?
+  valorValeAlimentacaoSnapshot   Decimal @default(0) @db.Decimal(15, 2)
+  contaValeAlimentacaoId         String?
+  valorValeRefeicaoSnapshot      Decimal @default(0) @db.Decimal(15, 2)
+  contaValeRefeicaoId            String?
+  valorValeTransporteSnapshot    Decimal @default(0) @db.Decimal(15, 2)
+  contaValeTransporteId          String?
   valorPlanoOdontologicoSnapshot Decimal @default(0) @db.Decimal(15, 2)
-  contaPlanoOdontologicoId     String?
-  valorSeguroVidaSnapshot      Decimal @default(0) @db.Decimal(15, 2)
-  contaSeguroVidaId            String?
-  valorPlanoSaudeSnapshot      Decimal @default(0) @db.Decimal(15, 2)
-  contaPlanoSaudeId            String?
-  valorAuxilioCrecheSnapshot   Decimal @default(0) @db.Decimal(15, 2)
-  contaAuxilioCrecheId         String?
+  contaPlanoOdontologicoId       String?
+  valorSeguroVidaSnapshot        Decimal @default(0) @db.Decimal(15, 2)
+  contaSeguroVidaId              String?
+  valorPlanoSaudeSnapshot        Decimal @default(0) @db.Decimal(15, 2)
+  contaPlanoSaudeId              String?
+  valorAuxilioCrecheSnapshot     Decimal @default(0) @db.Decimal(15, 2)
+  contaAuxilioCrecheId           String?
 
   ativo     Boolean  @default(true) // soft delete
   createdAt DateTime @default(now())

@@ -52,6 +52,7 @@ function criarPrismaMock(propostas: PropostaMock[], cargos: CargoMock[], versoes
             return c
               ? {
                   salarioTotal: c.custoTotalCargo,
+                  status: 'COMPLETO', // ADR-042 — mocks representam Cargo já completo, salvo override em `c`
                   contaGratificacaoId: null,
                   contaEncargosSociaisId: null,
                   contaValeAlimentacaoId: null,

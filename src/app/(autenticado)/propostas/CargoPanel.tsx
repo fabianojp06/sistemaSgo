@@ -9,9 +9,10 @@ import {
   type CargoResultado,
   type UnidadeFuncionalResultado,
 } from './estrutura-actions';
+import { TabelaSalarialModal } from './TabelaSalarialModal';
 
 type Alocacao = { unidadeFuncionalId: string; percentual: string };
-type CargoComAlocacoes = CargoResultado & { alocacoes: Alocacao[] };
+export type CargoComAlocacoes = CargoResultado & { alocacoes: Alocacao[] };
 
 const FONTES = [
   { value: 'MERCADO_MINIMO', label: 'Mercado Mínimo' },
@@ -120,6 +121,8 @@ function dadosVazios() {
     fonteAtiva: 'MERCADO_MINIMO' as (typeof FONTES)[number]['value'],
     salarioMercadoMinimo: '',
     salarioMercadoMaximo: '',
+    origemSalarioMinimo: 'MANUAL' as 'TABELA_SALARIAL' | 'MANUAL',
+    origemSalarioMaximo: 'MANUAL' as 'TABELA_SALARIAL' | 'MANUAL',
     funcaoGratificada: '',
     contaGratificacaoId: '',
     periodoInicio: '',
@@ -172,6 +175,7 @@ export function CargoPanel({
 }) {
   const [cargos, setCargos] = useState(cargosIniciais);
   const [cargoEmEdicaoId, setCargoEmEdicaoId] = useState<string | null>(null);
+  const [tabelaSalarialAberta, setTabelaSalarialAberta] = useState(false);
   const [dados, setDados] = useState(dadosVazios());
   const [alocacoes, setAlocacoes] = useState<Alocacao[]>([]);
   const [erro, setErro] = useState<string | null>(null);
@@ -200,13 +204,17 @@ export function CargoPanel({
     setCargoEmEdicaoId(cargo.id);
     setDados({
       nomeCargoMercado: cargo.nomeCargoMercado,
-      contaId: cargo.contaId,
-      fonteAtiva: cargo.fonteAtiva,
-      salarioMercadoMinimo: cargo.salarioMercadoMinimo,
-      salarioMercadoMaximo: cargo.salarioMercadoMaximo,
+      // ADR-042 — Cargo Rascunho tem esses campos null; formulário abre em branco/default
+      // para o usuário completar o cadastro pela primeira vez.
+      contaId: cargo.contaId ?? '',
+      fonteAtiva: cargo.fonteAtiva ?? 'MERCADO_MINIMO',
+      salarioMercadoMinimo: cargo.salarioMercadoMinimo ?? '',
+      salarioMercadoMaximo: cargo.salarioMercadoMaximo ?? '',
+      origemSalarioMinimo: cargo.origemSalarioMinimo,
+      origemSalarioMaximo: cargo.origemSalarioMaximo,
       funcaoGratificada: cargo.funcaoGratificada ?? '',
       contaGratificacaoId: cargo.contaGratificacaoId ?? '',
-      periodoInicio: cargo.periodoInicio.slice(0, 10),
+      periodoInicio: cargo.periodoInicio?.slice(0, 10) ?? '',
       encargosSociaisPct: cargo.encargosSociaisPct,
       contaEncargosSociaisId: cargo.contaEncargosSociaisId ?? '',
       vaAtivo: cargo.vaAtivo,
@@ -261,6 +269,8 @@ export function CargoPanel({
       periodoInicio: new Date(dados.periodoInicio),
       salarioMercadoMinimo: Number(dados.salarioMercadoMinimo),
       salarioMercadoMaximo: Number(dados.salarioMercadoMaximo),
+      origemSalarioMinimo: dados.origemSalarioMinimo,
+      origemSalarioMaximo: dados.origemSalarioMaximo,
       fonteAtiva: dados.fonteAtiva,
       encargosSociaisPct: Number(dados.encargosSociaisPct),
       contaEncargosSociaisId: dados.contaEncargosSociaisId || null,
@@ -488,7 +498,17 @@ export function CargoPanel({
                     </td>
                   )}
                   <td className="px-4 py-2.5">{c.codigoCargo}</td>
-                  <td className="px-4 py-2.5">{c.nomeCargoMercado}</td>
+                  <td className="px-4 py-2.5">
+                    {c.nomeCargoMercado}
+                    {c.status === 'RASCUNHO' && (
+                      <span
+                        className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700"
+                        title="Cadastrado só com o nome (Tabela Salarial) — complete Vínculo Funcional, Conta e Salário aqui."
+                      >
+                        Rascunho
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-2.5 tabular-nums">{formatarMoeda(c.salarioTotal)}</td>
                   <td className="px-4 py-2.5 tabular-nums">{formatarMoeda(c.custoTotalCargo)}</td>
                   <td className="px-4 py-2.5 text-right">
@@ -576,18 +596,36 @@ export function CargoPanel({
               <input
                 type="number"
                 value={dados.salarioMercadoMinimo}
-                onChange={(e) => setDados((d) => ({ ...d, salarioMercadoMinimo: e.target.value }))}
+                onChange={(e) => setDados((d) => ({ ...d, salarioMercadoMinimo: e.target.value, origemSalarioMinimo: 'MANUAL' }))}
                 className="w-full rounded border px-2 py-1 text-sm"
               />
+              <p className="mt-0.5 text-[11px] text-gray-400">
+                {dados.origemSalarioMinimo === 'TABELA_SALARIAL' ? 'Preenchido via Tabela Salarial' : 'Editado manualmente'}
+              </p>
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">Salário Mercado Máximo</label>
-              <input
-                type="number"
-                value={dados.salarioMercadoMaximo}
-                onChange={(e) => setDados((d) => ({ ...d, salarioMercadoMaximo: e.target.value }))}
-                className="w-full rounded border px-2 py-1 text-sm"
-              />
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  value={dados.salarioMercadoMaximo}
+                  onChange={(e) => setDados((d) => ({ ...d, salarioMercadoMaximo: e.target.value, origemSalarioMaximo: 'MANUAL' }))}
+                  className="w-full rounded border px-2 py-1 text-sm"
+                />
+                {cargoEmEdicaoId && (
+                  <button
+                    type="button"
+                    onClick={() => setTabelaSalarialAberta(true)}
+                    className="whitespace-nowrap rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                    title="Selecionar ou consultar Tabela Salarial de mercado (US-131/US-133)"
+                  >
+                    Tabela Salarial
+                  </button>
+                )}
+              </div>
+              <p className="mt-0.5 text-[11px] text-gray-400">
+                {dados.origemSalarioMaximo === 'TABELA_SALARIAL' ? 'Preenchido via Tabela Salarial' : 'Editado manualmente'}
+              </p>
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">Função Gratificada (opcional)</label>
@@ -790,6 +828,24 @@ export function CargoPanel({
             {mensagemRessincronizacao && <p className="w-full text-xs text-gray-600">{mensagemRessincronizacao}</p>}
           </div>
         </div>
+      )}
+
+      {tabelaSalarialAberta && cargoEmEdicaoId && (
+        <TabelaSalarialModal
+          cargoId={cargoEmEdicaoId}
+          cargoNome={dados.nomeCargoMercado || 'Cargo'}
+          onFechar={() => setTabelaSalarialAberta(false)}
+          onSelecionarFaixa={(faixa) => {
+            setDados((d) => ({
+              ...d,
+              salarioMercadoMinimo: faixa.salarioMinimo,
+              salarioMercadoMaximo: faixa.salarioMaximo,
+              origemSalarioMinimo: 'TABELA_SALARIAL',
+              origemSalarioMaximo: 'TABELA_SALARIAL',
+            }));
+            setTabelaSalarialAberta(false);
+          }}
+        />
       )}
     </div>
   );

@@ -2,6 +2,7 @@ import type { CategoriaEmpregado, EmpregadoHeadcount, PrismaClient } from '@pris
 import {
   CargoNaoEncontradoParaEmpregadoError,
   CargoObrigatorioEmpregadoError,
+  CargoRascunhoNaoPodeReceberEmpregadoError,
   MetaNaoEncontradaError,
   PeriodoInicialRetroativoError,
   PropostaNaoEncontradaError,
@@ -74,6 +75,13 @@ export class CadastrarEmpregadosEmLoteUseCase {
     if (!cargo) {
       throw new CargoNaoEncontradoParaEmpregadoError();
     }
+    // ADR-042 [TRAVA O ERRO] — mesmo bloqueio de CadastrarEmpregadoUseCase (a checagem
+    // de contaId, além de status, também estreita o tipo para o TS).
+    if (cargo.status === 'RASCUNHO' || !cargo.contaId) {
+      throw new CargoRascunhoNaoPodeReceberEmpregadoError();
+    }
+    // Extraído em variável local — narrowing não atravessa a closure da transação abaixo.
+    const contaIdCargo = cargo.contaId;
 
     const vinculoFuncionalHerdado = formatarVinculoFuncionalHerdado(cargo.alocacoes);
     const parametro = await this.prisma.parametroSistema.findUnique({ where: { tenantId: input.tenantId } });
@@ -95,7 +103,7 @@ export class CadastrarEmpregadosEmLoteUseCase {
             periodoFim: input.periodoFim ?? null,
             vinculoFuncionalHerdado,
             custoTotalMensal: cargo.custoTotalCargo,
-            contaId: cargo.contaId,
+            contaId: contaIdCargo,
             ...snapshotComponentes,
           },
         });

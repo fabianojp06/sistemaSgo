@@ -1,7 +1,12 @@
 import { Prisma } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 import { CadastrarEmpregadoUseCase } from './CadastrarEmpregadoUseCase';
-import { CargoObrigatorioEmpregadoError, MetaNaoEncontradaError, PeriodoInicialRetroativoError } from '@/domain/plano-contas/errors';
+import {
+  CargoObrigatorioEmpregadoError,
+  CargoRascunhoNaoPodeReceberEmpregadoError,
+  MetaNaoEncontradaError,
+  PeriodoInicialRetroativoError,
+} from '@/domain/plano-contas/errors';
 
 type PropostaMock = { id: string; tenantId: string; categoria: string; status: string; dataInicio: Date };
 type VersaoMock = { id: string; tenantId: string; propostaId: string; vigente: boolean; ativa: boolean };
@@ -46,6 +51,8 @@ function criarPrismaMock(propostas: PropostaMock[], cargos: CargoMock[], versoes
             return c
               ? {
                   salarioTotal: c.custoTotalCargo,
+                  status: 'COMPLETO', // ADR-042 — mocks representam Cargo já completo, salvo override em `c`
+                  contaId: 'conta-mock',
                   contaGratificacaoId: null,
                   contaEncargosSociaisId: null,
                   contaValeAlimentacaoId: null,
@@ -224,5 +231,23 @@ describe('CadastrarEmpregadoUseCase [US-108]', () => {
         periodoInicio: new Date('2025-12-01'),
       }),
     ).rejects.toThrow(PeriodoInicialRetroativoError);
+  });
+
+  it('bloqueia vínculo a Cargo Rascunho (status RASCUNHO) [ADR-042, TRAVA O ERRO]', async () => {
+    const cargoRascunho = { ...cargo, status: 'RASCUNHO', contaId: null };
+    const prisma = criarPrismaMock([propostaConsolidada], [cargoRascunho as never]);
+    const useCase = new CadastrarEmpregadoUseCase(prisma as never);
+
+    await expect(
+      useCase.execute({
+        tenantId: 't1',
+        usuarioId: 'u1',
+        propostaId: 'p1',
+        cargoId: 'c1',
+        nome: 'Maria da Silva',
+        categoria: 'EMPREGADO',
+        periodoInicio: new Date('2026-02-01'),
+      }),
+    ).rejects.toThrow(CargoRascunhoNaoPodeReceberEmpregadoError);
   });
 });

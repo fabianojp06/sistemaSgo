@@ -1,30 +1,61 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import { OrganogramaPanel } from './OrganogramaPanel';
-import { CargoPanel } from './CargoPanel';
-import type { UnidadeFuncionalResultado, CargoResultado } from './estrutura-actions';
+import { CargoPanel, type CargoComAlocacoes } from './CargoPanel';
+import { TabelaSalarialListPanel } from '../tabela-salarial/TabelaSalarialListPanel';
+import { cadastrarCargoRascunho } from './estrutura-actions';
+import type { UnidadeFuncionalResultado, TabelaSalarialResultado, SenioridadeResultado } from './estrutura-actions';
 
-type CargoComAlocacoes = CargoResultado & { alocacoes: { unidadeFuncionalId: string; percentual: string }[] };
-
-/** US-116/US-117 — mesma tela, duas sub-seções: Organograma e Cargos. */
+/** US-116/US-117/US-131 — mesma tela, três sub-seções: Organograma, Cargos e Tabela Salarial. */
 export function EstruturaFuncionalPanel({
   propostaId,
   unidadesIniciais,
   cargosIniciais,
   contasAnaliticas,
+  tabelaSalarialIniciais,
+  senioridadesIniciais,
+  podeGerenciarTabelaSalarial,
   readOnly,
 }: {
   propostaId: string;
   unidadesIniciais: UnidadeFuncionalResultado[];
   cargosIniciais: CargoComAlocacoes[];
   contasAnaliticas: { id: string; label: string }[];
+  tabelaSalarialIniciais: TabelaSalarialResultado[];
+  senioridadesIniciais: SenioridadeResultado[];
+  podeGerenciarTabelaSalarial: boolean;
   readOnly: boolean;
 }) {
-  const [subAba, setSubAba] = useState<'organograma' | 'cargos'>('organograma');
+  const [subAba, setSubAba] = useState<'organograma' | 'cargos' | 'tabela-salarial'>('organograma');
   const [unidades, setUnidades] = useState(unidadesIniciais);
+  // Elevado do Cargos tab para cá — pedido do usuário (2026-08-13) de cadastrar Cargo direto
+  // da aba Tabela Salarial exige que o seletor de Cargo dessa aba veja o Cargo recém-criado
+  // sem esperar reload da página.
+  const [cargos, setCargos] = useState(cargosIniciais);
+  const [novoCargoNome, setNovoCargoNome] = useState('');
+  const [erroNovoCargo, setErroNovoCargo] = useState<string | null>(null);
+  const [salvandoNovoCargo, startSalvandoNovoCargo] = useTransition();
 
   const unidadesAnaliticas = unidades.filter((u) => u.tipoNivel.startsWith('ANALITICO_'));
+  const opcoesCargoDaProposta = cargos.map((c) => ({ id: c.id, label: `${c.codigoCargo} — ${c.nomeCargoMercado}` }));
+
+  function handleCadastrarCargoRascunho() {
+    if (!novoCargoNome.trim()) {
+      setErroNovoCargo('Informe o nome do Cargo.');
+      return;
+    }
+    setErroNovoCargo(null);
+    startSalvandoNovoCargo(async () => {
+      const resposta = await cadastrarCargoRascunho({ propostaId, nomeCargoMercado: novoCargoNome.trim() });
+      if (!resposta.sucesso) {
+        setErroNovoCargo(resposta.mensagem);
+        return;
+      }
+      setCargos((atual) => [...atual, { ...resposta.dados, alocacoes: [] }]);
+      setNovoCargoNome('');
+    });
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -33,6 +64,7 @@ export function EstruturaFuncionalPanel({
           [
             { slug: 'organograma', label: 'Estrutura Funcional (Organograma)' },
             { slug: 'cargos', label: 'Cargos' },
+            { slug: 'tabela-salarial', label: 'Tabela Salarial' },
           ] as const
         ).map((sub) => (
           <button
@@ -57,9 +89,49 @@ export function EstruturaFuncionalPanel({
           propostaId={propostaId}
           unidadesAnaliticas={unidadesAnaliticas}
           contasAnaliticas={contasAnaliticas}
-          cargosIniciais={cargosIniciais}
+          cargosIniciais={cargos}
           readOnly={readOnly}
         />
+      )}
+
+      {subAba === 'tabela-salarial' && (
+        <div className="flex flex-col gap-3">
+          {!readOnly && podeGerenciarTabelaSalarial && (
+            <div className="flex flex-wrap items-end gap-2 rounded-lg border border-gray-100 bg-white p-3 shadow-sm">
+              <div className="flex-1">
+                <label className="mb-1 block text-xs font-medium text-gray-600">Novo Cargo (cadastro rápido)</label>
+                <input
+                  type="text"
+                  value={novoCargoNome}
+                  onChange={(e) => setNovoCargoNome(e.target.value)}
+                  placeholder="Nome do Cargo (ex: Analista de Requisitos)"
+                  className="w-full min-w-[240px] rounded border px-2 py-1.5 text-sm"
+                />
+              </div>
+              <button
+                type="button"
+                disabled={salvandoNovoCargo}
+                onClick={handleCadastrarCargoRascunho}
+                className="rounded-md bg-slate-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-900 disabled:opacity-50"
+              >
+                {salvandoNovoCargo ? 'Salvando...' : '+ Cadastrar Cargo'}
+              </button>
+              <p className="w-full text-[11px] text-gray-400">
+                Cria o Cargo só com o nome (código gerado automaticamente, ex: CARGO-2026-0001) — fica disponível para seleção aqui.
+                Vínculo Funcional, Conta e Salário são completados depois na aba Cargos.
+              </p>
+              {erroNovoCargo && <p className="w-full text-xs text-red-600">{erroNovoCargo}</p>}
+            </div>
+          )}
+
+          <TabelaSalarialListPanel
+            registrosIniciais={tabelaSalarialIniciais}
+            senioridadesIniciais={senioridadesIniciais}
+            opcoesCargo={opcoesCargoDaProposta}
+            podeGerenciar={podeGerenciarTabelaSalarial && !readOnly}
+            restringirCargoIds={cargos.map((c) => c.id)}
+          />
+        </div>
       )}
     </div>
   );

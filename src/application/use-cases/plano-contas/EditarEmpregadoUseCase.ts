@@ -2,6 +2,7 @@ import type { CategoriaEmpregado, EmpregadoHeadcount, PrismaClient } from '@pris
 import {
   CargoNaoEncontradoParaEmpregadoError,
   CargoObrigatorioEmpregadoError,
+  CargoRascunhoNaoPodeReceberEmpregadoError,
   ConflitoConcorrenciaError,
   EmpregadoNaoEncontradoError,
   PeriodoInicialRetroativoError,
@@ -99,6 +100,10 @@ export class EditarEmpregadoUseCase {
       });
       if (!novoCargo) {
         throw new CargoNaoEncontradoParaEmpregadoError();
+      }
+      // ADR-042 [TRAVA O ERRO] — mesmo bloqueio de CadastrarEmpregadoUseCase.
+      if (novoCargo.status === 'RASCUNHO' || !novoCargo.contaId) {
+        throw new CargoRascunhoNaoPodeReceberEmpregadoError();
       }
       vinculoFuncionalHerdado = formatarVinculoFuncionalHerdado(novoCargo.alocacoes);
       custoTotalMensal = novoCargo.custoTotalCargo;

@@ -5,6 +5,7 @@ import { prisma } from '@/infrastructure/db/prisma';
 import { getTenantId } from '@/infrastructure/tenant';
 import { usuarioTemFuncionalidade } from '@/application/use-cases/plano-contas/verificarPermissao';
 import { EstruturaFuncionalPanel } from '../../EstruturaFuncionalPanel';
+import { listarTodaTabelaSalarial, listarSenioridades } from '../../estrutura-actions';
 import type { UnidadeFuncionalResultado, CargoResultado } from '../../estrutura-actions';
 
 /** US-116/US-117 (UC03.18/UC03.19) — Estrutura Funcional (Organograma) + Cargos, por Proposta (não por Versão). */
@@ -43,6 +44,11 @@ export default async function EstruturaFuncionalPage({ params }: { params: Promi
     }),
   ]);
 
+  const cargoIds = new Set(cargosDb.map((c) => c.id));
+  const [resultadoTabelaSalarial, resultadoSenioridades] = await Promise.all([listarTodaTabelaSalarial(), listarSenioridades()]);
+  const tabelaSalarial = resultadoTabelaSalarial.sucesso ? resultadoTabelaSalarial.dados.filter((r) => cargoIds.has(r.cargoId)) : [];
+  const senioridades = resultadoSenioridades.sucesso ? resultadoSenioridades.dados : [];
+
   const unidades: UnidadeFuncionalResultado[] = unidadesDb.map((u) => ({
     id: u.id,
     nome: u.nome,
@@ -54,13 +60,16 @@ export default async function EstruturaFuncionalPage({ params }: { params: Promi
     id: c.id,
     codigoCargo: c.codigoCargo,
     nomeCargoMercado: c.nomeCargoMercado,
+    status: c.status,
     contaId: c.contaId,
     fonteAtiva: c.fonteAtiva,
-    salarioMercadoMinimo: c.salarioMercadoMinimo.toString(),
-    salarioMercadoMaximo: c.salarioMercadoMaximo.toString(),
+    salarioMercadoMinimo: c.salarioMercadoMinimo?.toString() ?? null,
+    salarioMercadoMaximo: c.salarioMercadoMaximo?.toString() ?? null,
+    origemSalarioMinimo: c.origemSalarioMinimo,
+    origemSalarioMaximo: c.origemSalarioMaximo,
     funcaoGratificada: c.funcaoGratificada?.toString() ?? null,
     contaGratificacaoId: c.contaGratificacaoId,
-    periodoInicio: c.periodoInicio.toISOString(),
+    periodoInicio: c.periodoInicio?.toISOString() ?? null,
     salarioReal: c.salarioReal?.toString() ?? null,
     salarioTotal: c.salarioTotal.toString(),
     custoTotalCargo: c.custoTotalCargo.toString(),
@@ -116,6 +125,9 @@ export default async function EstruturaFuncionalPage({ params }: { params: Promi
           unidadesIniciais={unidades}
           cargosIniciais={cargos}
           contasAnaliticas={contasAnaliticas}
+          tabelaSalarialIniciais={tabelaSalarial}
+          senioridadesIniciais={senioridades}
+          podeGerenciarTabelaSalarial={podeGerenciar}
           readOnly={readOnly}
         />
       )}

@@ -2,6 +2,7 @@ import type { CategoriaEmpregado, EmpregadoHeadcount, PrismaClient } from '@pris
 import {
   CargoNaoEncontradoParaEmpregadoError,
   CargoObrigatorioEmpregadoError,
+  CargoRascunhoNaoPodeReceberEmpregadoError,
   MetaNaoEncontradaError,
   PeriodoInicialRetroativoError,
   PropostaNaoEncontradaError,
@@ -73,6 +74,15 @@ export class CadastrarEmpregadoUseCase {
     if (!cargo) {
       throw new CargoNaoEncontradoParaEmpregadoError();
     }
+    // ADR-042 [TRAVA O ERRO] — Cargo Rascunho (cadastrado só com nome) não tem
+    // Vínculo Funcional/Conta/salário definidos; não pode receber Empregado ainda.
+    // A checagem de contaId (além de status) também estreita o tipo para o TS.
+    if (cargo.status === 'RASCUNHO' || !cargo.contaId) {
+      throw new CargoRascunhoNaoPodeReceberEmpregadoError();
+    }
+    // Extraído em variável local — narrowing de `cargo.contaId` não atravessa a closure
+    // da transação abaixo (TS não garante que a propriedade não mude nesse meio-tempo).
+    const contaIdCargo = cargo.contaId;
 
     const parametro = await this.prisma.parametroSistema.findUnique({ where: { tenantId: input.tenantId } });
     const diasUteisPadrao = parametro?.diasUteisPadrao ?? 22;
@@ -96,7 +106,7 @@ export class CadastrarEmpregadoUseCase {
           // EmpregadoBeneficioElegibilidade.
           vinculoFuncionalHerdado: formatarVinculoFuncionalHerdado(cargo.alocacoes),
           custoTotalMensal: cargo.custoTotalCargo,
-          contaId: cargo.contaId, // ADR-027 — snapshot herdado, mesmo padrão de vinculoFuncionalHerdado
+          contaId: contaIdCargo, // ADR-027 — snapshot herdado, mesmo padrão de vinculoFuncionalHerdado
           ...snapshotComponentes, // ADR-029 — snapshot de valor + conta de cada componente de custo
         },
       });
