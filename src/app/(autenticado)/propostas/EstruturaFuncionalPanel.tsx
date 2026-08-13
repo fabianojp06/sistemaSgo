@@ -3,28 +3,36 @@
 import { useState } from 'react';
 import { OrganogramaPanel } from './OrganogramaPanel';
 import { CargoPanel } from './CargoPanel';
-import type { UnidadeFuncionalResultado, CargoResultado } from './estrutura-actions';
+import { TabelaSalarialListPanel } from '../tabela-salarial/TabelaSalarialListPanel';
+import type { UnidadeFuncionalResultado, CargoResultado, TabelaSalarialResultado, SenioridadeResultado } from './estrutura-actions';
 
 type CargoComAlocacoes = CargoResultado & { alocacoes: { unidadeFuncionalId: string; percentual: string }[] };
 
-/** US-116/US-117 — mesma tela, duas sub-seções: Organograma e Cargos. */
+/** US-116/US-117/US-131 — mesma tela, três sub-seções: Organograma, Cargos e Tabela Salarial. */
 export function EstruturaFuncionalPanel({
   propostaId,
   unidadesIniciais,
   cargosIniciais,
   contasAnaliticas,
+  tabelaSalarialIniciais,
+  senioridadesIniciais,
+  podeGerenciarTabelaSalarial,
   readOnly,
 }: {
   propostaId: string;
   unidadesIniciais: UnidadeFuncionalResultado[];
   cargosIniciais: CargoComAlocacoes[];
   contasAnaliticas: { id: string; label: string }[];
+  tabelaSalarialIniciais: TabelaSalarialResultado[];
+  senioridadesIniciais: SenioridadeResultado[];
+  podeGerenciarTabelaSalarial: boolean;
   readOnly: boolean;
 }) {
-  const [subAba, setSubAba] = useState<'organograma' | 'cargos'>('organograma');
+  const [subAba, setSubAba] = useState<'organograma' | 'cargos' | 'tabela-salarial'>('organograma');
   const [unidades, setUnidades] = useState(unidadesIniciais);
 
   const unidadesAnaliticas = unidades.filter((u) => u.tipoNivel.startsWith('ANALITICO_'));
+  const opcoesCargoDaProposta = cargosIniciais.map((c) => ({ id: c.id, label: `${c.codigoCargo} — ${c.nomeCargoMercado}` }));
 
   return (
     <div className="flex flex-col gap-4">
@@ -33,6 +41,7 @@ export function EstruturaFuncionalPanel({
           [
             { slug: 'organograma', label: 'Estrutura Funcional (Organograma)' },
             { slug: 'cargos', label: 'Cargos' },
+            { slug: 'tabela-salarial', label: 'Tabela Salarial' },
           ] as const
         ).map((sub) => (
           <button
@@ -59,6 +68,16 @@ export function EstruturaFuncionalPanel({
           contasAnaliticas={contasAnaliticas}
           cargosIniciais={cargosIniciais}
           readOnly={readOnly}
+        />
+      )}
+
+      {subAba === 'tabela-salarial' && (
+        <TabelaSalarialListPanel
+          registrosIniciais={tabelaSalarialIniciais}
+          senioridadesIniciais={senioridadesIniciais}
+          opcoesCargo={opcoesCargoDaProposta}
+          podeGerenciar={podeGerenciarTabelaSalarial && !readOnly}
+          restringirCargoIds={cargosIniciais.map((c) => c.id)}
         />
       )}
     </div>

@@ -5,6 +5,7 @@ import { prisma } from '@/infrastructure/db/prisma';
 import { getTenantId } from '@/infrastructure/tenant';
 import { usuarioTemFuncionalidade } from '@/application/use-cases/plano-contas/verificarPermissao';
 import { EstruturaFuncionalPanel } from '../../EstruturaFuncionalPanel';
+import { listarTodaTabelaSalarial, listarSenioridades } from '../../estrutura-actions';
 import type { UnidadeFuncionalResultado, CargoResultado } from '../../estrutura-actions';
 
 /** US-116/US-117 (UC03.18/UC03.19) — Estrutura Funcional (Organograma) + Cargos, por Proposta (não por Versão). */
@@ -42,6 +43,11 @@ export default async function EstruturaFuncionalPage({ params }: { params: Promi
       select: { id: true, codigoErp: true, nomeConta: true },
     }),
   ]);
+
+  const cargoIds = new Set(cargosDb.map((c) => c.id));
+  const [resultadoTabelaSalarial, resultadoSenioridades] = await Promise.all([listarTodaTabelaSalarial(), listarSenioridades()]);
+  const tabelaSalarial = resultadoTabelaSalarial.sucesso ? resultadoTabelaSalarial.dados.filter((r) => cargoIds.has(r.cargoId)) : [];
+  const senioridades = resultadoSenioridades.sucesso ? resultadoSenioridades.dados : [];
 
   const unidades: UnidadeFuncionalResultado[] = unidadesDb.map((u) => ({
     id: u.id,
@@ -118,6 +124,9 @@ export default async function EstruturaFuncionalPage({ params }: { params: Promi
           unidadesIniciais={unidades}
           cargosIniciais={cargos}
           contasAnaliticas={contasAnaliticas}
+          tabelaSalarialIniciais={tabelaSalarial}
+          senioridadesIniciais={senioridades}
+          podeGerenciarTabelaSalarial={podeGerenciar}
           readOnly={readOnly}
         />
       )}

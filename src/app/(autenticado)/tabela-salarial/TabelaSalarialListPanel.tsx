@@ -22,6 +22,14 @@ type Props = {
   senioridadesIniciais: SenioridadeResultado[];
   opcoesCargo: { id: string; label: string }[];
   podeGerenciar: boolean;
+  /**
+   * US-131/US-133 (pedido do usuário, 2026-08-13) — quando informado, restringe a listagem
+   * (mesmo após recarregar) aos Cargos desta lista, mesmo que `listarTodaTabelaSalarial` traga
+   * registros de outras Propostas. Usado ao embutir este painel dentro da aba "Tabela Salarial"
+   * de uma Proposta específica (`EstruturaFuncionalPanel.tsx`); ausente na tela própria
+   * `/tabela-salarial`, que mostra o tenant inteiro.
+   */
+  restringirCargoIds?: string[];
 };
 
 /**
@@ -29,8 +37,18 @@ type Props = {
  * plana com filtros por Cargo/Senioridade, mais fácil de trabalhar do que o modal por Cargo
  * (que continua existindo em CargoPanel.tsx como um seletor rápido, não CRUD completo).
  */
-export function TabelaSalarialListPanel({ registrosIniciais, senioridadesIniciais, opcoesCargo, podeGerenciar }: Props) {
-  const [registros, setRegistros] = useState(registrosIniciais);
+export function TabelaSalarialListPanel({
+  registrosIniciais,
+  senioridadesIniciais,
+  opcoesCargo,
+  podeGerenciar,
+  restringirCargoIds,
+}: Props) {
+  const conjuntoCargosPermitidos = restringirCargoIds ? new Set(restringirCargoIds) : null;
+  const filtrarPermitidos = (lista: TabelaSalarialResultado[]) =>
+    conjuntoCargosPermitidos ? lista.filter((r) => conjuntoCargosPermitidos.has(r.cargoId)) : lista;
+
+  const [registros, setRegistros] = useState(filtrarPermitidos(registrosIniciais));
   const [senioridades, setSenioridades] = useState(senioridadesIniciais);
   const [erro, setErro] = useState<string | null>(null);
   const [, startAtualizando] = useTransition();
@@ -55,7 +73,7 @@ export function TabelaSalarialListPanel({ registrosIniciais, senioridadesIniciai
   function recarregar() {
     startAtualizando(async () => {
       const resposta = await listarTodaTabelaSalarial();
-      if (resposta.sucesso) setRegistros(resposta.dados);
+      if (resposta.sucesso) setRegistros(filtrarPermitidos(resposta.dados));
     });
   }
 
