@@ -12,7 +12,7 @@ import {
 import { TabelaSalarialModal } from './TabelaSalarialModal';
 
 type Alocacao = { unidadeFuncionalId: string; percentual: string };
-type CargoComAlocacoes = CargoResultado & { alocacoes: Alocacao[] };
+export type CargoComAlocacoes = CargoResultado & { alocacoes: Alocacao[] };
 
 const FONTES = [
   { value: 'MERCADO_MINIMO', label: 'Mercado Mínimo' },
@@ -166,12 +166,21 @@ export function CargoPanel({
   contasAnaliticas,
   cargosIniciais,
   readOnly,
+  modoCriacaoApenas,
+  onCargoCriado,
 }: {
   propostaId: string;
   unidadesAnaliticas: UnidadeFuncionalResultado[];
   contasAnaliticas: { id: string; label: string }[];
   cargosIniciais: CargoComAlocacoes[];
   readOnly?: boolean;
+  /**
+   * Pedido do usuário (2026-08-13) — cadastro completo de Cargo embutido na aba Tabela
+   * Salarial. Reaproveita 100% do formulário de Cargo (identificação, rateio, benefícios)
+   * escondendo o KPI/lista já mostrados na aba "Cargos", para não duplicar código.
+   */
+  modoCriacaoApenas?: boolean;
+  onCargoCriado?: (cargo: CargoComAlocacoes) => void;
 }) {
   const [cargos, setCargos] = useState(cargosIniciais);
   const [cargoEmEdicaoId, setCargoEmEdicaoId] = useState<string | null>(null);
@@ -318,6 +327,7 @@ export function CargoPanel({
         return existe ? atual.map((c) => (c.id === cargoSalvo.id ? cargoSalvo : c)) : [...atual, cargoSalvo];
       });
       iniciarEdicao(null);
+      onCargoCriado?.(cargoSalvo);
     });
   }
 
@@ -432,6 +442,8 @@ export function CargoPanel({
 
   return (
     <div className="flex flex-col gap-6 rounded-xl bg-slate-50 p-4 md:p-6">
+      {!modoCriacaoApenas && (
+        <>
       <ResumoExecutivo totalCargos={cargos.length} custoTotalMensal={custoTotalMensal} salarioTotalMensal={salarioTotalMensal} />
 
       <div className="flex flex-col gap-3">
@@ -540,6 +552,8 @@ export function CargoPanel({
 
         {erroExclusao && <p className="text-xs text-red-600">{erroExclusao}</p>}
       </div>
+        </>
+      )}
 
       {!readOnly && (
         <div className="flex flex-col gap-4 rounded-lg border border-gray-100 bg-white p-4 shadow-sm md:p-5">
