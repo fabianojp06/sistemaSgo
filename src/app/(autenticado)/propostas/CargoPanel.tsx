@@ -671,22 +671,26 @@ export function CargoPanel({
               <label className="text-xs font-medium text-gray-600">Encargos Sociais (%)</label>
               <div />
               <div />
-              <input
-                type="number"
-                value={dados.encargosSociaisPct}
-                onChange={(e) => setDados((d) => ({ ...d, encargosSociaisPct: e.target.value }))}
-                className="w-full rounded border px-2 py-1 text-sm"
-              />
-              <div />
-              <ContaComponenteSelect
-                contasAnaliticas={contasAnaliticas}
-                value={dados.contaEncargosSociaisId}
-                onChange={(v) => setDados((d) => ({ ...d, contaEncargosSociaisId: v }))}
-              />
+              <div className="border-b border-gray-100 pb-2">
+                <input
+                  type="number"
+                  value={dados.encargosSociaisPct}
+                  onChange={(e) => setDados((d) => ({ ...d, encargosSociaisPct: e.target.value }))}
+                  className="w-full rounded border px-2 py-1 text-sm"
+                />
+              </div>
+              <div className="border-b border-gray-100 pb-2" />
+              <div className="border-b border-gray-100 pb-2">
+                <ContaComponenteSelect
+                  contasAnaliticas={contasAnaliticas}
+                  value={dados.contaEncargosSociaisId}
+                  onChange={(v) => setDados((d) => ({ ...d, contaEncargosSociaisId: v }))}
+                />
+              </div>
 
               {BENEFICIOS_SIMPLES.map((b) => (
                 <Fragment key={b.ativo}>
-                  <label className="flex items-center gap-2 text-xs text-gray-600">
+                  <label className="flex items-center gap-2 border-b border-gray-100 pb-2 text-xs text-gray-600">
                     <input
                       type="checkbox"
                       checked={dados[b.ativo]}
@@ -694,19 +698,23 @@ export function CargoPanel({
                     />
                     {b.label}
                   </label>
-                  <input
-                    type="number"
-                    value={dados[b.valor]}
-                    onChange={(e) => setDados((d) => ({ ...d, [b.valor]: e.target.value }))}
-                    disabled={!dados[b.ativo]}
-                    className="w-full rounded border px-2 py-1 text-sm disabled:opacity-50"
-                  />
-                  <ContaComponenteSelect
-                    contasAnaliticas={contasAnaliticas}
-                    value={dados[b.conta]}
-                    onChange={(v) => setDados((d) => ({ ...d, [b.conta]: v }))}
-                    disabled={!dados[b.ativo]}
-                  />
+                  <div className="border-b border-gray-100 pb-2">
+                    <input
+                      type="number"
+                      value={dados[b.valor]}
+                      onChange={(e) => setDados((d) => ({ ...d, [b.valor]: e.target.value }))}
+                      disabled={!dados[b.ativo]}
+                      className="w-full rounded border px-2 py-1 text-sm disabled:opacity-50"
+                    />
+                  </div>
+                  <div className="border-b border-gray-100 pb-2">
+                    <ContaComponenteSelect
+                      contasAnaliticas={contasAnaliticas}
+                      value={dados[b.conta]}
+                      onChange={(v) => setDados((d) => ({ ...d, [b.conta]: v }))}
+                      disabled={!dados[b.ativo]}
+                    />
+                  </div>
                 </Fragment>
               ))}
 
