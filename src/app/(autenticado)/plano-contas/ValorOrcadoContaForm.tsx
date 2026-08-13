@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { configurarValorOrcadoConta, type ValorOrcadoContaResultado } from './actions';
+import { SeletorContaAnalitica } from '@/app/(autenticado)/propostas/SeletorContaAnalitica';
 
 type ContaOpcao = { id: string; label: string };
 
@@ -51,18 +52,7 @@ export function ValorOrcadoContaForm({
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-600">Conta Analítica</label>
-          <select
-            value={contaId}
-            onChange={(e) => setContaId(e.target.value)}
-            disabled={readOnly}
-            className="w-full rounded border px-2 py-1 text-sm disabled:opacity-50"
-          >
-            {contasAnaliticas.map((conta) => (
-              <option key={conta.id} value={conta.id}>
-                {conta.label}
-              </option>
-            ))}
-          </select>
+          <SeletorContaAnalitica contas={contasAnaliticas} value={contaId} onChange={setContaId} disabled={readOnly} />
         </div>
 
         <div>

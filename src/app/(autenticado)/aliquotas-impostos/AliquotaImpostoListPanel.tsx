@@ -9,6 +9,7 @@ import {
   type AliquotaImpostoResultado,
 } from './actions';
 import { exportarParaPDF, exportarParaXLSX } from '@/lib/export/exportarRelatorio';
+import { SeletorContaAnalitica } from '@/app/(autenticado)/propostas/SeletorContaAnalitica';
 
 type ContaOpcao = { id: string; label: string };
 type TipoIncidencia = 'CONTRATO' | 'TERMO_DE_PARCERIA' | 'AMBOS';
@@ -488,18 +489,12 @@ export function AliquotaImpostoListPanel({
                 <label className="mb-1 block text-xs font-medium text-gray-600">
                   Conta Sintética Sugerida (opcional — default de UX no rateio, ADR-038)
                 </label>
-                <select
+                <SeletorContaAnalitica
+                  contas={[{ id: '', label: '— Nenhuma —' }, ...opcoesContaSintetica]}
                   value={form.contaSinteticaId}
-                  onChange={(e) => setForm({ ...form, contaSinteticaId: e.target.value })}
-                  className="w-full rounded border px-2 py-1 text-sm"
-                >
-                  <option value="">— Nenhuma —</option>
-                  {opcoesContaSintetica.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(id) => setForm({ ...form, contaSinteticaId: id })}
+                  placeholder="Buscar conta sintética por nome ou código..."
+                />
               </div>
 
               <div className="md:col-span-2">

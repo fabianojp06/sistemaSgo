@@ -25,11 +25,13 @@ export function SeletorContaAnalitica({
   value,
   onChange,
   placeholder = 'Buscar conta por nome ou código...',
+  disabled = false,
 }: {
   contas: ContaOpcao[];
   value: string;
   onChange: (id: string) => void;
   placeholder?: string;
+  disabled?: boolean;
 }) {
   const [aberto, setAberto] = useState(false);
   const [busca, setBusca] = useState('');
@@ -62,13 +64,15 @@ export function SeletorContaAnalitica({
         value={aberto ? busca : (contaSelecionada?.label ?? '')}
         onChange={(e) => setBusca(e.target.value)}
         onFocus={() => {
+          if (disabled) return;
           setAberto(true);
           setBusca('');
         }}
         placeholder={placeholder}
-        className="w-full rounded border border-gray-200 px-2 py-1 text-sm"
+        disabled={disabled}
+        className="w-full rounded border border-gray-200 px-2 py-1 text-sm disabled:opacity-50"
       />
-      {aberto && (
+      {aberto && !disabled && (
         <div className="absolute z-10 mt-1 max-h-56 w-full overflow-y-auto rounded border border-gray-100 bg-white shadow-sm">
           {opcoesFiltradas.length === 0 ? (
             <p className="px-2 py-1.5 text-xs text-slate-500">Nenhuma conta encontrada.</p>

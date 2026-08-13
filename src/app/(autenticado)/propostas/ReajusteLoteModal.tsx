@@ -12,6 +12,7 @@ import {
   excluirAliquotaImposto,
   type AliquotaImpostoResultado,
 } from '@/app/(autenticado)/aliquotas-impostos/actions';
+import { SeletorContaAnalitica } from '@/app/(autenticado)/propostas/SeletorContaAnalitica';
 
 const formatadorMes = new Intl.DateTimeFormat('pt-BR', { month: 'short', year: 'numeric', timeZone: 'UTC' });
 const formatadorMoeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -307,21 +308,15 @@ export function ReajusteLoteModal({
                 {escopoModo === 'CONTA' && (
                   <div className="md:col-span-2">
                     <label className="mb-1 block text-xs font-medium text-gray-600">Conta Analítica</label>
-                    <select
+                    <SeletorContaAnalitica
+                      contas={contasAnaliticas}
                       value={contaId}
-                      onChange={(e) => {
-                        setContaId(e.target.value);
+                      onChange={(id) => {
+                        setContaId(id);
                         setPlano(null);
                       }}
                       disabled={pendingSimular || pendingAplicar}
-                      className="w-full rounded border border-gray-200 bg-white px-2 py-1.5 text-sm"
-                    >
-                      {contasAnaliticas.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.label}
-                        </option>
-                      ))}
-                    </select>
+                    />
                   </div>
                 )}
               </div>

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { cadastrarItemPatrimonial, excluirItemPatrimonial, type ItemPatrimonialResultado } from '@/app/(autenticado)/plano-contas/actions';
+import { SeletorContaAnalitica } from '@/app/(autenticado)/propostas/SeletorContaAnalitica';
 
 type ContaOpcao = { id: string; label: string };
 
@@ -51,13 +52,7 @@ function NovoItemForm({
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-600">Conta Analítica</label>
-          <select value={contaId} onChange={(e) => setContaId(e.target.value)} className="w-full rounded border px-2 py-1 text-sm">
-            {contasAnaliticas.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.label}
-              </option>
-            ))}
-          </select>
+          <SeletorContaAnalitica contas={contasAnaliticas} value={contaId} onChange={setContaId} />
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-600">Data</label>
