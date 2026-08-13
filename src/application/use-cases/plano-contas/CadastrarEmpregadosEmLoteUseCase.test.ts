@@ -18,7 +18,7 @@ type CargoMock = {
   codigoCargo: string;
   contaId: string;
   custoTotalCargo: Prisma.Decimal;
-  alocacoes: { percentual: number; unidadeFuncional: { nome: string } }[];
+  unidadeFuncional: { nome: string } | null;
 };
 
 function criarPrismaMock(propostas: PropostaMock[], cargos: CargoMock[], versoes: VersaoMock[] = [], metas: MetaMock[] = []) {
@@ -127,7 +127,7 @@ const cargo: CargoMock = {
   codigoCargo: 'CARGO-2026-0001',
   contaId: 'conta1',
   custoTotalCargo: new Prisma.Decimal(6200),
-  alocacoes: [{ percentual: 100, unidadeFuncional: { nome: 'Setor de Compras' } }],
+  unidadeFuncional: { nome: 'Setor de Compras' },
 };
 const cargoPorMeta: CargoMock = {
   id: 'c2',
@@ -136,7 +136,7 @@ const cargoPorMeta: CargoMock = {
   codigoCargo: 'CARGO-2026-0002',
   contaId: 'conta2',
   custoTotalCargo: new Prisma.Decimal(5000),
-  alocacoes: [{ percentual: 100, unidadeFuncional: { nome: 'Setor de Projetos' } }],
+  unidadeFuncional: { nome: 'Setor de Projetos' },
 };
 const cargoOficializada: CargoMock = {
   id: 'c3',
@@ -145,7 +145,7 @@ const cargoOficializada: CargoMock = {
   codigoCargo: 'CARGO-2026-0003',
   contaId: 'conta3',
   custoTotalCargo: new Prisma.Decimal(4000),
-  alocacoes: [{ percentual: 100, unidadeFuncional: { nome: 'Setor X' } }],
+  unidadeFuncional: { nome: 'Setor X' },
 };
 
 describe('CadastrarEmpregadosEmLoteUseCase [US-108b]', () => {

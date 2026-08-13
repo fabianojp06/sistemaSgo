@@ -3,7 +3,6 @@ import {
   CamposObrigatoriosCargoError,
   CargoNaoEncontradoError,
   ContaCargoNaoAnaliticaError,
-  SomaAlocacaoCargoInvalidaError,
   UnidadeFuncionalNaoEncontradaError,
   VinculoCargoNaoAnaliticoError,
   VinculoFuncionalObrigatorioError,
@@ -13,14 +12,12 @@ import { validarContasComponenteCusto } from '@/domain/plano-contas/validarConta
 
 const TIPOS_ANALITICOS = ['ANALITICO_ASSESSOR', 'ANALITICO_COORDENADORIA', 'ANALITICO_SETOR'];
 
-type AlocacaoInput = { unidadeFuncionalId: string; percentual: number };
-
 type EditarCargoInput = {
   tenantId: string;
   usuarioId: string;
   cargoId: string;
-  /** ADR-026, RN_EST_03 — substitui integralmente o rateio anterior (não é diff incremental). */
-  alocacoes: AlocacaoInput[];
+  /** ADR-043 — vínculo 1:1 com Unidade Funcional Analítica (RN_CAR_08); substitui o anterior. */
+  unidadeFuncionalId: string;
   /** ADR-027 — natureza da despesa (ex: "Despesa com Pessoal"); 1 conta analítica fixa por Cargo. */
   contaId: string;
   nomeCargoMercado: string;
@@ -58,13 +55,8 @@ export class EditarCargoUseCase {
       throw new CamposObrigatoriosCargoError();
     }
 
-    if (!input.alocacoes || input.alocacoes.length === 0) {
+    if (!input.unidadeFuncionalId) {
       throw new VinculoFuncionalObrigatorioError();
-    }
-
-    const somaPercentual = input.alocacoes.reduce((soma, a) => soma + a.percentual, 0);
-    if (Math.abs(somaPercentual - 100) > 0.01) {
-      throw new SomaAlocacaoCargoInvalidaError();
     }
 
     const cargoAtual = await this.prisma.cargo.findFirst({
@@ -74,18 +66,14 @@ export class EditarCargoUseCase {
       throw new CargoNaoEncontradoError();
     }
 
-    const unidades = await this.prisma.unidadeFuncional.findMany({
-      where: { tenantId: input.tenantId, id: { in: input.alocacoes.map((a) => a.unidadeFuncionalId) }, propostaId: cargoAtual.propostaId },
+    const unidade = await this.prisma.unidadeFuncional.findFirst({
+      where: { tenantId: input.tenantId, id: input.unidadeFuncionalId, propostaId: cargoAtual.propostaId },
     });
-    const unidadesPorId = new Map(unidades.map((u) => [u.id, u]));
-    for (const alocacao of input.alocacoes) {
-      const unidade = unidadesPorId.get(alocacao.unidadeFuncionalId);
-      if (!unidade) {
-        throw new UnidadeFuncionalNaoEncontradaError();
-      }
-      if (!TIPOS_ANALITICOS.includes(unidade.tipoNivel)) {
-        throw new VinculoCargoNaoAnaliticoError();
-      }
+    if (!unidade) {
+      throw new UnidadeFuncionalNaoEncontradaError();
+    }
+    if (!TIPOS_ANALITICOS.includes(unidade.tipoNivel)) {
+      throw new VinculoCargoNaoAnaliticoError();
     }
 
     // ADR-027 [TRAVA O ERRO] — conta precisa existir, pertencer ao tenant e ser analítica.
@@ -120,6 +108,7 @@ export class EditarCargoUseCase {
           // ADR-042 — todas as travas do formulário completo já passaram acima (Vínculo
           // Funcional, Conta analítica); transição de mão única RASCUNHO→COMPLETO.
           status: 'COMPLETO',
+          unidadeFuncionalId: input.unidadeFuncionalId,
           contaId: input.contaId,
           funcaoGratificada: input.funcaoGratificada ?? null,
           contaGratificacaoId: input.contaGratificacaoId ?? null,
@@ -136,18 +125,6 @@ export class EditarCargoUseCase {
         },
       });
 
-      // Substituição atômica do rateio inteiro — mais simples/seguro que diff
-      // incremental para um array pequeno de N unidades (ADR-026).
-      await tx.cargoAlocacaoPercentual.deleteMany({ where: { tenantId: input.tenantId, cargoId: input.cargoId } });
-      await tx.cargoAlocacaoPercentual.createMany({
-        data: input.alocacoes.map((a) => ({
-          tenantId: input.tenantId,
-          cargoId: input.cargoId,
-          unidadeFuncionalId: a.unidadeFuncionalId,
-          percentual: a.percentual,
-        })),
-      });
-
       await tx.historicoOperacao.create({
         data: {
           tenantId: input.tenantId,
@@ -156,7 +133,7 @@ export class EditarCargoUseCase {
           descricao: `Cargo "${cargoAtual.codigoCargo} — ${nome}" editado`,
           dadosSerializados: {
             cargoId: cargo.id,
-            alocacoes: input.alocacoes,
+            unidadeFuncionalId: input.unidadeFuncionalId,
             fonteAtiva: input.fonteAtiva,
             salarioTotal: salarioTotal.toString(),
           },

@@ -31,14 +31,14 @@ export class RessincronizarSnapshotEmpregadosCargoUseCase {
   async execute(input: RessincronizarSnapshotEmpregadosCargoInput): Promise<RessincronizacaoEmpregadoResultado[]> {
     const cargo = await this.prisma.cargo.findFirst({
       where: { tenantId: input.tenantId, id: input.cargoId },
-      include: { alocacoes: { include: { unidadeFuncional: true } } },
+      include: { unidadeFuncional: true },
     });
     if (!cargo) {
       throw new CargoNaoEncontradoError();
     }
-    // ADR-042 — Cargo Rascunho não tem contaId nem pode ter Empregado vinculado
-    // (bloqueado em CadastrarEmpregadoUseCase); nada para ressincronizar.
-    if (!cargo.contaId) {
+    // ADR-042 — Cargo Rascunho não tem contaId/unidadeFuncional nem pode ter Empregado
+    // vinculado (bloqueado em CadastrarEmpregadoUseCase); nada para ressincronizar.
+    if (!cargo.contaId || !cargo.unidadeFuncional) {
       return [];
     }
     // Extraído em variável local — narrowing não atravessa a closure da transação abaixo.
@@ -46,7 +46,7 @@ export class RessincronizarSnapshotEmpregadosCargoUseCase {
 
     const parametro = await this.prisma.parametroSistema.findUnique({ where: { tenantId: input.tenantId } });
     const diasUteisPadrao = parametro?.diasUteisPadrao ?? 22;
-    const vinculoFuncionalHerdado = formatarVinculoFuncionalHerdado(cargo.alocacoes);
+    const vinculoFuncionalHerdado = formatarVinculoFuncionalHerdado(cargo.unidadeFuncional);
     const snapshotComponentes = montarSnapshotComponenteCustoEmpregado(cargo, diasUteisPadrao);
 
     const empregados = await this.prisma.empregadoHeadcount.findMany({

@@ -56,8 +56,8 @@ export class InativarUnidadeFuncionalUseCase {
     ]);
   }
 
-  /** RN_EST_04 — bloqueia inativação se houver Cargo vinculado (via rateio ADR-026). */
+  /** RN_EST_04 — bloqueia inativação se houver Cargo vinculado (ADR-043 — vínculo 1:1). */
   private async contarCargosVinculados(unidadeId: string): Promise<number> {
-    return this.prisma.cargoAlocacaoPercentual.count({ where: { unidadeFuncionalId: unidadeId } });
+    return this.prisma.cargo.count({ where: { unidadeFuncionalId: unidadeId, ativo: true } });
   }
 }

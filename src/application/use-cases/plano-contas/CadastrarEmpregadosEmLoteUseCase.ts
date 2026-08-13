@@ -70,20 +70,20 @@ export class CadastrarEmpregadosEmLoteUseCase {
 
     const cargo = await this.prisma.cargo.findFirst({
       where: { tenantId: input.tenantId, id: input.cargoId, propostaId: input.propostaId },
-      include: { alocacoes: { include: { unidadeFuncional: true } } },
+      include: { unidadeFuncional: true },
     });
     if (!cargo) {
       throw new CargoNaoEncontradoParaEmpregadoError();
     }
     // ADR-042 [TRAVA O ERRO] — mesmo bloqueio de CadastrarEmpregadoUseCase (a checagem
-    // de contaId, além de status, também estreita o tipo para o TS).
-    if (cargo.status === 'RASCUNHO' || !cargo.contaId) {
+    // de contaId/unidadeFuncional, além de status, também estreita o tipo para o TS).
+    if (cargo.status === 'RASCUNHO' || !cargo.contaId || !cargo.unidadeFuncional) {
       throw new CargoRascunhoNaoPodeReceberEmpregadoError();
     }
     // Extraído em variável local — narrowing não atravessa a closure da transação abaixo.
     const contaIdCargo = cargo.contaId;
 
-    const vinculoFuncionalHerdado = formatarVinculoFuncionalHerdado(cargo.alocacoes);
+    const vinculoFuncionalHerdado = formatarVinculoFuncionalHerdado(cargo.unidadeFuncional);
     const parametro = await this.prisma.parametroSistema.findUnique({ where: { tenantId: input.tenantId } });
     const diasUteisPadrao = parametro?.diasUteisPadrao ?? 22;
     const snapshotComponentes = montarSnapshotComponenteCustoEmpregado(cargo, diasUteisPadrao);

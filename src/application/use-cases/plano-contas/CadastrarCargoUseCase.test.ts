@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from 'vitest';
 import { CadastrarCargoUseCase } from './CadastrarCargoUseCase';
 import {
   CamposObrigatoriosCargoError,
-  SomaAlocacaoCargoInvalidaError,
   UnidadeFuncionalNaoEncontradaError,
   VinculoCargoNaoAnaliticoError,
   VinculoFuncionalObrigatorioError,
@@ -17,18 +16,16 @@ type CargoMock = {
   codigoCargo: string;
   propostaId: string;
 };
-type AlocacaoMock = { id: string; tenantId: string; cargoId: string; unidadeFuncionalId: string; percentual: number };
 
 function criarPrismaMock(unidades: UnidadeMock[], cargosExistentes: CargoMock[] = []) {
   const cargos = [...cargosExistentes];
-  const alocacoes: AlocacaoMock[] = [];
   let idSeq = 1;
 
   const base = {
     unidadeFuncional: {
-      findMany: vi.fn(({ where }: { where: { id: { in: string[] }; tenantId: string; propostaId: string } }) =>
+      findFirst: vi.fn(({ where }: { where: { id: string; tenantId: string; propostaId: string } }) =>
         Promise.resolve(
-          unidades.filter((u) => where.id.in.includes(u.id) && u.tenantId === where.tenantId && u.propostaId === where.propostaId),
+          unidades.find((u) => u.id === where.id && u.tenantId === where.tenantId && u.propostaId === where.propostaId) ?? null,
         ),
       ),
     },
@@ -45,32 +42,25 @@ function criarPrismaMock(unidades: UnidadeMock[], cargosExistentes: CargoMock[] 
         return Promise.resolve(novo);
       }),
     },
-    cargoAlocacaoPercentual: {
-      createMany: vi.fn(({ data }: { data: Omit<AlocacaoMock, 'id'>[] }) => {
-        for (const item of data) alocacoes.push({ id: `al${idSeq++}`, ...item });
-        return Promise.resolve({ count: data.length });
-      }),
-    },
     contaContabil: {
       findFirst: vi.fn().mockResolvedValue({ isAnalitica: true }),
     },
     historicoOperacao: { create: vi.fn().mockResolvedValue({}) },
     $transaction: vi.fn((fn: (tx: unknown) => Promise<unknown>) => fn(base)),
   };
-  return { base, getAlocacoes: () => alocacoes };
+  return { base };
 }
 
 const unidadeAnalitica: UnidadeMock = { id: 'u1', tenantId: 't1', propostaId: 'p1', tipoNivel: 'ANALITICO_SETOR' };
-const unidadeAnaliticaB: UnidadeMock = { id: 'u3', tenantId: 't1', propostaId: 'p1', tipoNivel: 'ANALITICO_COORDENADORIA' };
 const unidadeSintetica: UnidadeMock = { id: 'u2', tenantId: 't1', propostaId: 'p1', tipoNivel: 'SINTETICO_GERENCIA' };
 
 function providerFixo(valor: number | null): CargoRubiProvider {
   return { buscarSalarioReal: vi.fn().mockResolvedValue(valor === null ? null : new Prisma.Decimal(valor)) };
 }
 
-describe('CadastrarCargoUseCase [US-107, ADR-026]', () => {
+describe('CadastrarCargoUseCase [US-107, ADR-043 — vínculo 1:1]', () => {
   it('cadastra Cargo com Fonte Ativa = Mercado e registra auditoria [Cenário 1]', async () => {
-    const { base, getAlocacoes } = criarPrismaMock([unidadeAnalitica]);
+    const { base } = criarPrismaMock([unidadeAnalitica]);
     const provider = providerFixo(5300);
     const useCase = new CadastrarCargoUseCase(base as never, provider);
 
@@ -79,7 +69,7 @@ describe('CadastrarCargoUseCase [US-107, ADR-026]', () => {
       usuarioId: 'u1',
       propostaId: 'p1',
       contaId: 'conta1',
-      alocacoes: [{ unidadeFuncionalId: 'u1', percentual: 100 }],
+      unidadeFuncionalId: 'u1',
       nomeCargoMercado: 'Analista de Compras Pleno',
       periodoInicio: new Date('2026-01-01'),
       salarioMercadoMinimo: 4500,
@@ -90,33 +80,9 @@ describe('CadastrarCargoUseCase [US-107, ADR-026]', () => {
     expect(cargo.codigoCargo).toMatch(/^CARGO-\d{4}-0001$/);
     expect(cargo.salarioReal?.toString()).toBe('5300');
     expect(cargo.salarioTotal.toString()).toBe('6200');
-    expect(getAlocacoes()).toHaveLength(1);
     expect(base.historicoOperacao.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ tipoOperacao: 'CARGO_CRIADO' }) }),
     );
-  });
-
-  it('cadastra Cargo rateado entre múltiplas unidades somando 100% [RN_EST_03, ADR-026]', async () => {
-    const { base, getAlocacoes } = criarPrismaMock([unidadeAnalitica, unidadeAnaliticaB]);
-    const useCase = new CadastrarCargoUseCase(base as never, providerFixo(5000));
-
-    await useCase.execute({
-      tenantId: 't1',
-      usuarioId: 'u1',
-      propostaId: 'p1',
-      contaId: 'conta1',
-      alocacoes: [
-        { unidadeFuncionalId: 'u1', percentual: 50 },
-        { unidadeFuncionalId: 'u3', percentual: 50 },
-      ],
-      nomeCargoMercado: 'Analista Compartilhado',
-      periodoInicio: new Date('2026-01-01'),
-      salarioMercadoMinimo: 4000,
-      salarioMercadoMaximo: 5000,
-      fonteAtiva: 'MERCADO_MINIMO',
-    });
-
-    expect(getAlocacoes()).toHaveLength(2);
   });
 
   it('bloqueia cadastro sem vínculo funcional [Cenário 2]', async () => {
@@ -128,8 +94,8 @@ describe('CadastrarCargoUseCase [US-107, ADR-026]', () => {
         tenantId: 't1',
         usuarioId: 'u1',
         propostaId: 'p1',
-      contaId: 'conta1',
-        alocacoes: [],
+        contaId: 'conta1',
+        unidadeFuncionalId: '',
         nomeCargoMercado: 'Analista',
         periodoInicio: new Date('2026-01-01'),
         salarioMercadoMinimo: 4000,
@@ -137,29 +103,6 @@ describe('CadastrarCargoUseCase [US-107, ADR-026]', () => {
         fonteAtiva: 'MERCADO_MINIMO',
       }),
     ).rejects.toThrow(VinculoFuncionalObrigatorioError);
-  });
-
-  it('bloqueia soma de alocações diferente de 100% [RN_EST_03]', async () => {
-    const { base } = criarPrismaMock([unidadeAnalitica, unidadeAnaliticaB]);
-    const useCase = new CadastrarCargoUseCase(base as never, providerFixo(5000));
-
-    await expect(
-      useCase.execute({
-        tenantId: 't1',
-        usuarioId: 'u1',
-        propostaId: 'p1',
-      contaId: 'conta1',
-        alocacoes: [
-          { unidadeFuncionalId: 'u1', percentual: 40 },
-          { unidadeFuncionalId: 'u3', percentual: 50 },
-        ],
-        nomeCargoMercado: 'Analista',
-        periodoInicio: new Date('2026-01-01'),
-        salarioMercadoMinimo: 4000,
-        salarioMercadoMaximo: 5000,
-        fonteAtiva: 'MERCADO_MINIMO',
-      }),
-    ).rejects.toThrow(SomaAlocacaoCargoInvalidaError);
   });
 
   it('bloqueia vínculo com nó Sintético [Cenário 3]', async () => {
@@ -171,8 +114,8 @@ describe('CadastrarCargoUseCase [US-107, ADR-026]', () => {
         tenantId: 't1',
         usuarioId: 'u1',
         propostaId: 'p1',
-      contaId: 'conta1',
-        alocacoes: [{ unidadeFuncionalId: 'u2', percentual: 100 }],
+        contaId: 'conta1',
+        unidadeFuncionalId: 'u2',
         nomeCargoMercado: 'Analista',
         periodoInicio: new Date('2026-01-01'),
         salarioMercadoMinimo: 4000,
@@ -191,8 +134,8 @@ describe('CadastrarCargoUseCase [US-107, ADR-026]', () => {
         tenantId: 't1',
         usuarioId: 'u1',
         propostaId: 'p1',
-      contaId: 'conta1',
-        alocacoes: [{ unidadeFuncionalId: 'inexistente', percentual: 100 }],
+        contaId: 'conta1',
+        unidadeFuncionalId: 'inexistente',
         nomeCargoMercado: 'Analista',
         periodoInicio: new Date('2026-01-01'),
         salarioMercadoMinimo: 4000,
@@ -211,8 +154,8 @@ describe('CadastrarCargoUseCase [US-107, ADR-026]', () => {
         tenantId: 't1',
         usuarioId: 'u1',
         propostaId: 'p1',
-      contaId: 'conta1',
-        alocacoes: [{ unidadeFuncionalId: 'u1', percentual: 100 }],
+        contaId: 'conta1',
+        unidadeFuncionalId: 'u1',
         nomeCargoMercado: '',
         periodoInicio: new Date('2026-01-01'),
         salarioMercadoMinimo: 4000,
@@ -231,7 +174,7 @@ describe('CadastrarCargoUseCase [US-107, ADR-026]', () => {
       usuarioId: 'u1',
       propostaId: 'p1',
       contaId: 'conta1',
-      alocacoes: [{ unidadeFuncionalId: 'u1', percentual: 100 }],
+      unidadeFuncionalId: 'u1',
       nomeCargoMercado: 'Analista de Compras',
       funcaoGratificada: 800,
       periodoInicio: new Date('2026-01-01'),
@@ -254,7 +197,7 @@ describe('CadastrarCargoUseCase [US-107, ADR-026]', () => {
       usuarioId: 'u1',
       propostaId: 'p1',
       contaId: 'conta1',
-      alocacoes: [{ unidadeFuncionalId: 'u1', percentual: 100 }],
+      unidadeFuncionalId: 'u1',
       nomeCargoMercado: 'Assessor Técnico',
       periodoInicio: new Date('2026-01-01'),
       salarioMercadoMinimo: 4000,
