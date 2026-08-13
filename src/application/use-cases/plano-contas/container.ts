@@ -24,6 +24,7 @@ import { InativarUnidadeFuncionalUseCase } from './InativarUnidadeFuncionalUseCa
 import { ImportarEstruturaOrganizacionalUseCase } from './ImportarEstruturaOrganizacionalUseCase';
 import { CargoRubiFixtureProvider } from '@/infrastructure/integrations/rubi/CargoRubiFixtureProvider';
 import { CadastrarCargoUseCase } from './CadastrarCargoUseCase';
+import { CadastrarCargoRascunhoUseCase } from './CadastrarCargoRascunhoUseCase';
 import { EditarCargoUseCase } from './EditarCargoUseCase';
 import { CadastrarMetaUseCase } from './CadastrarMetaUseCase';
 import { EditarMetaUseCase } from './EditarMetaUseCase';
@@ -152,6 +153,10 @@ export function getImportarEstruturaOrganizacionalUseCase(): ImportarEstruturaOr
 
 export function getCadastrarCargoUseCase(): CadastrarCargoUseCase {
   return new CadastrarCargoUseCase(prisma, new CargoRubiFixtureProvider());
+}
+
+export function getCadastrarCargoRascunhoUseCase(): CadastrarCargoRascunhoUseCase {
+  return new CadastrarCargoRascunhoUseCase(prisma);
 }
 
 export function getEditarCargoUseCase(): EditarCargoUseCase {

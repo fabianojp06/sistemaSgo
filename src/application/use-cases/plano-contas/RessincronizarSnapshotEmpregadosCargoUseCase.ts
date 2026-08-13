@@ -36,6 +36,13 @@ export class RessincronizarSnapshotEmpregadosCargoUseCase {
     if (!cargo) {
       throw new CargoNaoEncontradoError();
     }
+    // ADR-042 — Cargo Rascunho não tem contaId nem pode ter Empregado vinculado
+    // (bloqueado em CadastrarEmpregadoUseCase); nada para ressincronizar.
+    if (!cargo.contaId) {
+      return [];
+    }
+    // Extraído em variável local — narrowing não atravessa a closure da transação abaixo.
+    const contaIdCargo = cargo.contaId;
 
     const parametro = await this.prisma.parametroSistema.findUnique({ where: { tenantId: input.tenantId } });
     const diasUteisPadrao = parametro?.diasUteisPadrao ?? 22;
@@ -69,7 +76,7 @@ export class RessincronizarSnapshotEmpregadosCargoUseCase {
           data: {
             vinculoFuncionalHerdado,
             custoTotalMensal: cargo.custoTotalCargo,
-            contaId: cargo.contaId,
+            contaId: contaIdCargo,
             ...snapshotComponentes,
           },
         });

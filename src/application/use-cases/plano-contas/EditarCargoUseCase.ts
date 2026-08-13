@@ -117,6 +117,9 @@ export class EditarCargoUseCase {
         where: { id: input.cargoId },
         data: {
           nomeCargoMercado: nome,
+          // ADR-042 — todas as travas do formulário completo já passaram acima (Vínculo
+          // Funcional, Conta analítica); transição de mão única RASCUNHO→COMPLETO.
+          status: 'COMPLETO',
           contaId: input.contaId,
           funcaoGratificada: input.funcaoGratificada ?? null,
           contaGratificacaoId: input.contaGratificacaoId ?? null,

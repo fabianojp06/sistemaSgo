@@ -76,6 +76,7 @@ enum TipoOperacao {
   TABELA_SALARIAL_CADASTRADA
   TABELA_SALARIAL_EDITADA
   TABELA_SALARIAL_EXCLUIDA
+  CARGO_RASCUNHO_CRIADO
 }
 
 model Usuario {
@@ -657,6 +658,13 @@ model UnidadeFuncional {
 // (ANALITICO_ASSESSOR/COORDENADORIA/SETOR, nunca SINTETICO_*) é feita no use case
 // (validarVinculoNoAnalitico), não em constraint de banco — mesmo padrão de
 // RN_PLA_003 (isAnalitica em ContaContabil).
+// ADR-042 — Cargo cadastrado só com nome (aba Tabela Salarial) nasce RASCUNHO; vira
+// COMPLETO só ao passar pelo formulário inteiro (aba Cargos), transição de mão única.
+enum StatusCargo {
+  RASCUNHO
+  COMPLETO
+}
+
 enum FonteAtivaSalario {
   MERCADO_MINIMO
   MERCADO_MAXIMO
@@ -678,25 +686,35 @@ model Cargo {
 
   alocacoes CargoAlocacaoPercentual[]
 
+  // ADR-042 — Cargo "Rascunho" (cadastro só com nome, a partir da aba Tabela Salarial):
+  // COMPLETO é o único status que passou por todas as travas do formulário inteiro
+  // (Vínculo Funcional, Conta, salário). Transição é de mão única (RASCUNHO→COMPLETO,
+  // nunca o contrário), feita por EditarCargoUseCase ao salvar o formulário completo.
+  status StatusCargo @default(COMPLETO)
+
   // ADR-027 — natureza da despesa (ex: "Despesa com Pessoal"), 1 conta
   // analítica fixa por Cargo. Independente de `alocacoes` (organograma):
   // são dimensões distintas, plano de contas x estrutura funcional.
-  contaId String
-  conta   ContaContabil @relation(fields: [contaId], references: [id])
+  // Nullable desde ADR-042 — só um Cargo RASCUNHO tem contaId null.
+  contaId String?
+  conta   ContaContabil? @relation(fields: [contaId], references: [id])
 
   nomeCargoMercado  String
   codigoCargo       String // gerado internamente (CARGO-{ano}-{seq}), Read-only na UI
-  funcaoGratificada Decimal? @db.Decimal(15, 2)
-  periodoInicio     DateTime
+  funcaoGratificada Decimal?  @db.Decimal(15, 2)
+  // Nullable desde ADR-042 — Cargo RASCUNHO ainda não tem período definido.
+  periodoInicio     DateTime?
 
-  salarioMercadoMinimo Decimal              @db.Decimal(15, 2)
-  salarioMercadoMaximo Decimal              @db.Decimal(15, 2)
+  // Nullable desde ADR-042 — Cargo RASCUNHO ainda não tem salário de mercado definido.
+  salarioMercadoMinimo Decimal?             @db.Decimal(15, 2)
+  salarioMercadoMaximo Decimal?             @db.Decimal(15, 2)
   // US-133 (RN_TAB_04/05) — origem do valor: preenchido a partir de uma faixa da
   // Tabela Salarial (US-131) ou digitado manualmente. Independente por campo — editar
   // manualmente um dos dois campos depois de uma seleção não muda a origem do outro.
   origemSalarioMinimo  OrigemSalarioMercado @default(MANUAL)
   origemSalarioMaximo  OrigemSalarioMercado @default(MANUAL)
-  fonteAtiva           FonteAtivaSalario
+  // Nullable desde ADR-042 — Cargo RASCUNHO ainda não tem Fonte Ativa definida.
+  fonteAtiva           FonteAtivaSalario?
 
   // Bloco "soberano" [RN_CAR_03] — nunca escrito por use case de Cargo, só pelo
   // CargoRubiFixtureProvider (fixture; não há integração real com Rubi ainda).

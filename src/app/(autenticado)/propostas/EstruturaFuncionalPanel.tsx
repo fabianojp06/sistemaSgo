@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import { OrganogramaPanel } from './OrganogramaPanel';
 import { CargoPanel, type CargoComAlocacoes } from './CargoPanel';
 import { TabelaSalarialListPanel } from '../tabela-salarial/TabelaSalarialListPanel';
+import { cadastrarCargoRascunho } from './estrutura-actions';
 import type { UnidadeFuncionalResultado, TabelaSalarialResultado, SenioridadeResultado } from './estrutura-actions';
 
 /** US-116/US-117/US-131 — mesma tela, três sub-seções: Organograma, Cargos e Tabela Salarial. */
@@ -32,10 +33,29 @@ export function EstruturaFuncionalPanel({
   // da aba Tabela Salarial exige que o seletor de Cargo dessa aba veja o Cargo recém-criado
   // sem esperar reload da página.
   const [cargos, setCargos] = useState(cargosIniciais);
-  const [novoCargoAberto, setNovoCargoAberto] = useState(false);
+  const [novoCargoNome, setNovoCargoNome] = useState('');
+  const [erroNovoCargo, setErroNovoCargo] = useState<string | null>(null);
+  const [salvandoNovoCargo, startSalvandoNovoCargo] = useTransition();
 
   const unidadesAnaliticas = unidades.filter((u) => u.tipoNivel.startsWith('ANALITICO_'));
   const opcoesCargoDaProposta = cargos.map((c) => ({ id: c.id, label: `${c.codigoCargo} — ${c.nomeCargoMercado}` }));
+
+  function handleCadastrarCargoRascunho() {
+    if (!novoCargoNome.trim()) {
+      setErroNovoCargo('Informe o nome do Cargo.');
+      return;
+    }
+    setErroNovoCargo(null);
+    startSalvandoNovoCargo(async () => {
+      const resposta = await cadastrarCargoRascunho({ propostaId, nomeCargoMercado: novoCargoNome.trim() });
+      if (!resposta.sucesso) {
+        setErroNovoCargo(resposta.mensagem);
+        return;
+      }
+      setCargos((atual) => [...atual, { ...resposta.dados, alocacoes: [] }]);
+      setNovoCargoNome('');
+    });
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -77,13 +97,31 @@ export function EstruturaFuncionalPanel({
       {subAba === 'tabela-salarial' && (
         <div className="flex flex-col gap-3">
           {!readOnly && podeGerenciarTabelaSalarial && (
-            <button
-              type="button"
-              onClick={() => setNovoCargoAberto(true)}
-              className="self-start rounded-md bg-slate-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-900"
-            >
-              + Novo Cargo
-            </button>
+            <div className="flex flex-wrap items-end gap-2 rounded-lg border border-gray-100 bg-white p-3 shadow-sm">
+              <div className="flex-1">
+                <label className="mb-1 block text-xs font-medium text-gray-600">Novo Cargo (cadastro rápido)</label>
+                <input
+                  type="text"
+                  value={novoCargoNome}
+                  onChange={(e) => setNovoCargoNome(e.target.value)}
+                  placeholder="Nome do Cargo (ex: Analista de Requisitos)"
+                  className="w-full min-w-[240px] rounded border px-2 py-1.5 text-sm"
+                />
+              </div>
+              <button
+                type="button"
+                disabled={salvandoNovoCargo}
+                onClick={handleCadastrarCargoRascunho}
+                className="rounded-md bg-slate-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-900 disabled:opacity-50"
+              >
+                {salvandoNovoCargo ? 'Salvando...' : '+ Cadastrar Cargo'}
+              </button>
+              <p className="w-full text-[11px] text-gray-400">
+                Cria o Cargo só com o nome (código gerado automaticamente, ex: CARGO-2026-0001) — fica disponível para seleção aqui.
+                Vínculo Funcional, Conta e Salário são completados depois na aba Cargos.
+              </p>
+              {erroNovoCargo && <p className="w-full text-xs text-red-600">{erroNovoCargo}</p>}
+            </div>
           )}
 
           <TabelaSalarialListPanel
@@ -93,33 +131,6 @@ export function EstruturaFuncionalPanel({
             podeGerenciar={podeGerenciarTabelaSalarial && !readOnly}
             restringirCargoIds={cargos.map((c) => c.id)}
           />
-
-          {novoCargoAberto && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-              <div className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-y-auto rounded-xl bg-white shadow-xl">
-                <div className="flex items-center justify-between border-b px-5 py-3">
-                  <h3 className="text-sm font-semibold text-slate-800">Novo Cargo</h3>
-                  <button type="button" onClick={() => setNovoCargoAberto(false)} className="text-gray-400 hover:text-gray-600">
-                    ✕
-                  </button>
-                </div>
-                <div className="p-4">
-                  <CargoPanel
-                    propostaId={propostaId}
-                    unidadesAnaliticas={unidadesAnaliticas}
-                    contasAnaliticas={contasAnaliticas}
-                    cargosIniciais={[]}
-                    readOnly={false}
-                    modoCriacaoApenas
-                    onCargoCriado={(cargo) => {
-                      setCargos((atual) => [...atual, cargo]);
-                      setNovoCargoAberto(false);
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       )}
     </div>

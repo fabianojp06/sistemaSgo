@@ -831,3 +831,14 @@ export class TabelaSalarialNaoEncontradaError extends Error {
     this.name = 'TabelaSalarialNaoEncontradaError';
   }
 }
+
+// ADR-042 — Cargo Rascunho (cadastro só com nome, aba Tabela Salarial) não tem
+// Vínculo Funcional/Conta/salário definidos ainda; não pode receber Empregado.
+export class CargoRascunhoNaoPodeReceberEmpregadoError extends Error {
+  constructor() {
+    super(
+      'Este Cargo está incompleto (Rascunho). Complete o cadastro na aba Cargos (Vínculo Funcional, Conta, Salário) antes de vincular Empregados.',
+    );
+    this.name = 'CargoRascunhoNaoPodeReceberEmpregadoError';
+  }
+}

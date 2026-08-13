@@ -12,6 +12,7 @@ import {
   getInativarUnidadeFuncionalUseCase,
   getImportarEstruturaOrganizacionalUseCase,
   getCadastrarCargoUseCase,
+  getCadastrarCargoRascunhoUseCase,
   getEditarCargoUseCase,
   getConfigurarBeneficiosCargoUseCase,
   getRessincronizarSnapshotEmpregadosCargoUseCase,
@@ -177,15 +178,17 @@ export type CargoResultado = {
   id: string;
   codigoCargo: string;
   nomeCargoMercado: string;
-  contaId: string;
-  fonteAtiva: 'MERCADO_MINIMO' | 'MERCADO_MAXIMO' | 'RUBI';
-  salarioMercadoMinimo: string;
-  salarioMercadoMaximo: string;
+  // ADR-042 — Cargo Rascunho (status: 'RASCUNHO') ainda não tem esses 5 campos definidos.
+  status: 'RASCUNHO' | 'COMPLETO';
+  contaId: string | null;
+  fonteAtiva: 'MERCADO_MINIMO' | 'MERCADO_MAXIMO' | 'RUBI' | null;
+  salarioMercadoMinimo: string | null;
+  salarioMercadoMaximo: string | null;
   origemSalarioMinimo: 'TABELA_SALARIAL' | 'MANUAL';
   origemSalarioMaximo: 'TABELA_SALARIAL' | 'MANUAL';
   funcaoGratificada: string | null;
   contaGratificacaoId: string | null;
-  periodoInicio: string;
+  periodoInicio: string | null;
   salarioReal: string | null;
   salarioTotal: string;
   custoTotalCargo: string;
@@ -220,15 +223,16 @@ function serializarCargo(cargo: Cargo): CargoResultado {
     id: cargo.id,
     codigoCargo: cargo.codigoCargo,
     nomeCargoMercado: cargo.nomeCargoMercado,
+    status: cargo.status,
     contaId: cargo.contaId,
     fonteAtiva: cargo.fonteAtiva,
-    salarioMercadoMinimo: cargo.salarioMercadoMinimo.toString(),
-    salarioMercadoMaximo: cargo.salarioMercadoMaximo.toString(),
+    salarioMercadoMinimo: cargo.salarioMercadoMinimo?.toString() ?? null,
+    salarioMercadoMaximo: cargo.salarioMercadoMaximo?.toString() ?? null,
     origemSalarioMinimo: cargo.origemSalarioMinimo,
     origemSalarioMaximo: cargo.origemSalarioMaximo,
     funcaoGratificada: cargo.funcaoGratificada?.toString() ?? null,
     contaGratificacaoId: cargo.contaGratificacaoId,
-    periodoInicio: cargo.periodoInicio.toISOString(),
+    periodoInicio: cargo.periodoInicio?.toISOString() ?? null,
     salarioReal: cargo.salarioReal?.toString() ?? null,
     salarioTotal: cargo.salarioTotal.toString(),
     custoTotalCargo: cargo.custoTotalCargo.toString(),
@@ -279,6 +283,37 @@ export async function cadastrarCargo(input: z.input<typeof CargoDadosSchema>): P
       funcaoGratificada: entrada.data.funcaoGratificada ?? null,
     });
     revalidatePath('/', 'layout'); // invalida toda a árvore de /propostas (não há layout.tsx aninhado ali) — dropdown de Cargo em Empregados, etc.
+    return { sucesso: true, dados: serializarCargo(cargo) };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+const CargoRascunhoSchema = z.object({
+  propostaId: z.string().min(1),
+  nomeCargoMercado: z.string().trim().min(1),
+});
+
+/**
+ * ADR-042 — Cargo "Rascunho": cadastro só com o nome, acionado a partir da aba Tabela
+ * Salarial (US-131/US-133). Fica com `status: 'RASCUNHO'` até ser completado na aba
+ * Cargos (Vínculo Funcional, Conta, Salário) via `editarCargo`.
+ */
+export async function cadastrarCargoRascunho(
+  input: z.input<typeof CargoRascunhoSchema>,
+): Promise<ActionResultComDados<CargoResultado>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const entrada = CargoRascunhoSchema.safeParse(input);
+  if (!entrada.success) return { sucesso: false, mensagem: 'Informe o nome do Cargo.' };
+
+  const temPermissao = await usuarioTemFuncionalidade(prisma, contexto.tenantId, contexto.usuarioId, 'propostas.gerenciar-estrutura');
+  if (!temPermissao) return { sucesso: false, mensagem: 'Perfil sem permissão para gerenciar Cargos.' };
+
+  try {
+    const cargo = await getCadastrarCargoRascunhoUseCase().execute({ ...contexto, ...entrada.data });
+    revalidatePath('/', 'layout');
     return { sucesso: true, dados: serializarCargo(cargo) };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };

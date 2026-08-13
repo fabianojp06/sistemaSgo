@@ -166,21 +166,12 @@ export function CargoPanel({
   contasAnaliticas,
   cargosIniciais,
   readOnly,
-  modoCriacaoApenas,
-  onCargoCriado,
 }: {
   propostaId: string;
   unidadesAnaliticas: UnidadeFuncionalResultado[];
   contasAnaliticas: { id: string; label: string }[];
   cargosIniciais: CargoComAlocacoes[];
   readOnly?: boolean;
-  /**
-   * Pedido do usuário (2026-08-13) — cadastro completo de Cargo embutido na aba Tabela
-   * Salarial. Reaproveita 100% do formulário de Cargo (identificação, rateio, benefícios)
-   * escondendo o KPI/lista já mostrados na aba "Cargos", para não duplicar código.
-   */
-  modoCriacaoApenas?: boolean;
-  onCargoCriado?: (cargo: CargoComAlocacoes) => void;
 }) {
   const [cargos, setCargos] = useState(cargosIniciais);
   const [cargoEmEdicaoId, setCargoEmEdicaoId] = useState<string | null>(null);
@@ -213,15 +204,17 @@ export function CargoPanel({
     setCargoEmEdicaoId(cargo.id);
     setDados({
       nomeCargoMercado: cargo.nomeCargoMercado,
-      contaId: cargo.contaId,
-      fonteAtiva: cargo.fonteAtiva,
-      salarioMercadoMinimo: cargo.salarioMercadoMinimo,
-      salarioMercadoMaximo: cargo.salarioMercadoMaximo,
+      // ADR-042 — Cargo Rascunho tem esses campos null; formulário abre em branco/default
+      // para o usuário completar o cadastro pela primeira vez.
+      contaId: cargo.contaId ?? '',
+      fonteAtiva: cargo.fonteAtiva ?? 'MERCADO_MINIMO',
+      salarioMercadoMinimo: cargo.salarioMercadoMinimo ?? '',
+      salarioMercadoMaximo: cargo.salarioMercadoMaximo ?? '',
       origemSalarioMinimo: cargo.origemSalarioMinimo,
       origemSalarioMaximo: cargo.origemSalarioMaximo,
       funcaoGratificada: cargo.funcaoGratificada ?? '',
       contaGratificacaoId: cargo.contaGratificacaoId ?? '',
-      periodoInicio: cargo.periodoInicio.slice(0, 10),
+      periodoInicio: cargo.periodoInicio?.slice(0, 10) ?? '',
       encargosSociaisPct: cargo.encargosSociaisPct,
       contaEncargosSociaisId: cargo.contaEncargosSociaisId ?? '',
       vaAtivo: cargo.vaAtivo,
@@ -327,7 +320,6 @@ export function CargoPanel({
         return existe ? atual.map((c) => (c.id === cargoSalvo.id ? cargoSalvo : c)) : [...atual, cargoSalvo];
       });
       iniciarEdicao(null);
-      onCargoCriado?.(cargoSalvo);
     });
   }
 
@@ -442,8 +434,6 @@ export function CargoPanel({
 
   return (
     <div className="flex flex-col gap-6 rounded-xl bg-slate-50 p-4 md:p-6">
-      {!modoCriacaoApenas && (
-        <>
       <ResumoExecutivo totalCargos={cargos.length} custoTotalMensal={custoTotalMensal} salarioTotalMensal={salarioTotalMensal} />
 
       <div className="flex flex-col gap-3">
@@ -508,7 +498,17 @@ export function CargoPanel({
                     </td>
                   )}
                   <td className="px-4 py-2.5">{c.codigoCargo}</td>
-                  <td className="px-4 py-2.5">{c.nomeCargoMercado}</td>
+                  <td className="px-4 py-2.5">
+                    {c.nomeCargoMercado}
+                    {c.status === 'RASCUNHO' && (
+                      <span
+                        className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700"
+                        title="Cadastrado só com o nome (Tabela Salarial) — complete Vínculo Funcional, Conta e Salário aqui."
+                      >
+                        Rascunho
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-2.5 tabular-nums">{formatarMoeda(c.salarioTotal)}</td>
                   <td className="px-4 py-2.5 tabular-nums">{formatarMoeda(c.custoTotalCargo)}</td>
                   <td className="px-4 py-2.5 text-right">
@@ -552,8 +552,6 @@ export function CargoPanel({
 
         {erroExclusao && <p className="text-xs text-red-600">{erroExclusao}</p>}
       </div>
-        </>
-      )}
 
       {!readOnly && (
         <div className="flex flex-col gap-4 rounded-lg border border-gray-100 bg-white p-4 shadow-sm md:p-5">
