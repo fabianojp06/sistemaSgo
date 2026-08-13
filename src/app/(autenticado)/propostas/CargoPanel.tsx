@@ -9,6 +9,7 @@ import {
   type CargoResultado,
   type UnidadeFuncionalResultado,
 } from './estrutura-actions';
+import { TabelaSalarialModal } from './TabelaSalarialModal';
 
 type Alocacao = { unidadeFuncionalId: string; percentual: string };
 type CargoComAlocacoes = CargoResultado & { alocacoes: Alocacao[] };
@@ -172,6 +173,7 @@ export function CargoPanel({
 }) {
   const [cargos, setCargos] = useState(cargosIniciais);
   const [cargoEmEdicaoId, setCargoEmEdicaoId] = useState<string | null>(null);
+  const [tabelaSalarialAberta, setTabelaSalarialAberta] = useState(false);
   const [dados, setDados] = useState(dadosVazios());
   const [alocacoes, setAlocacoes] = useState<Alocacao[]>([]);
   const [erro, setErro] = useState<string | null>(null);
@@ -582,12 +584,24 @@ export function CargoPanel({
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">Salário Mercado Máximo</label>
-              <input
-                type="number"
-                value={dados.salarioMercadoMaximo}
-                onChange={(e) => setDados((d) => ({ ...d, salarioMercadoMaximo: e.target.value }))}
-                className="w-full rounded border px-2 py-1 text-sm"
-              />
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  value={dados.salarioMercadoMaximo}
+                  onChange={(e) => setDados((d) => ({ ...d, salarioMercadoMaximo: e.target.value }))}
+                  className="w-full rounded border px-2 py-1 text-sm"
+                />
+                {cargoEmEdicaoId && (
+                  <button
+                    type="button"
+                    onClick={() => setTabelaSalarialAberta(true)}
+                    className="whitespace-nowrap rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                    title="Consultar Tabela Salarial de mercado (US-131)"
+                  >
+                    Tabela Salarial
+                  </button>
+                )}
+              </div>
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">Função Gratificada (opcional)</label>
@@ -790,6 +804,14 @@ export function CargoPanel({
             {mensagemRessincronizacao && <p className="w-full text-xs text-gray-600">{mensagemRessincronizacao}</p>}
           </div>
         </div>
+      )}
+
+      {tabelaSalarialAberta && cargoEmEdicaoId && (
+        <TabelaSalarialModal
+          cargoId={cargoEmEdicaoId}
+          cargoNome={dados.nomeCargoMercado || 'Cargo'}
+          onFechar={() => setTabelaSalarialAberta(false)}
+        />
       )}
     </div>
   );

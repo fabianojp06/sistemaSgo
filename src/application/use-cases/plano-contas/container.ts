@@ -55,6 +55,13 @@ import { ListarAliquotasImpostoUseCase } from './ListarAliquotasImpostoUseCase';
 import { CadastrarAliquotaImpostoUseCase } from './CadastrarAliquotaImpostoUseCase';
 import { EditarAliquotaImpostoUseCase } from './EditarAliquotaImpostoUseCase';
 import { ExcluirAliquotaImpostoUseCase } from './ExcluirAliquotaImpostoUseCase';
+import { ListarSenioridadesUseCase } from './ListarSenioridadesUseCase';
+import { CadastrarSenioridadeUseCase } from './CadastrarSenioridadeUseCase';
+import { ExcluirSenioridadeUseCase } from './ExcluirSenioridadeUseCase';
+import { ListarTabelaSalarialUseCase } from './ListarTabelaSalarialUseCase';
+import { CadastrarTabelaSalarialUseCase } from './CadastrarTabelaSalarialUseCase';
+import { EditarTabelaSalarialUseCase } from './EditarTabelaSalarialUseCase';
+import { ExcluirTabelaSalarialUseCase } from './ExcluirTabelaSalarialUseCase';
 import { SimularReajusteUseCase } from './SimularReajusteUseCase';
 import { AplicarReajusteUseCase } from './AplicarReajusteUseCase';
 
@@ -277,4 +284,32 @@ export function getSimularReajusteUseCase(): SimularReajusteUseCase {
 
 export function getAplicarReajusteUseCase(): AplicarReajusteUseCase {
   return new AplicarReajusteUseCase(prisma);
+}
+
+export function getListarSenioridadesUseCase(): ListarSenioridadesUseCase {
+  return new ListarSenioridadesUseCase(prisma);
+}
+
+export function getCadastrarSenioridadeUseCase(): CadastrarSenioridadeUseCase {
+  return new CadastrarSenioridadeUseCase(prisma);
+}
+
+export function getExcluirSenioridadeUseCase(): ExcluirSenioridadeUseCase {
+  return new ExcluirSenioridadeUseCase(prisma);
+}
+
+export function getListarTabelaSalarialUseCase(): ListarTabelaSalarialUseCase {
+  return new ListarTabelaSalarialUseCase(prisma);
+}
+
+export function getCadastrarTabelaSalarialUseCase(): CadastrarTabelaSalarialUseCase {
+  return new CadastrarTabelaSalarialUseCase(prisma);
+}
+
+export function getEditarTabelaSalarialUseCase(): EditarTabelaSalarialUseCase {
+  return new EditarTabelaSalarialUseCase(prisma);
+}
+
+export function getExcluirTabelaSalarialUseCase(): ExcluirTabelaSalarialUseCase {
+  return new ExcluirTabelaSalarialUseCase(prisma);
 }

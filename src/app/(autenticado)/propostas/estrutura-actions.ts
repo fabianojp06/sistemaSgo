@@ -17,8 +17,16 @@ import {
   getRessincronizarSnapshotEmpregadosCargoUseCase,
   getExcluirCargoUseCase,
   getExcluirCargosEmLoteUseCase,
+  getListarSenioridadesUseCase,
+  getCadastrarSenioridadeUseCase,
+  getExcluirSenioridadeUseCase,
+  getListarTabelaSalarialUseCase,
+  getCadastrarTabelaSalarialUseCase,
+  getEditarTabelaSalarialUseCase,
+  getExcluirTabelaSalarialUseCase,
 } from '@/application/use-cases/plano-contas/container';
 import type { RessincronizacaoEmpregadoResultado } from '@/application/use-cases/plano-contas/RessincronizarSnapshotEmpregadosCargoUseCase';
+import { normalizarValorMonetario } from '@/lib/decimal/normalizarValorMonetario';
 
 type ActionResult = { sucesso: true } | { sucesso: false; mensagem: string };
 type ActionResultComDados<T> = { sucesso: true; dados: T } | { sucesso: false; mensagem: string };
@@ -510,4 +518,174 @@ export async function salvarCargoCompleto(input: z.input<typeof SalvarCargoCompl
   }
 
   return { sucesso: true, dados: respostaBeneficios.dados };
+}
+
+// US-131 — UC03.19, seção 5. Tabela Salarial de mercado + catálogo de Senioridade.
+// Mesma Funcionalidade CONTEXTUAL 'propostas.gerenciar-estrutura' de US-116/117 — a Tabela
+// Salarial é acessada a partir da tela de Cargos, sem rota/link próprio no menu.
+
+export type SenioridadeResultado = { id: string; descricao: string; isPadrao: boolean };
+
+/** US-131, seção 5.1 — lista o catálogo de Senioridade (garante Jr/Pl/Sr antes de listar). */
+export async function listarSenioridades(): Promise<ActionResultComDados<SenioridadeResultado[]>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  try {
+    const registros = await getListarSenioridadesUseCase().execute({ tenantId: contexto.tenantId });
+    return { sucesso: true, dados: registros.map((r) => ({ id: r.id, descricao: r.descricao, isPadrao: r.isPadrao })) };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+const CadastrarSenioridadeSchema = z.object({ descricao: z.string().trim().min(1).max(50) });
+
+/** US-131, Cenário 3 — cadastra Senioridade customizada. */
+export async function cadastrarSenioridade(input: { descricao: string }): Promise<ActionResultComDados<SenioridadeResultado>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const entrada = CadastrarSenioridadeSchema.safeParse(input);
+  if (!entrada.success) return { sucesso: false, mensagem: 'Descrição da Senioridade é obrigatória.' };
+
+  const temPermissao = await usuarioTemFuncionalidade(prisma, contexto.tenantId, contexto.usuarioId, 'propostas.gerenciar-estrutura');
+  if (!temPermissao) return { sucesso: false, mensagem: 'Perfil sem permissão para gerenciar a Estrutura Funcional.' };
+
+  try {
+    const criada = await getCadastrarSenioridadeUseCase().execute({ ...contexto, descricao: entrada.data.descricao });
+    revalidatePath('/propostas');
+    return { sucesso: true, dados: { id: criada.id, descricao: criada.descricao, isPadrao: criada.isPadrao } };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+/** US-131, Cenário 4 [TRAVA O ERRO] — exclui Senioridade customizada sem registro vinculado. */
+export async function excluirSenioridade(senioridadeId: string): Promise<ActionResult> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const temPermissao = await usuarioTemFuncionalidade(prisma, contexto.tenantId, contexto.usuarioId, 'propostas.gerenciar-estrutura');
+  if (!temPermissao) return { sucesso: false, mensagem: 'Perfil sem permissão para gerenciar a Estrutura Funcional.' };
+
+  try {
+    await getExcluirSenioridadeUseCase().execute({ ...contexto, senioridadeId });
+    revalidatePath('/propostas');
+    return { sucesso: true };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+export type TabelaSalarialResultado = {
+  id: string;
+  cargoId: string;
+  senioridadeId: string;
+  senioridadeDescricao: string;
+  salarioMinimo: string;
+  salarioMaximo: string;
+};
+
+/** US-131, Cenário 5 / seção 5.2 — lista as faixas de mercado do Cargo em contexto. */
+export async function listarTabelaSalarial(cargoId: string): Promise<ActionResultComDados<TabelaSalarialResultado[]>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  try {
+    const registros = await getListarTabelaSalarialUseCase().execute({ tenantId: contexto.tenantId, cargoId });
+    return {
+      sucesso: true,
+      dados: registros.map((r) => ({
+        id: r.id,
+        cargoId: r.cargoId,
+        senioridadeId: r.senioridadeId,
+        senioridadeDescricao: r.senioridade.descricao,
+        salarioMinimo: r.salarioMinimo.toString(),
+        salarioMaximo: r.salarioMaximo.toString(),
+      })),
+    };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+const TabelaSalarialFormSchema = z.object({
+  cargoId: z.string().min(1),
+  senioridadeId: z.string().min(1),
+  salarioMinimo: z.string().min(1),
+  salarioMaximo: z.string().min(1),
+});
+
+type TabelaSalarialFormInput = { cargoId: string; senioridadeId: string; salarioMinimo: string; salarioMaximo: string };
+
+/** US-131, Cenário 1/2 [TRAVA O ERRO] — cadastra faixa de mercado por Cargo + Senioridade. */
+export async function cadastrarTabelaSalarial(input: TabelaSalarialFormInput): Promise<ActionResult> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const entrada = TabelaSalarialFormSchema.safeParse(input);
+  if (!entrada.success) return { sucesso: false, mensagem: 'Campos obrigatórios não preenchidos.' };
+
+  const temPermissao = await usuarioTemFuncionalidade(prisma, contexto.tenantId, contexto.usuarioId, 'propostas.gerenciar-estrutura');
+  if (!temPermissao) return { sucesso: false, mensagem: 'Perfil sem permissão para gerenciar a Estrutura Funcional.' };
+
+  try {
+    await getCadastrarTabelaSalarialUseCase().execute({
+      ...contexto,
+      cargoId: entrada.data.cargoId,
+      senioridadeId: entrada.data.senioridadeId,
+      salarioMinimo: normalizarValorMonetario(entrada.data.salarioMinimo),
+      salarioMaximo: normalizarValorMonetario(entrada.data.salarioMaximo),
+    });
+    revalidatePath('/propostas');
+    return { sucesso: true };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+/** US-131 (REQ_TAB_001) [TRAVA O ERRO] — edita Mín/Máx de uma faixa já cadastrada. */
+export async function editarTabelaSalarial(
+  tabelaSalarialId: string,
+  input: { salarioMinimo: string; salarioMaximo: string },
+): Promise<ActionResult> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const entrada = z.object({ salarioMinimo: z.string().min(1), salarioMaximo: z.string().min(1) }).safeParse(input);
+  if (!entrada.success) return { sucesso: false, mensagem: 'Campos obrigatórios não preenchidos.' };
+
+  const temPermissao = await usuarioTemFuncionalidade(prisma, contexto.tenantId, contexto.usuarioId, 'propostas.gerenciar-estrutura');
+  if (!temPermissao) return { sucesso: false, mensagem: 'Perfil sem permissão para gerenciar a Estrutura Funcional.' };
+
+  try {
+    await getEditarTabelaSalarialUseCase().execute({
+      ...contexto,
+      tabelaSalarialId,
+      salarioMinimo: normalizarValorMonetario(entrada.data.salarioMinimo),
+      salarioMaximo: normalizarValorMonetario(entrada.data.salarioMaximo),
+    });
+    revalidatePath('/propostas');
+    return { sucesso: true };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+/** US-131 (REQ_TAB_001) — exclui uma faixa de mercado. */
+export async function excluirTabelaSalarial(tabelaSalarialId: string): Promise<ActionResult> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const temPermissao = await usuarioTemFuncionalidade(prisma, contexto.tenantId, contexto.usuarioId, 'propostas.gerenciar-estrutura');
+  if (!temPermissao) return { sucesso: false, mensagem: 'Perfil sem permissão para gerenciar a Estrutura Funcional.' };
+
+  try {
+    await getExcluirTabelaSalarialUseCase().execute({ ...contexto, tabelaSalarialId });
+    revalidatePath('/propostas');
+    return { sucesso: true };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
 }

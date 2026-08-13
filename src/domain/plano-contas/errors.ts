@@ -782,3 +782,52 @@ export class ImportacaoEstruturaBloqueadaPorCargoVinculadoError extends Error {
     this.name = 'ImportacaoEstruturaBloqueadaPorCargoVinculadoError';
   }
 }
+
+// US-131 — UC03.19, seção 5. Tabela Salarial de mercado (por Cargo + Senioridade) e
+// catálogo de Senioridade.
+
+// RN_TAB_02 [TRAVA O ERRO] — Salário Mínimo deve ser estritamente menor que o Máximo.
+export class SalarioMinimoMaiorIgualMaximoError extends Error {
+  constructor() {
+    super('Salário Mínimo deve ser menor que o Salário Máximo.');
+    this.name = 'SalarioMinimoMaiorIgualMaximoError';
+  }
+}
+
+// RN_TAB_01 [TRAVA O ERRO] — Jr/Pl/Sr nascem protegidas (isPadrao=true), nunca excluíveis.
+export class SenioridadePadraoNaoExcluivelError extends Error {
+  constructor() {
+    super('Esta Senioridade é um nível padrão do sistema e não pode ser excluída.');
+    this.name = 'SenioridadePadraoNaoExcluivelError';
+  }
+}
+
+// RN_TAB_01 [TRAVA O ERRO] — Senioridade customizada só é excluível sem registro vinculado.
+export class SenioridadeReferenciadaError extends Error {
+  constructor() {
+    super('Esta Senioridade possui registros na Tabela Salarial e não pode ser excluída.');
+    this.name = 'SenioridadeReferenciadaError';
+  }
+}
+
+// Nome de Senioridade único por tenant (case-insensitive).
+export class SenioridadeNomeDuplicadoError extends Error {
+  constructor(descricao: string) {
+    super(`Já existe uma Senioridade cadastrada com o nome "${descricao}". Utilize um nome único.`);
+    this.name = 'SenioridadeNomeDuplicadoError';
+  }
+}
+
+export class SenioridadeNaoEncontradaError extends Error {
+  constructor() {
+    super('Senioridade não encontrada.');
+    this.name = 'SenioridadeNaoEncontradaError';
+  }
+}
+
+export class TabelaSalarialNaoEncontradaError extends Error {
+  constructor() {
+    super('Registro da Tabela Salarial não encontrado.');
+    this.name = 'TabelaSalarialNaoEncontradaError';
+  }
+}
