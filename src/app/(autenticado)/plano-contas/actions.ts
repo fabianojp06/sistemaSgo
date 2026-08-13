@@ -326,14 +326,10 @@ export async function criarVersaoProposta(
 
 const FonteAtivaSalarioSchema = z.enum(['MERCADO_MINIMO', 'MERCADO_MAXIMO', 'RUBI']);
 
-const AlocacaoPercentualSchema = z.object({
-  unidadeFuncionalId: z.string().min(1),
-  percentual: z.number().positive(),
-});
-
 const CadastrarCargoSchema = z.object({
   propostaId: z.string().min(1),
-  alocacoes: z.array(AlocacaoPercentualSchema).min(1),
+  /** ADR-043 — vínculo 1:1 com Unidade Funcional Analítica (RN_CAR_08, custo integral ao setor). */
+  unidadeFuncionalId: z.string().min(1),
   contaId: z.string().min(1),
   nomeCargoMercado: z.string().trim().min(1),
   funcaoGratificada: z.number().nonnegative().nullable().optional(),
@@ -350,10 +346,10 @@ export type CargoResultado = {
   salarioTotal: string;
 };
 
-/** US-107, Cenários 1-3/5 — Cadastrar Cargo, com rateio percentual (ADR-026, RN_EST_03) entre nós Analíticos da Estrutura Funcional. */
+/** US-107, Cenários 1-3/5 — Cadastrar Cargo, com vínculo 1:1 (ADR-043, RN_CAR_08) a um nó Analítico da Estrutura Funcional. */
 export async function cadastrarCargo(input: {
   propostaId: string;
-  alocacoes: { unidadeFuncionalId: string; percentual: number }[];
+  unidadeFuncionalId: string;
   contaId: string;
   nomeCargoMercado: string;
   funcaoGratificada?: number | null;
@@ -392,7 +388,7 @@ export async function cadastrarCargo(input: {
 
 const EditarCargoSchema = z.object({
   cargoId: z.string().min(1),
-  alocacoes: z.array(AlocacaoPercentualSchema).min(1),
+  unidadeFuncionalId: z.string().min(1),
   contaId: z.string().min(1),
   nomeCargoMercado: z.string().trim().min(1),
   funcaoGratificada: z.number().nonnegative().nullable().optional(),
@@ -405,11 +401,11 @@ const EditarCargoSchema = z.object({
 /**
  * US-107, Cenário 4 — Editar Cargo. Qualquer `salarioReal` enviado pelo
  * client é ignorado pelo use case (campo soberano do provider Rubi).
- * ADR-026 — `alocacoes` substitui integralmente o rateio anterior.
+ * ADR-043 — `unidadeFuncionalId` substitui integralmente o vínculo anterior.
  */
 export async function editarCargo(input: {
   cargoId: string;
-  alocacoes: { unidadeFuncionalId: string; percentual: number }[];
+  unidadeFuncionalId: string;
   contaId: string;
   nomeCargoMercado: string;
   funcaoGratificada?: number | null;

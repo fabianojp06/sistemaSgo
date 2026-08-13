@@ -152,14 +152,10 @@ export async function importarEstruturaOrganizacional(input: {
   }
 }
 
-const AlocacaoSchema = z.object({
-  unidadeFuncionalId: z.string().min(1),
-  percentual: z.coerce.number(),
-});
-
 const CargoDadosSchema = z.object({
   propostaId: z.string().min(1),
-  alocacoes: z.array(AlocacaoSchema).min(1),
+  /** ADR-043 — vínculo 1:1 com Unidade Funcional Analítica (RN_CAR_08, custo integral ao setor). */
+  unidadeFuncionalId: z.string().min(1),
   contaId: z.string().min(1),
   nomeCargoMercado: z.string().trim().min(1),
   funcaoGratificada: z.coerce.number().nullable().optional(),
@@ -178,8 +174,10 @@ export type CargoResultado = {
   id: string;
   codigoCargo: string;
   nomeCargoMercado: string;
-  // ADR-042 — Cargo Rascunho (status: 'RASCUNHO') ainda não tem esses 5 campos definidos.
+  // ADR-042 — Cargo Rascunho (status: 'RASCUNHO') ainda não tem esses campos definidos.
   status: 'RASCUNHO' | 'COMPLETO';
+  /** ADR-043 — vínculo 1:1 (RN_CAR_08); null só em Cargo Rascunho (ADR-042). */
+  unidadeFuncionalId: string | null;
   contaId: string | null;
   fonteAtiva: 'MERCADO_MINIMO' | 'MERCADO_MAXIMO' | 'RUBI' | null;
   salarioMercadoMinimo: string | null;
@@ -224,6 +222,7 @@ function serializarCargo(cargo: Cargo): CargoResultado {
     codigoCargo: cargo.codigoCargo,
     nomeCargoMercado: cargo.nomeCargoMercado,
     status: cargo.status,
+    unidadeFuncionalId: cargo.unidadeFuncionalId,
     contaId: cargo.contaId,
     fonteAtiva: cargo.fonteAtiva,
     salarioMercadoMinimo: cargo.salarioMercadoMinimo?.toString() ?? null,

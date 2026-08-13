@@ -11,8 +11,7 @@ import {
 } from './estrutura-actions';
 import { TabelaSalarialModal } from './TabelaSalarialModal';
 
-type Alocacao = { unidadeFuncionalId: string; percentual: string };
-export type CargoComAlocacoes = CargoResultado & { alocacoes: Alocacao[] };
+export type CargoComVinculo = CargoResultado;
 
 const FONTES = [
   { value: 'MERCADO_MINIMO', label: 'Mercado Mínimo' },
@@ -117,6 +116,7 @@ function ContaComponenteSelect({
 function dadosVazios() {
   return {
     nomeCargoMercado: '',
+    unidadeFuncionalId: '',
     contaId: '',
     fonteAtiva: 'MERCADO_MINIMO' as (typeof FONTES)[number]['value'],
     salarioMercadoMinimo: '',
@@ -170,14 +170,13 @@ export function CargoPanel({
   propostaId: string;
   unidadesAnaliticas: UnidadeFuncionalResultado[];
   contasAnaliticas: { id: string; label: string }[];
-  cargosIniciais: CargoComAlocacoes[];
+  cargosIniciais: CargoComVinculo[];
   readOnly?: boolean;
 }) {
   const [cargos, setCargos] = useState(cargosIniciais);
   const [cargoEmEdicaoId, setCargoEmEdicaoId] = useState<string | null>(null);
   const [tabelaSalarialAberta, setTabelaSalarialAberta] = useState(false);
   const [dados, setDados] = useState(dadosVazios());
-  const [alocacoes, setAlocacoes] = useState<Alocacao[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [ressincronizando, setRessincronizando] = useState(false);
@@ -189,16 +188,14 @@ export function CargoPanel({
   const [excluindo, setExcluindo] = useState(false);
   const [erroExclusao, setErroExclusao] = useState<string | null>(null);
 
-  const somaPercentual = alocacoes.reduce((soma, a) => soma + (Number(a.percentual) || 0), 0);
   const custoTotalMensal = cargos.reduce((soma, c) => soma + Number(c.custoTotalCargo), 0);
   const salarioTotalMensal = cargos.reduce((soma, c) => soma + Number(c.salarioTotal), 0);
 
-  function iniciarEdicao(cargo: CargoComAlocacoes | null) {
+  function iniciarEdicao(cargo: CargoComVinculo | null) {
     setErro(null);
     if (!cargo) {
       setCargoEmEdicaoId(null);
       setDados(dadosVazios());
-      setAlocacoes([]);
       return;
     }
     setCargoEmEdicaoId(cargo.id);
@@ -206,6 +203,7 @@ export function CargoPanel({
       nomeCargoMercado: cargo.nomeCargoMercado,
       // ADR-042 — Cargo Rascunho tem esses campos null; formulário abre em branco/default
       // para o usuário completar o cadastro pela primeira vez.
+      unidadeFuncionalId: cargo.unidadeFuncionalId ?? '',
       contaId: cargo.contaId ?? '',
       fonteAtiva: cargo.fonteAtiva ?? 'MERCADO_MINIMO',
       salarioMercadoMinimo: cargo.salarioMercadoMinimo ?? '',
@@ -240,20 +238,6 @@ export function CargoPanel({
       transporteValorUnitario: cargo.transporteValorUnitario,
       contaValeTransporteId: cargo.contaValeTransporteId ?? '',
     });
-    setAlocacoes(cargo.alocacoes);
-  }
-
-  function adicionarAlocacao() {
-    if (unidadesAnaliticas.length === 0) return;
-    setAlocacoes((atual) => [...atual, { unidadeFuncionalId: unidadesAnaliticas[0].id, percentual: '' }]);
-  }
-
-  function atualizarAlocacao(index: number, campo: keyof Alocacao, valor: string) {
-    setAlocacoes((atual) => atual.map((a, i) => (i === index ? { ...a, [campo]: valor } : a)));
-  }
-
-  function removerAlocacao(index: number) {
-    setAlocacoes((atual) => atual.filter((_, i) => i !== index));
   }
 
   function salvar() {
@@ -261,7 +245,7 @@ export function CargoPanel({
     const payload = {
       propostaId,
       cargoId: cargoEmEdicaoId ?? undefined,
-      alocacoes: alocacoes.map((a) => ({ unidadeFuncionalId: a.unidadeFuncionalId, percentual: Number(a.percentual) })),
+      unidadeFuncionalId: dados.unidadeFuncionalId,
       contaId: dados.contaId,
       nomeCargoMercado: dados.nomeCargoMercado,
       funcaoGratificada: dados.funcaoGratificada === '' ? null : Number(dados.funcaoGratificada),
@@ -305,7 +289,7 @@ export function CargoPanel({
         setErro(resposta.mensagem);
         // Sucesso parcial (ADR-028): Cargo foi salvo mesmo com Benefícios falhando — reflete na lista.
         if (resposta.cargoSalvo) {
-          const cargoSalvo: CargoComAlocacoes = { ...resposta.cargoSalvo, alocacoes };
+          const cargoSalvo: CargoComVinculo = resposta.cargoSalvo;
           setCargos((atual) => {
             const existe = atual.some((c) => c.id === cargoSalvo.id);
             return existe ? atual.map((c) => (c.id === cargoSalvo.id ? cargoSalvo : c)) : [...atual, cargoSalvo];
@@ -314,7 +298,7 @@ export function CargoPanel({
         return;
       }
 
-      const cargoSalvo: CargoComAlocacoes = { ...resposta.dados, alocacoes };
+      const cargoSalvo: CargoComVinculo = resposta.dados;
       setCargos((atual) => {
         const existe = atual.some((c) => c.id === cargoSalvo.id);
         return existe ? atual.map((c) => (c.id === cargoSalvo.id ? cargoSalvo : c)) : [...atual, cargoSalvo];
@@ -425,12 +409,11 @@ export function CargoPanel({
 
   const podeSalvar =
     dados.nomeCargoMercado.trim().length > 0 &&
+    dados.unidadeFuncionalId !== '' &&
     dados.contaId !== '' &&
     dados.periodoInicio !== '' &&
     dados.salarioMercadoMinimo !== '' &&
-    dados.salarioMercadoMaximo !== '' &&
-    alocacoes.length > 0 &&
-    Math.abs(somaPercentual - 100) < 0.01;
+    dados.salarioMercadoMaximo !== '';
 
   return (
     <div className="flex flex-col gap-6 rounded-xl bg-slate-50 p-4 md:p-6">
@@ -660,43 +643,19 @@ export function CargoPanel({
           </div>
 
           <div className="flex flex-col gap-2 border-t pt-3">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-medium text-gray-600">
-                Rateio Funcional (soma deve ser 100% — atual: {somaPercentual.toFixed(2)}%)
-              </p>
-              <button type="button" onClick={adicionarAlocacao} className="text-xs text-blue-700 hover:underline">
-                + Adicionar unidade
-              </button>
-            </div>
-            {alocacoes.map((a, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <select
-                  value={a.unidadeFuncionalId}
-                  onChange={(e) => atualizarAlocacao(i, 'unidadeFuncionalId', e.target.value)}
-                  className="flex-1 rounded border px-2 py-1 text-sm"
-                >
-                  {unidadesAnaliticas.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.nome}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="number"
-                  value={a.percentual}
-                  onChange={(e) => atualizarAlocacao(i, 'percentual', e.target.value)}
-                  placeholder="%"
-                  className="w-24 rounded border px-2 py-1 text-sm"
-                />
-                <button
-                  type="button"
-                  onClick={() => removerAlocacao(i)}
-                  className="rounded-md border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50"
-                >
-                  Remover
-                </button>
-              </div>
-            ))}
+            <p className="text-xs font-medium text-gray-600">Vínculo Funcional (RN_CAR_08 — custo integral ao setor selecionado)</p>
+            <select
+              value={dados.unidadeFuncionalId}
+              onChange={(e) => setDados((d) => ({ ...d, unidadeFuncionalId: e.target.value }))}
+              className="w-full rounded border px-2 py-1 text-sm md:w-1/3"
+            >
+              <option value="">Selecione a Unidade Funcional...</option>
+              {unidadesAnaliticas.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.nome}
+                </option>
+              ))}
+            </select>
             {unidadesAnaliticas.length === 0 && (
               <p className="text-xs text-gray-400">Cadastre ao menos uma unidade funcional Analítica no Organograma antes de vincular um Cargo.</p>
             )}

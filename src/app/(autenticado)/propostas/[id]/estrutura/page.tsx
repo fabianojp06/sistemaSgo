@@ -35,7 +35,6 @@ export default async function EstruturaFuncionalPage({ params }: { params: Promi
     prisma.cargo.findMany({
       where: { tenantId, propostaId: id, ativo: true },
       orderBy: { codigoCargo: 'asc' },
-      include: { alocacoes: { select: { unidadeFuncionalId: true, percentual: true } } },
     }),
     prisma.contaContabil.findMany({
       where: { tenantId, isAnalitica: true },
@@ -56,11 +55,12 @@ export default async function EstruturaFuncionalPage({ params }: { params: Promi
     idPai: u.idPai,
   }));
 
-  const cargos: (CargoResultado & { alocacoes: { unidadeFuncionalId: string; percentual: string }[] })[] = cargosDb.map((c) => ({
+  const cargos: CargoResultado[] = cargosDb.map((c) => ({
     id: c.id,
     codigoCargo: c.codigoCargo,
     nomeCargoMercado: c.nomeCargoMercado,
     status: c.status,
+    unidadeFuncionalId: c.unidadeFuncionalId,
     contaId: c.contaId,
     fonteAtiva: c.fonteAtiva,
     salarioMercadoMinimo: c.salarioMercadoMinimo?.toString() ?? null,
@@ -97,7 +97,6 @@ export default async function EstruturaFuncionalPage({ params }: { params: Promi
     transporteAtivo: c.transporteAtivo,
     transporteValorUnitario: c.transporteValorUnitario.toString(),
     contaValeTransporteId: c.contaValeTransporteId,
-    alocacoes: c.alocacoes.map((a) => ({ unidadeFuncionalId: a.unidadeFuncionalId, percentual: a.percentual.toString() })),
   }));
 
   const contasAnaliticas = contasDb.map((c) => ({ id: c.id, label: `${c.codigoErp} — ${c.nomeConta}` }));
