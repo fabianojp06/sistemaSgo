@@ -26,6 +26,7 @@ import {
   getExcluirTabelaSalarialUseCase,
 } from '@/application/use-cases/plano-contas/container';
 import type { RessincronizacaoEmpregadoResultado } from '@/application/use-cases/plano-contas/RessincronizarSnapshotEmpregadosCargoUseCase';
+import type { RegistroTabelaSalarial } from '@/application/use-cases/plano-contas/ListarTabelaSalarialUseCase';
 import { normalizarValorMonetario } from '@/lib/decimal/normalizarValorMonetario';
 
 type ActionResult = { sucesso: true } | { sucesso: false; mensagem: string };
@@ -165,6 +166,10 @@ const CargoDadosSchema = z.object({
   periodoInicio: z.coerce.date(),
   salarioMercadoMinimo: z.coerce.number(),
   salarioMercadoMaximo: z.coerce.number(),
+  // US-133, RN_TAB_04/05 — omitido = preserva a origem já persistida (só a UI sabe se o
+  // usuário editou manualmente desde o último carregamento).
+  origemSalarioMinimo: z.enum(['TABELA_SALARIAL', 'MANUAL']).optional(),
+  origemSalarioMaximo: z.enum(['TABELA_SALARIAL', 'MANUAL']).optional(),
   fonteAtiva: z.enum(['MERCADO_MINIMO', 'MERCADO_MAXIMO', 'RUBI']),
 });
 
@@ -176,6 +181,8 @@ export type CargoResultado = {
   fonteAtiva: 'MERCADO_MINIMO' | 'MERCADO_MAXIMO' | 'RUBI';
   salarioMercadoMinimo: string;
   salarioMercadoMaximo: string;
+  origemSalarioMinimo: 'TABELA_SALARIAL' | 'MANUAL';
+  origemSalarioMaximo: 'TABELA_SALARIAL' | 'MANUAL';
   funcaoGratificada: string | null;
   contaGratificacaoId: string | null;
   periodoInicio: string;
@@ -217,6 +224,8 @@ function serializarCargo(cargo: Cargo): CargoResultado {
     fonteAtiva: cargo.fonteAtiva,
     salarioMercadoMinimo: cargo.salarioMercadoMinimo.toString(),
     salarioMercadoMaximo: cargo.salarioMercadoMaximo.toString(),
+    origemSalarioMinimo: cargo.origemSalarioMinimo,
+    origemSalarioMaximo: cargo.origemSalarioMaximo,
     funcaoGratificada: cargo.funcaoGratificada?.toString() ?? null,
     contaGratificacaoId: cargo.contaGratificacaoId,
     periodoInicio: cargo.periodoInicio.toISOString(),
@@ -581,6 +590,8 @@ export async function excluirSenioridade(senioridadeId: string): Promise<ActionR
 export type TabelaSalarialResultado = {
   id: string;
   cargoId: string;
+  cargoNome: string;
+  cargoCodigo: string;
   senioridadeId: string;
   senioridadeDescricao: string;
   salarioMinimo: string;
@@ -594,20 +605,41 @@ export async function listarTabelaSalarial(cargoId: string): Promise<ActionResul
 
   try {
     const registros = await getListarTabelaSalarialUseCase().execute({ tenantId: contexto.tenantId, cargoId });
-    return {
-      sucesso: true,
-      dados: registros.map((r) => ({
-        id: r.id,
-        cargoId: r.cargoId,
-        senioridadeId: r.senioridadeId,
-        senioridadeDescricao: r.senioridade.descricao,
-        salarioMinimo: r.salarioMinimo.toString(),
-        salarioMaximo: r.salarioMaximo.toString(),
-      })),
-    };
+    return { sucesso: true, dados: registros.map(serializarTabelaSalarial) };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
   }
+}
+
+/**
+ * US-131 (melhoria de visualização, pedido do usuário em 2026-08-13) — tela própria da
+ * Tabela Salarial, sem escopo de Cargo: lista TODOS os registros do tenant, com filtro por
+ * Cargo aplicado no client. Mesma Funcionalidade de leitura NAVEGAVEL 'tabela-salarial.visualizar';
+ * mutações continuam sob 'propostas.gerenciar-estrutura' (mesmo domínio de dado do Cargo).
+ */
+export async function listarTodaTabelaSalarial(): Promise<ActionResultComDados<TabelaSalarialResultado[]>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  try {
+    const registros = await getListarTabelaSalarialUseCase().execute({ tenantId: contexto.tenantId });
+    return { sucesso: true, dados: registros.map(serializarTabelaSalarial) };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+function serializarTabelaSalarial(r: RegistroTabelaSalarial): TabelaSalarialResultado {
+  return {
+    id: r.id,
+    cargoId: r.cargoId,
+    cargoNome: r.cargo.nomeCargoMercado,
+    cargoCodigo: r.cargo.codigoCargo,
+    senioridadeId: r.senioridadeId,
+    senioridadeDescricao: r.senioridade.descricao,
+    salarioMinimo: r.salarioMinimo.toString(),
+    salarioMaximo: r.salarioMaximo.toString(),
+  };
 }
 
 const TabelaSalarialFormSchema = z.object({

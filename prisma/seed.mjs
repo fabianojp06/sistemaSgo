@@ -151,6 +151,16 @@ async function seedModuloPlanoContas() {
     update: {},
     create: { moduloId: modulo.id, chave: 'aliquotas-impostos.excluir', nome: 'Excluir Alíquota de Imposto', tipo: 'CONTEXTUAL' },
   });
+
+  // US-131 (2026-08-13, pedido do usuário) — tela própria da Tabela Salarial de mercado
+  // (antes só um modal dentro de Cargos). NAVEGAVEL: ganha link próprio no menu de Cadastros,
+  // rota /tabela-salarial. Mutações continuam sob 'propostas.gerenciar-estrutura' (mesmo
+  // domínio de dado do Cargo) — sem Funcionalidade CONTEXTUAL nova para elas.
+  await prisma.funcionalidade.upsert({
+    where: { moduloId_chave: { moduloId: modulo.id, chave: 'tabela-salarial.visualizar' } },
+    update: {},
+    create: { moduloId: modulo.id, chave: 'tabela-salarial.visualizar', nome: 'Visualizar Tabela Salarial' },
+  });
 }
 
 // [EP48/26] Módulo Orçamentário — item 4 da estrutura de menu oficial (docs/

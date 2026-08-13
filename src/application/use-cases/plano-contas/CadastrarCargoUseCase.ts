@@ -1,4 +1,4 @@
-import type { Cargo, FonteAtivaSalario, PrismaClient } from '@prisma/client';
+import type { Cargo, FonteAtivaSalario, OrigemSalarioMercado, PrismaClient } from '@prisma/client';
 import {
   CamposObrigatoriosCargoError,
   CodigoCargoGeracaoFalhouError,
@@ -37,6 +37,9 @@ type CadastrarCargoInput = {
   periodoInicio: Date;
   salarioMercadoMinimo: number;
   salarioMercadoMaximo: number;
+  /** US-133, RN_TAB_04/05 — origem de cada campo (Tabela Salarial ou digitado manualmente). */
+  origemSalarioMinimo?: OrigemSalarioMercado;
+  origemSalarioMaximo?: OrigemSalarioMercado;
   fonteAtiva: FonteAtivaSalario;
 };
 
@@ -130,6 +133,8 @@ export class CadastrarCargoUseCase {
               periodoInicio: input.periodoInicio,
               salarioMercadoMinimo: input.salarioMercadoMinimo,
               salarioMercadoMaximo: input.salarioMercadoMaximo,
+              origemSalarioMinimo: input.origemSalarioMinimo ?? 'MANUAL',
+              origemSalarioMaximo: input.origemSalarioMaximo ?? 'MANUAL',
               fonteAtiva: input.fonteAtiva,
               salarioReal,
               statusSyncSalario: salarioReal ? 'SINCRONIZADO' : 'PENDENTE',

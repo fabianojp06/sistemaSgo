@@ -11,6 +11,7 @@ const ROTA_POR_FUNCIONALIDADE: Record<string, string> = {
   'orcamentario.visualizar': '/orcamentario',
   'orcamentario.premissas-reajustes.visualizar': '/orcamentario#premissas-reajustes',
   'aliquotas-impostos.visualizar': '/aliquotas-impostos',
+  'tabela-salarial.visualizar': '/tabela-salarial',
 };
 
 /**

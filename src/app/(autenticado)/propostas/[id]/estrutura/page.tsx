@@ -58,6 +58,8 @@ export default async function EstruturaFuncionalPage({ params }: { params: Promi
     fonteAtiva: c.fonteAtiva,
     salarioMercadoMinimo: c.salarioMercadoMinimo.toString(),
     salarioMercadoMaximo: c.salarioMercadoMaximo.toString(),
+    origemSalarioMinimo: c.origemSalarioMinimo,
+    origemSalarioMaximo: c.origemSalarioMaximo,
     funcaoGratificada: c.funcaoGratificada?.toString() ?? null,
     contaGratificacaoId: c.contaGratificacaoId,
     periodoInicio: c.periodoInicio.toISOString(),

@@ -663,6 +663,13 @@ enum FonteAtivaSalario {
   RUBI
 }
 
+// US-133 (RN_TAB_04/05) — rastreia se Salário Mínimo/Máximo de mercado veio de uma faixa
+// selecionada na Tabela Salarial (US-131) ou foi digitado manualmente.
+enum OrigemSalarioMercado {
+  TABELA_SALARIAL
+  MANUAL
+}
+
 model Cargo {
   id         String   @id @default(uuid())
   tenantId   String
@@ -682,8 +689,13 @@ model Cargo {
   funcaoGratificada Decimal? @db.Decimal(15, 2)
   periodoInicio     DateTime
 
-  salarioMercadoMinimo Decimal           @db.Decimal(15, 2)
-  salarioMercadoMaximo Decimal           @db.Decimal(15, 2)
+  salarioMercadoMinimo Decimal              @db.Decimal(15, 2)
+  salarioMercadoMaximo Decimal              @db.Decimal(15, 2)
+  // US-133 (RN_TAB_04/05) — origem do valor: preenchido a partir de uma faixa da
+  // Tabela Salarial (US-131) ou digitado manualmente. Independente por campo — editar
+  // manualmente um dos dois campos depois de uma seleção não muda a origem do outro.
+  origemSalarioMinimo  OrigemSalarioMercado @default(MANUAL)
+  origemSalarioMaximo  OrigemSalarioMercado @default(MANUAL)
   fonteAtiva           FonteAtivaSalario
 
   // Bloco "soberano" [RN_CAR_03] — nunca escrito por use case de Cargo, só pelo

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
+import Link from 'next/link';
 import {
   listarSenioridades,
   cadastrarSenioridade,
@@ -22,16 +23,21 @@ type Props = {
   cargoId: string;
   cargoNome: string;
   onFechar: () => void;
+  /**
+   * US-133 — quando informado, cada faixa ganha o botão "Usar esta faixa": copia Mín/Máx
+   * (e a origem TABELA_SALARIAL) para o formulário do Cargo em CargoPanel.tsx, sem persistir
+   * nada aqui — o Cargo só grava ao usuário salvar o formulário normalmente.
+   */
+  onSelecionarFaixa?: (faixa: { senioridadeDescricao: string; salarioMinimo: string; salarioMaximo: string }) => void;
 };
 
 /**
  * US-131, seção 5 — Tabela Salarial de mercado (Cadastro + Consulta), acionada pelo botão
  * "Tabela Salarial" na tela de Cargos. RN_TAB_03: exibe TODOS os registros do Cargo,
- * agrupados por Senioridade. Preenchimento automático dos campos de Mín/Máx do Cargo a
- * partir de uma faixa selecionada é escopo de US-133 (ainda não implementado) — aqui só
- * o CRUD e a consulta.
+ * agrupados por Senioridade. Gerenciamento completo (todos os Cargos) fica na tela própria
+ * /tabela-salarial — este modal continua útil para cadastrar/selecionar sem sair do Cargo.
  */
-export function TabelaSalarialModal({ cargoId, cargoNome, onFechar }: Props) {
+export function TabelaSalarialModal({ cargoId, cargoNome, onFechar, onSelecionarFaixa }: Props) {
   const [senioridades, setSenioridades] = useState<SenioridadeResultado[]>([]);
   const [registros, setRegistros] = useState<TabelaSalarialResultado[]>([]);
   const [erro, setErro] = useState<string | null>(null);
@@ -153,7 +159,12 @@ export function TabelaSalarialModal({ cargoId, cargoNome, onFechar }: Props) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-xl bg-white shadow-xl">
         <div className="flex items-center justify-between border-b px-5 py-3">
-          <h3 className="text-sm font-semibold text-slate-800">Tabela Salarial — {cargoNome}</h3>
+          <div>
+            <h3 className="text-sm font-semibold text-slate-800">Tabela Salarial — {cargoNome}</h3>
+            <Link href="/tabela-salarial" target="_blank" className="text-xs text-blue-700 hover:underline">
+              Gerenciar Tabela Salarial completa (todos os Cargos) →
+            </Link>
+          </div>
           <button type="button" onClick={onFechar} className="text-gray-400 hover:text-gray-600">
             ✕
           </button>
@@ -278,6 +289,21 @@ export function TabelaSalarialModal({ cargoId, cargoNome, onFechar }: Props) {
                               {formatarMoeda(r.salarioMinimo)} — {formatarMoeda(r.salarioMaximo)}
                             </span>
                             <div className="flex items-center gap-3">
+                              {onSelecionarFaixa && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    onSelecionarFaixa({
+                                      senioridadeDescricao: r.senioridadeDescricao,
+                                      salarioMinimo: r.salarioMinimo,
+                                      salarioMaximo: r.salarioMaximo,
+                                    })
+                                  }
+                                  className="rounded-md bg-emerald-600 px-2 py-1 text-xs font-medium text-white hover:bg-emerald-700"
+                                >
+                                  Usar esta faixa
+                                </button>
+                              )}
                               <button type="button" onClick={() => iniciarEdicao(r)} className="text-xs text-blue-700 hover:underline">
                                 Editar
                               </button>
