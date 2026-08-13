@@ -1,0 +1,1018 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Validação Estrutura e Cargos</title>
+<style>
+  :root {
+    --bg: #f4f5f7;
+    --surface: #ffffff;
+    --surface-sunken: #eef0f3;
+    --ink: #1b2430;
+    --ink-soft: #57616f;
+    --ink-faint: #8992a0;
+    --border: #dde1e6;
+    --border-soft: #e8eaee;
+    --accent: #b6791a;
+    --accent-ink: #7a4f0b;
+    --accent-soft: #fbeed9;
+    --navy: #0f1b2d;
+    --navy-ink: #cbd5e1;
+    --navy-soft: #24344a;
+    --amber: #f2b544;
+    --ok: #1a7f4e;
+    --ok-soft: #e3f5ea;
+    --warn: #b0530a;
+    --warn-soft: #fbe9d9;
+    --pending: #8992a0;
+    --pending-soft: #eef0f3;
+    --focus: #2f6fb0;
+    --shadow: 0 1px 2px rgba(20, 26, 36, 0.06), 0 6px 20px -8px rgba(20, 26, 36, 0.18);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12161d;
+      --surface: #1a1f28;
+      --surface-sunken: #151a22;
+      --ink: #e7eaef;
+      --ink-soft: #a9b1bd;
+      --ink-faint: #6b7481;
+      --border: #2b323d;
+      --border-soft: #232a34;
+      --accent: #e0a94a;
+      --accent-ink: #f2c884;
+      --accent-soft: #2c2415;
+      --navy: #0b1421;
+      --navy-ink: #cbd5e1;
+      --navy-soft: #1c2a3f;
+      --amber: #f2b544;
+      --ok: #4fbf85;
+      --ok-soft: #163325;
+      --warn: #e08a3c;
+      --warn-soft: #33230f;
+      --pending: #7c8593;
+      --pending-soft: #1d222b;
+      --focus: #5b9bd8;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 28px -10px rgba(0, 0, 0, 0.55);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #12161d;
+    --surface: #1a1f28;
+    --surface-sunken: #151a22;
+    --ink: #e7eaef;
+    --ink-soft: #a9b1bd;
+    --ink-faint: #6b7481;
+    --border: #2b323d;
+    --border-soft: #232a34;
+    --accent: #e0a94a;
+    --accent-ink: #f2c884;
+    --accent-soft: #2c2415;
+    --navy: #0b1421;
+    --navy-ink: #cbd5e1;
+    --navy-soft: #1c2a3f;
+    --amber: #f2b544;
+    --ok: #4fbf85;
+    --ok-soft: #163325;
+    --warn: #e08a3c;
+    --warn-soft: #33230f;
+    --pending: #7c8593;
+    --pending-soft: #1d222b;
+    --focus: #5b9bd8;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 28px -10px rgba(0, 0, 0, 0.55);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 40px 24px 96px;
+  }
+
+  /* ---------- Masthead ---------- */
+  .masthead {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-bottom: 28px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 32px;
+  }
+  .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+  }
+  .eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  h1 {
+    margin: 0;
+    font-size: 28px;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+  .lede {
+    margin: 0;
+    max-width: 62ch;
+    color: var(--ink-soft);
+    font-size: 15px;
+  }
+  .meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    margin-top: 6px;
+    font-size: 12.5px;
+    color: var(--ink-faint);
+  }
+  .meta-row b { color: var(--ink-soft); font-weight: 600; }
+
+  /* ---------- How-to card ---------- */
+  .howto {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 40px;
+  }
+  .howto-step {
+    background: var(--surface);
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .howto-step .n {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent-ink);
+    letter-spacing: 0.04em;
+  }
+  .howto-step p { margin: 0; font-size: 13px; color: var(--ink-soft); }
+  .howto-step strong { color: var(--ink); font-size: 13.5px; }
+
+  /* ---------- Section scaffolding ---------- */
+  section.block { margin-bottom: 56px; }
+  .block-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .block-head h2 {
+    margin: 0;
+    font-size: 19px;
+    letter-spacing: -0.005em;
+  }
+  .block-head .uc {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 11.5px;
+    color: var(--ink-faint);
+    background: var(--surface-sunken);
+    border: 1px solid var(--border-soft);
+    padding: 3px 8px;
+    border-radius: 20px;
+  }
+
+  /* ---------- Mock browser chrome ---------- */
+  .mock-frame {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+  .mock-tabs {
+    display: flex;
+    gap: 2px;
+    background: var(--surface-sunken);
+    border-bottom: 1px solid var(--border);
+    padding: 0 12px;
+  }
+  .mock-tab {
+    border: none;
+    background: transparent;
+    font: inherit;
+    font-size: 13px;
+    color: var(--ink-faint);
+    padding: 12px 14px 11px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .mock-tab.active {
+    color: var(--focus);
+    border-bottom-color: var(--focus);
+    font-weight: 600;
+  }
+  .mock-tab:hover:not(.active) { color: var(--ink-soft); }
+
+  .mock-body { padding: 20px; display: none; }
+  .mock-body.active { display: block; }
+
+  /* ---------- KPI strip (Cargos) ---------- */
+  .kpi-strip {
+    background: var(--navy);
+    border-radius: 10px;
+    padding: 18px 22px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    margin-bottom: 20px;
+  }
+  .kpi { display: flex; flex-direction: column; gap: 4px; }
+  .kpi .label { font-size: 11px; color: var(--navy-ink); text-transform: uppercase; letter-spacing: 0.05em; }
+  .kpi .value { font-size: 21px; font-weight: 700; color: var(--amber); font-variant-numeric: tabular-nums; }
+
+  .mock-h3 {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .mock-h3 .pill {
+    font-size: 10.5px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 20px;
+    background: var(--pending-soft);
+    color: var(--ink-soft);
+  }
+
+  table.mock-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+    margin-bottom: 22px;
+    border: 1px solid var(--border-soft);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  table.mock-table thead tr { background: var(--surface-sunken); text-align: left; }
+  table.mock-table th {
+    padding: 8px 12px;
+    font-weight: 600;
+    color: var(--ink-faint);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  table.mock-table td {
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  table.mock-table tr:last-child td { border-bottom: none; }
+  .num { font-variant-numeric: tabular-nums; }
+  .mini-link { color: var(--focus); font-size: 12px; text-decoration: none; margin-right: 10px; }
+  .mini-btn {
+    font-size: 11.5px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--ink-soft);
+    padding: 3px 8px;
+    border-radius: 6px;
+  }
+
+  .mock-form {
+    border: 1px solid var(--border-soft);
+    border-radius: 10px;
+    padding: 18px;
+    background: var(--surface-sunken);
+  }
+  .mock-form-title { font-size: 13px; font-weight: 600; margin: 0 0 14px; }
+  .field-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px 16px;
+    margin-bottom: 16px;
+  }
+  .field-grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+  }
+  .field label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-faint);
+  }
+  .field .input-like {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: 6px;
+    padding: 6px 9px;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+  }
+  .field .input-like.placeholder { color: var(--ink-faint); }
+
+  .divider-label {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-top: 1px solid var(--border-soft);
+    padding-top: 14px;
+    margin-top: 4px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .benefit-row {
+    display: grid;
+    grid-template-columns: minmax(150px, 1fr) 90px minmax(120px, 1fr);
+    gap: 10px;
+    align-items: center;
+    padding: 6px 0;
+    font-size: 12.5px;
+  }
+  .benefit-row .chk-label {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--ink-soft);
+  }
+  .chk-box {
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 3px;
+    background: var(--surface);
+    flex: none;
+  }
+  .chk-box.on { background: var(--focus); border-color: var(--focus); position: relative; }
+  .chk-box.on::after {
+    content: "";
+    position: absolute;
+    left: 3px; top: 0px;
+    width: 4px; height: 8px;
+    border: solid white;
+    border-width: 0 1.5px 1.5px 0;
+    transform: rotate(45deg);
+  }
+  .mini-input { border: 1px solid var(--border); background: var(--surface); border-radius: 6px; padding: 5px 8px; font-size: 12px; color: var(--ink-faint); }
+  .mini-input.disabled { opacity: 0.45; }
+
+  .save-row { display: flex; gap: 10px; margin-top: 16px; }
+  .btn-primary {
+    background: var(--focus);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 12.5px;
+    font-weight: 600;
+  }
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--ink-soft);
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-size: 12.5px;
+  }
+
+  /* org tree callouts */
+  .tree-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 20px;
+    letter-spacing: 0.02em;
+  }
+  .tree-badge.sint { background: var(--warn-soft); color: var(--warn); }
+  .tree-badge.anal { background: var(--ok-soft); color: var(--ok); }
+  .indent1 { padding-left: 18px; color: var(--ink-faint); }
+
+  /* ---------- Validation checklist ---------- */
+  .check-list { display: flex; flex-direction: column; gap: 10px; }
+  .check-item {
+    display: grid;
+    grid-template-columns: 22px 1fr auto;
+    gap: 12px;
+    align-items: start;
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .check-item input[type="checkbox"] {
+    width: 16px; height: 16px;
+    margin-top: 2px;
+    accent-color: var(--focus);
+  }
+  .check-item .q { font-size: 13.5px; color: var(--ink); }
+  .check-item .q .field-ref {
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 11px;
+    color: var(--accent-ink);
+    background: var(--accent-soft);
+    padding: 1px 5px;
+    border-radius: 4px;
+    margin-right: 6px;
+  }
+  .verdicts { display: flex; gap: 4px; }
+  .verdict-btn {
+    font-size: 11px;
+    padding: 5px 9px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--ink-faint);
+    cursor: pointer;
+  }
+  .verdict-btn[data-v="ok"].sel { background: var(--ok-soft); border-color: var(--ok); color: var(--ok); }
+  .verdict-btn[data-v="ajuste"].sel { background: var(--warn-soft); border-color: var(--warn); color: var(--warn); }
+
+  .notes-area {
+    width: 100%;
+    margin-top: 10px;
+    border: 1px dashed var(--border);
+    border-radius: 6px;
+    background: var(--surface-sunken);
+    padding: 8px 10px;
+    font: inherit;
+    font-size: 12.5px;
+    color: var(--ink);
+    resize: vertical;
+    min-height: 40px;
+  }
+  .notes-area::placeholder { color: var(--ink-faint); }
+
+  .open-q {
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+  }
+  .open-q p { margin: 0 0 6px; font-size: 13.5px; }
+  .open-q .ctx { font-size: 12px; color: var(--ink-faint); margin: 0; }
+
+  .open-q.resolved {
+    border-left-color: var(--ok);
+    opacity: 0.92;
+  }
+  .resolved-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--ok);
+    background: var(--ok-soft);
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-bottom: 8px;
+  }
+  .open-q .answer {
+    margin: 6px 0 0;
+    font-size: 13px;
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .open-q .answer-detail {
+    margin: 2px 0 0;
+    font-size: 12px;
+    color: var(--ink-soft);
+    font-weight: 400;
+  }
+
+  /* ---------- Summary / sign-off ---------- */
+  .signoff {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: var(--shadow);
+  }
+  .signoff h2 { margin: 0 0 6px; font-size: 18px; }
+  .signoff p.hint { margin: 0 0 18px; font-size: 13px; color: var(--ink-soft); }
+  .verdict-choices {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .verdict-choice {
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    cursor: pointer;
+    text-align: center;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ink-soft);
+  }
+  .verdict-choice.sel-approve.sel { border-color: var(--ok); background: var(--ok-soft); color: var(--ok); }
+  .verdict-choice.sel-adjust.sel { border-color: var(--warn); background: var(--warn-soft); color: var(--warn); }
+  .verdict-choice.sel-reject.sel { border-color: #c0392b; background: #fbe4e0; color: #c0392b; }
+  .sign-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .sign-fields input, .sign-fields textarea {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font: inherit;
+    font-size: 13px;
+    background: var(--surface-sunken);
+    color: var(--ink);
+  }
+  .sign-fields .full { grid-column: 1 / -1; }
+  .sign-fields label { display: block; font-size: 11.5px; font-weight: 600; color: var(--ink-faint); margin-bottom: 5px; }
+
+  footer.page-foot {
+    margin-top: 48px;
+    padding-top: 18px;
+    border-top: 1px solid var(--border-soft);
+    font-size: 11.5px;
+    color: var(--ink-faint);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  @media (max-width: 640px) {
+    .howto { grid-template-columns: 1fr; }
+    .field-grid, .field-grid.cols-4, .kpi-strip, .verdict-choices, .sign-fields { grid-template-columns: 1fr; }
+    .benefit-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div class="masthead">
+    <span class="eyebrow"><span class="dot"></span>SGO 2.0 — Módulo de Cadastros · Validação com usuário final</span>
+    <h1>Estrutura Funcional e Cargos — roteiro de validação</h1>
+    <p class="lede">
+      As telas abaixo reproduzem exatamente os campos e o fluxo já implementados em produção
+      (US-106/US-116 Organograma e US-107/US-117 Cargos, dentro da Proposta). O objetivo aqui não
+      é redesenhar — é confirmar, com quem vai usar a tela no dia a dia, que os campos, os rótulos
+      e a ordem das ações fazem sentido antes de fechar como está.
+    </p>
+    <div class="meta-row">
+      <span><b>Tela 1:</b> Estrutura Funcional (Organograma)</span>
+      <span><b>Tela 2:</b> Cargos</span>
+      <span><b>Caminho real:</b> Proposta → Estrutura</span>
+      <span><b>Casos de uso:</b> UC03.18, UC03.19</span>
+    </div>
+  </div>
+
+  <div class="howto">
+    <div class="howto-step">
+      <span class="n">01</span>
+      <strong>Percorra as duas abas</strong>
+      <p>Clique nas abas dentro de cada mock abaixo — elas trocam de tela exatamente como na aplicação real.</p>
+    </div>
+    <div class="howto-step">
+      <span class="n">02</span>
+      <strong>Marque cada pergunta</strong>
+      <p>Para cada campo ou passo do fluxo, marque OK ou "precisa ajuste" e deixe um comentário se necessário.</p>
+    </div>
+    <div class="howto-step">
+      <span class="n">03</span>
+      <strong>Feche com o veredito</strong>
+      <p>No fim da página, registre o resultado da validação e quem participou da sessão.</p>
+    </div>
+  </div>
+
+  <!-- ============ MOCK INTERATIVO ============ -->
+  <section class="block">
+    <div class="block-head">
+      <h2>Como a tela se comporta hoje</h2>
+      <span class="uc">Proposta → Estrutura</span>
+    </div>
+
+    <div class="mock-frame">
+      <div class="mock-tabs">
+        <button class="mock-tab active" data-tab="organograma" onclick="showTab('organograma')">Estrutura Funcional (Organograma)</button>
+        <button class="mock-tab" data-tab="cargos" onclick="showTab('cargos')">Cargos</button>
+      </div>
+
+      <!-- ORGANOGRAMA -->
+      <div class="mock-body active" id="tab-organograma">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+          <p class="mock-h3" style="margin:0;">Estrutura Funcional (Organograma)</p>
+          <button class="mini-btn">Importar de outra Proposta</button>
+        </div>
+
+        <table class="mock-table">
+          <thead>
+            <tr><th>Nome</th><th>Tipo</th><th>Unidade Superior</th><th></th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Diretoria Executiva</td>
+              <td><span class="tree-badge sint">Sintético</span></td>
+              <td>—</td>
+              <td style="text-align:right"><a class="mini-link">Inativar</a></td>
+            </tr>
+            <tr>
+              <td class="indent1">↳ Assessoria de TI</td>
+              <td><span class="tree-badge anal">Analítico</span></td>
+              <td>Diretoria Executiva</td>
+              <td style="text-align:right"><a class="mini-link">Inativar</a></td>
+            </tr>
+            <tr>
+              <td>Gerência de Operações</td>
+              <td><span class="tree-badge sint">Sintético</span></td>
+              <td>—</td>
+              <td style="text-align:right"><a class="mini-link">Inativar</a></td>
+            </tr>
+            <tr>
+              <td class="indent1">↳ Setor de Logística</td>
+              <td><span class="tree-badge anal">Analítico</span></td>
+              <td>Gerência de Operações</td>
+              <td style="text-align:right"><a class="mini-link">Inativar</a></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="mock-form">
+          <p class="mock-form-title">Adicionar unidade</p>
+          <div class="field-grid cols-4">
+            <div class="field"><label>Nome</label><div class="input-like placeholder">Ex.: Setor de Logística</div></div>
+            <div class="field"><label>Tipo</label><div class="input-like">Setor (Analítico)</div></div>
+            <div class="field"><label>Unidade Superior</label><div class="input-like">Gerência de Operações</div></div>
+            <div class="field" style="justify-content:flex-end"><div class="input-like" style="text-align:center; background:var(--focus); color:#fff; border:none;">Adicionar</div></div>
+          </div>
+          <p style="margin:0; font-size:11.5px; color:var(--ink-faint);">
+            Regra vigente: só Diretoria e Gerência podem ser raiz (sem superior); Assessoria só pode existir sob Diretoria; Coordenadoria e Setor só sob Gerência.
+          </p>
+        </div>
+      </div>
+
+      <!-- CARGOS -->
+      <div class="mock-body" id="tab-cargos">
+        <div class="kpi-strip">
+          <div class="kpi"><span class="label">Total de Cargos</span><span class="value">1</span></div>
+          <div class="kpi"><span class="label">Custo Total Mensal</span><span class="value num">R$ 2.420,00/mês</span></div>
+          <div class="kpi"><span class="label">Salário Total Mensal</span><span class="value num">R$ 1.000,00/mês</span></div>
+        </div>
+
+        <p class="mock-h3">Cargos</p>
+        <table class="mock-table">
+          <thead>
+            <tr><th>Código</th><th>Cargo (Mercado)</th><th>Salário Total</th><th>Custo Total</th><th></th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>CARGO-2026-0008</td>
+              <td>Analista de Sistemas</td>
+              <td class="num">R$ 1.000,00</td>
+              <td class="num">R$ 2.420,00</td>
+              <td style="text-align:right"><span class="mini-btn">Atualizar Consolidação</span> <a class="mini-link">Editar</a> <a class="mini-link" style="color:#c0392b">Excluir</a></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="mock-form">
+          <p class="mock-form-title">Novo Cargo</p>
+
+          <div class="field-grid">
+            <div class="field"><label>Nome do Cargo (Mercado)</label><div class="input-like placeholder">Ex.: Analista de Sistemas</div></div>
+            <div class="field"><label>Conta Contábil (natureza da despesa)</label><div class="input-like">3.1.90.11 — Vencimentos e Vantagens</div></div>
+            <div class="field"><label>Período Início</label><div class="input-like">01/01/2026</div></div>
+            <div class="field"><label>Salário Mercado Mínimo</label><div class="input-like">1.000,00</div></div>
+            <div class="field"><label>Salário Mercado Máximo</label><div class="input-like">1.800,00</div></div>
+            <div class="field">
+              <label>Função Gratificada (opcional, valor fixo em R$)</label>
+              <div class="input-like placeholder">Valor da gratificação</div>
+              <div class="input-like" style="font-size:11px;">Conta...</div>
+            </div>
+            <div class="field"><label>Fonte Ativa</label><div class="input-like">Mercado Mínimo</div></div>
+          </div>
+
+          <div class="divider-label">
+            <span>Rateio Funcional</span>
+            <span>soma deve ser 100% — atual: 100,00%</span>
+          </div>
+          <div class="field-grid" style="grid-template-columns: 1fr 100px; margin-bottom:16px;">
+            <div class="input-like">Assessoria de TI</div>
+            <div class="input-like">100%</div>
+          </div>
+
+          <div class="divider-label"><span>Benefícios e Encargos</span></div>
+          <div class="benefit-row">
+            <span class="chk-label"><span class="chk-box on"></span>Encargos Sociais (%)</span>
+            <div class="mini-input">28</div>
+            <div class="mini-input">Conta...</div>
+          </div>
+          <div class="benefit-row">
+            <span class="chk-label"><span class="chk-box on"></span>Vale Alimentação</span>
+            <div class="mini-input">420,00</div>
+            <div class="mini-input">Conta...</div>
+          </div>
+          <div class="benefit-row">
+            <span class="chk-label"><span class="chk-box"></span>Vale Refeição</span>
+            <div class="mini-input disabled">0</div>
+            <div class="mini-input disabled">Conta...</div>
+          </div>
+          <div class="benefit-row">
+            <span class="chk-label"><span class="chk-box"></span>Plano Odontológico</span>
+            <div class="mini-input disabled">0</div>
+            <div class="mini-input disabled">Conta...</div>
+          </div>
+          <div class="benefit-row">
+            <span class="chk-label"><span class="chk-box"></span>Seguro de Vida</span>
+            <div class="mini-input disabled">0</div>
+            <div class="mini-input disabled">Conta...</div>
+          </div>
+          <div class="benefit-row">
+            <span class="chk-label"><span class="chk-box"></span>Auxílio Creche</span>
+            <div class="mini-input disabled">0</div>
+            <div class="mini-input disabled">Conta...</div>
+          </div>
+          <div class="benefit-row">
+            <span class="chk-label"><span class="chk-box"></span>Vale Transporte</span>
+            <div class="mini-input disabled">0</div>
+            <div class="mini-input disabled">Conta...</div>
+          </div>
+          <div class="benefit-row">
+            <span class="chk-label"><span class="chk-box"></span>Plano de Saúde</span>
+            <div class="mini-input disabled">Faixa... · 0</div>
+            <div class="mini-input disabled">Conta...</div>
+          </div>
+
+          <div class="save-row">
+            <div class="btn-primary">Salvar Cargo</div>
+            <div class="btn-ghost">Ressincronizar Empregados</div>
+          </div>
+          <p style="margin:10px 0 0; font-size:11px; color:var(--ink-faint);">
+            "Ressincronizar Empregados" atualiza o custo/conta de quem já está vinculado a este Cargo com os valores acima — não mexe em Propostas já oficializadas.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CHECKLIST ORGANOGRAMA ============ -->
+  <section class="block">
+    <div class="block-head">
+      <h2>1. Estrutura Funcional (Organograma)</h2>
+      <span class="uc">UC03.18</span>
+    </div>
+    <div class="check-list">
+
+      <div class="check-item">
+        <input type="checkbox" />
+        <div class="q">
+          <span class="field-ref">Tipo</span>
+          As cinco categorias — Diretoria, Gerência, Assessoria, Coordenadoria, Setor — cobrem os cargos organizacionais que sua entidade realmente usa hoje?
+        </div>
+        <div class="verdicts">
+          <button class="verdict-btn" data-v="ok" onclick="toggleVerdict(this)">OK</button>
+          <button class="verdict-btn" data-v="ajuste" onclick="toggleVerdict(this)">Ajuste</button>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <input type="checkbox" />
+        <div class="q">
+          <span class="field-ref">regra</span>
+          Faz sentido que só Diretoria e Gerência possam existir "soltas" (sem unidade superior), e que Assessoria só possa ficar sob uma Diretoria?
+        </div>
+        <div class="verdicts">
+          <button class="verdict-btn" data-v="ok" onclick="toggleVerdict(this)">OK</button>
+          <button class="verdict-btn" data-v="ajuste" onclick="toggleVerdict(this)">Ajuste</button>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <input type="checkbox" />
+        <div class="q">
+          <span class="field-ref">ação</span>
+          "Inativar" (em vez de excluir) é o comportamento esperado quando uma unidade deixa de existir na Proposta?
+        </div>
+        <div class="verdicts">
+          <button class="verdict-btn" data-v="ok" onclick="toggleVerdict(this)">OK</button>
+          <button class="verdict-btn" data-v="ajuste" onclick="toggleVerdict(this)">Ajuste</button>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <input type="checkbox" />
+        <div class="q">
+          <span class="field-ref">Importar</span>
+          "Importar de outra Proposta" substitui 100% da estrutura já cadastrada — isso bate com o cenário real de reaproveitar o organograma de uma Proposta anterior?
+        </div>
+        <div class="verdicts">
+          <button class="verdict-btn" data-v="ok" onclick="toggleVerdict(this)">OK</button>
+          <button class="verdict-btn" data-v="ajuste" onclick="toggleVerdict(this)">Ajuste</button>
+        </div>
+      </div>
+
+      <textarea class="notes-area" placeholder="Observações sobre o Organograma (opcional)…"></textarea>
+    </div>
+  </section>
+
+  <!-- ============ CHECKLIST CARGOS ============ -->
+  <section class="block">
+    <div class="block-head">
+      <h2>2. Cargos</h2>
+      <span class="uc">UC03.19</span>
+    </div>
+    <div class="check-list">
+
+      <div class="check-item">
+        <input type="checkbox" />
+        <div class="q">
+          <span class="field-ref">KPIs</span>
+          A faixa no topo (Total de Cargos, Custo Total Mensal, Salário Total Mensal) traz os números que mais importam de bater o olho ao entrar na tela?
+        </div>
+        <div class="verdicts">
+          <button class="verdict-btn" data-v="ok" onclick="toggleVerdict(this)">OK</button>
+          <button class="verdict-btn" data-v="ajuste" onclick="toggleVerdict(this)">Ajuste</button>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <input type="checkbox" />
+        <div class="q">
+          <span class="field-ref">Salário Mercado Mín./Máx.</span>
+          Faz sentido cadastrar uma faixa de mercado (mínimo/máximo) em vez de um salário único fixo por cargo?
+        </div>
+        <div class="verdicts">
+          <button class="verdict-btn" data-v="ok" onclick="toggleVerdict(this)">OK</button>
+          <button class="verdict-btn" data-v="ajuste" onclick="toggleVerdict(this)">Ajuste</button>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <input type="checkbox" />
+        <div class="q">
+          <span class="field-ref">Fonte Ativa</span>
+          Escolher entre "Mercado Mínimo", "Mercado Máximo" ou "Rubi (Salário Real)" como base de cálculo do custo é claro para quem preenche o formulário?
+        </div>
+        <div class="verdicts">
+          <button class="verdict-btn" data-v="ok" onclick="toggleVerdict(this)">OK</button>
+          <button class="verdict-btn" data-v="ajuste" onclick="toggleVerdict(this)">Ajuste</button>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <input type="checkbox" />
+        <div class="q">
+          <span class="field-ref">Rateio Funcional</span>
+          Exigir que o rateio entre unidades funcionais some exatamente 100% antes de salvar é a trava certa, ou deveria permitir salvar parcial e completar depois?
+        </div>
+        <div class="verdicts">
+          <button class="verdict-btn" data-v="ok" onclick="toggleVerdict(this)">OK</button>
+          <button class="verdict-btn" data-v="ajuste" onclick="toggleVerdict(this)">Ajuste</button>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <input type="checkbox" />
+        <div class="q">
+          <span class="field-ref">Benefícios e Encargos</span>
+          A lista de benefícios (Vale Alimentação, Vale Refeição, Plano Odontológico, Seguro de Vida, Auxílio Creche, Vale Transporte, Plano de Saúde) e Encargos Sociais cobre o que sua entidade concede hoje? Falta algum benefício comum?
+        </div>
+        <div class="verdicts">
+          <button class="verdict-btn" data-v="ok" onclick="toggleVerdict(this)">OK</button>
+          <button class="verdict-btn" data-v="ajuste" onclick="toggleVerdict(this)">Ajuste</button>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <input type="checkbox" />
+        <div class="q">
+          <span class="field-ref">conta por benefício</span>
+          Cada benefício ter sua própria conta contábil (em vez de uma conta única para todos os encargos) reflete como sua contabilidade classifica essas despesas?
+        </div>
+        <div class="verdicts">
+          <button class="verdict-btn" data-v="ok" onclick="toggleVerdict(this)">OK</button>
+          <button class="verdict-btn" data-v="ajuste" onclick="toggleVerdict(this)">Ajuste</button>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <input type="checkbox" />
+        <div class="q">
+          <span class="field-ref">Ressincronizar Empregados</span>
+          Precisar clicar num botão separado ("Ressincronizar Empregados") para propagar uma mudança de benefício aos Empregados já cadastrados é aceitável, ou isso deveria acontecer automaticamente ao salvar o Cargo?
+        </div>
+        <div class="verdicts">
+          <button class="verdict-btn" data-v="ok" onclick="toggleVerdict(this)">OK</button>
+          <button class="verdict-btn" data-v="ajuste" onclick="toggleVerdict(this)">Ajuste</button>
+        </div>
+      </div>
+
+      <textarea class="notes-area" placeholder="Observações sobre Cargos (opcional)…"></textarea>
+    </div>
+  </section>
+
+  <!-- ============ PERGUNTAS FECHADAS ============ -->
+  <section class="block">
+    <div class="block-head">
+      <h2>Pontos em aberto — resolvidos</h2>
+      <span class="uc">Fechado em 13/08/2026</span>
+    </div>
+    <div class="open-q resolved">
+      <span class="resolved-badge">✓ Fechado</span>
+      <p>O usuário final considera a categoria "Função Gratificada" como um valor fixo somado ao salário, ou como um percentual sobre ele?</p>
+      <p class="answer">Resposta: valor fixo (R$).</p>
+      <p class="answer-detail">Confirma o comportamento já implementado — o campo <code>funcaoGratificada</code> sempre foi um valor decimal fixo em R$ (US-107/ADR-029), nunca houve opção de percentual no schema ou na UI. Não gerou nova US nem mudança de código.</p>
+    </div>
+    <div class="open-q resolved">
+      <span class="resolved-badge">✓ Fechado</span>
+      <p>Existe algum nível organizacional entre "Setor" e um cargo individual que a tela deveria representar (ex.: célula, núcleo)?</p>
+      <p class="answer">Resposta: não — manter só 2 níveis (Sintético/Analítico).</p>
+      <p class="answer-detail">Confirma o desenho vigente da Estrutura Funcional (US-106/ADR-041), que já é fixo em 2 níveis. Sem migration necessária; preserva a invariante usada pelo remapeamento de hierarquia de US-130 (Importar Estrutura Organizacional).</p>
+    </div>
+  </section>
+
+  <!-- ============ SIGN-OFF ============ -->
+  <div class="signoff">
+    <h2>Resultado da validação</h2>
+    <p class="hint">Preencha após percorrer as duas telas com o usuário final.</p>
+
+    <div class="verdict-choices">
+      <div class="verdict-choice sel-approve" onclick="selectVerdict(this)">Aprovado como está</div>
+      <div class="verdict-choice sel-adjust" onclick="selectVerdict(this)">Aprovado com ajustes</div>
+      <div class="verdict-choice sel-reject" onclick="selectVerdict(this)">Precisa nova rodada</div>
+    </div>
+
+    <div class="sign-fields">
+      <div>
+        <label>Usuário final (nome / cargo)</label>
+        <input type="text" placeholder="Ex.: Maria Souza — Coordenadora Financeira" />
+      </div>
+      <div>
+        <label>Data da sessão</label>
+        <input type="text" placeholder="dd/mm/aaaa" />
+      </div>
+      <div class="full">
+        <label>Resumo dos ajustes combinados (se houver)</label>
+        <textarea rows="4" placeholder="Descreva o que precisa mudar antes da próxima rodada…"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <footer class="page-foot">
+    <span>SGO 2.0 · Módulo de Cadastros · Estrutura Funcional e Cargos</span>
+    <span>Reflete o comportamento em produção nesta data — reexecutar após qualquer mudança de layout ou regra</span>
+  </footer>
+
+</div>
+
+<script>
+  function showTab(name) {
+    document.querySelectorAll('.mock-tab').forEach(function (el) {
+      el.classList.toggle('active', el.dataset.tab === name);
+    });
+    document.querySelectorAll('.mock-body').forEach(function (el) {
+      el.classList.toggle('active', el.id === 'tab-' + name);
+    });
+  }
+
+  function toggleVerdict(btn) {
+    var row = btn.parentElement;
+    row.querySelectorAll('.verdict-btn').forEach(function (b) { b.classList.remove('sel'); });
+    btn.classList.add('sel');
+  }
+
+  function selectVerdict(el) {
+    document.querySelectorAll('.verdict-choice').forEach(function (c) { c.classList.remove('sel'); });
+    el.classList.add('sel');
+  }
+</script>
+
+</body>
+</html>
