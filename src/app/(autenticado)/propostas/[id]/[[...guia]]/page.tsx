@@ -439,12 +439,14 @@ async function ReajusteLoteHost({
 
   if (!podeAplicarReajuste) return null;
 
-  // [ultrareview 2026-08-11] contas sintéticas só alimentam o sub-form Editar
+  // [ultrareview 2026-08-11] contas de sugestão só alimentam o sub-form Editar
   // Índice do modal — buscar só quando o usuário tem a permissão que mostra o
   // botão Editar, em vez de sempre, poupa a query pra quem nunca vai usar.
-  const contasSinteticas = podeEditarIndice
+  // [ADR-038 revisão 2026-08-13] aceita conta de qualquer nível (sintética ou
+  // analítica) — deixou de ser restrito a sintética.
+  const contasParaSugestao = podeEditarIndice
     ? await prisma.contaContabil.findMany({
-        where: { tenantId, isAnalitica: false },
+        where: { tenantId },
         select: { id: true, codigoErp: true, nomeConta: true },
         orderBy: { codigoErp: 'asc' },
       })
@@ -455,7 +457,7 @@ async function ReajusteLoteHost({
     label: `${a.nome} (${Number(a.aliquotaPct)}%)`,
     periodicidadeReajuste: a.periodicidadeReajuste,
   }));
-  const opcoesContaSintetica = contasSinteticas.map((c) => ({ id: c.id, label: `${c.codigoErp} — ${c.nomeConta}` }));
+  const opcoesContaSugerida = contasParaSugestao.map((c) => ({ id: c.id, label: `${c.codigoErp} — ${c.nomeConta}` }));
 
   return (
     <div className="flex justify-end print:hidden">
@@ -463,7 +465,7 @@ async function ReajusteLoteHost({
         versaoId={versaoId}
         contasAnaliticas={contasAnaliticas}
         aliquotas={aliquotasOpcoes}
-        opcoesContaSintetica={opcoesContaSintetica}
+        opcoesContaSugerida={opcoesContaSugerida}
         podeEditarIndice={podeEditarIndice}
         podeExcluirIndice={podeExcluirIndice}
       />

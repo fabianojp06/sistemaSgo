@@ -80,14 +80,14 @@ export function ReajusteLoteModal({
   versaoId,
   contasAnaliticas,
   aliquotas,
-  opcoesContaSintetica,
+  opcoesContaSugerida,
   podeEditarIndice,
   podeExcluirIndice,
 }: {
   versaoId: string;
   contasAnaliticas: { id: string; label: string }[];
   aliquotas: { id: string; label: string; periodicidadeReajuste: Periodicidade }[];
-  opcoesContaSintetica: ContaOpcao[];
+  opcoesContaSugerida: ContaOpcao[];
   podeEditarIndice: boolean;
   podeExcluirIndice: boolean;
 }) {
@@ -397,14 +397,14 @@ export function ReajusteLoteModal({
                     </select>
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-600">Conta Sintética (sugestão)</label>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">Conta Sugerida</label>
                     <select
                       value={formEdicao.contaSinteticaId}
                       onChange={(e) => setFormEdicao({ ...formEdicao, contaSinteticaId: e.target.value })}
                       className="w-full rounded border border-gray-200 bg-white px-2 py-1.5 text-sm"
                     >
                       <option value="">—</option>
-                      {opcoesContaSintetica.map((c) => (
+                      {opcoesContaSugerida.map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.label}
                         </option>

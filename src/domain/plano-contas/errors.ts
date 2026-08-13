@@ -738,11 +738,12 @@ export class AliquotaImpostoReferenciadaError extends Error {
   }
 }
 
-// ADR-038 — contaSinteticaId, quando informado, deve apontar para conta SINTÉTICA (não analítica).
-export class ContaSugeridaAliquotaImpostoNaoSinteticaError extends Error {
+// ADR-038 (revisão) — contaSinteticaId, quando informado, deve apontar para uma conta
+// existente do tenant (sintética ou analítica) — é apenas um valor padrão para o rateio.
+export class ContaSugeridaAliquotaImpostoNaoEncontradaError extends Error {
   constructor() {
-    super('A conta sugerida deve ser uma conta sintética (não analítica) — ela é apenas um valor padrão para o rateio.');
-    this.name = 'ContaSugeridaAliquotaImpostoNaoSinteticaError';
+    super('A conta sugerida não foi encontrada.');
+    this.name = 'ContaSugeridaAliquotaImpostoNaoEncontradaError';
   }
 }
 

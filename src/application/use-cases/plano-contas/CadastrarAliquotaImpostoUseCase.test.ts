@@ -5,7 +5,7 @@ import {
   AliquotaImpostoForaDaFaixaError,
   AliquotaImpostoIssForaDaFaixaLegalError,
   AliquotaImpostoDataInicioRetroativaError,
-  ContaSugeridaAliquotaImpostoNaoSinteticaError,
+  ContaSugeridaAliquotaImpostoNaoEncontradaError,
 } from '@/domain/plano-contas/errors';
 
 type AliquotaMock = { tenantId: string; nomeNormalizado: string };
@@ -30,7 +30,7 @@ function criarPrismaMock(existentes: AliquotaMock[] = [], contas: ContaMock[] = 
     contaContabil: {
       findFirst: vi.fn(({ where }: { where: { tenantId: string; id: string } }) => {
         const c = contas.find((c) => c.id === where.id && c.tenantId === where.tenantId);
-        return Promise.resolve(c ? { isAnalitica: c.isAnalitica } : null);
+        return Promise.resolve(c ? { id: c.id } : null);
       }),
     },
     historicoOperacao: { create: vi.fn(() => Promise.resolve({})) },
@@ -118,13 +118,13 @@ describe('CadastrarAliquotaImpostoUseCase', () => {
     await expect(useCase.execute({ ...inputBase, dataInicioVigencia: dataCalendarioUTC(0) })).resolves.toBeDefined();
   });
 
-  it('bloqueia contaSinteticaId apontando para conta analítica', async () => {
+  // ADR-038 revisão 2026-08-13 — deixou de bloquear conta analítica; contaSinteticaId
+  // (nome do campo mantido, semântica agora é "conta sugerida de qualquer nível").
+  it('aceita contaSinteticaId apontando para conta analítica', async () => {
     const { base } = criarPrismaMock([], [{ id: 'c1', tenantId: 't1', isAnalitica: true }]);
     const useCase = new CadastrarAliquotaImpostoUseCase(base as never);
 
-    await expect(useCase.execute({ ...inputBase, contaSinteticaId: 'c1' })).rejects.toThrow(
-      ContaSugeridaAliquotaImpostoNaoSinteticaError,
-    );
+    await expect(useCase.execute({ ...inputBase, contaSinteticaId: 'c1' })).resolves.toBeDefined();
   });
 
   it('aceita contaSinteticaId apontando para conta sintética', async () => {
@@ -132,5 +132,14 @@ describe('CadastrarAliquotaImpostoUseCase', () => {
     const useCase = new CadastrarAliquotaImpostoUseCase(base as never);
 
     await expect(useCase.execute({ ...inputBase, contaSinteticaId: 'c1' })).resolves.toBeDefined();
+  });
+
+  it('bloqueia contaSinteticaId que não existe no tenant', async () => {
+    const { base } = criarPrismaMock([], []);
+    const useCase = new CadastrarAliquotaImpostoUseCase(base as never);
+
+    await expect(useCase.execute({ ...inputBase, contaSinteticaId: 'inexistente' })).rejects.toThrow(
+      ContaSugeridaAliquotaImpostoNaoEncontradaError,
+    );
   });
 });

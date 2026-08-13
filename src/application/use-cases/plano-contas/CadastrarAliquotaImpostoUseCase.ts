@@ -5,7 +5,7 @@ import {
   AliquotaImpostoIssForaDaFaixaLegalError,
   AliquotaImpostoDataInicioRetroativaError,
   AliquotaImpostoDataFimInvalidaError,
-  ContaSugeridaAliquotaImpostoNaoSinteticaError,
+  ContaSugeridaAliquotaImpostoNaoEncontradaError,
 } from '@/domain/plano-contas/errors';
 import { ehDataAnteriorAHoje } from '@/domain/shared/dataCalendario';
 
@@ -73,10 +73,10 @@ export class CadastrarAliquotaImpostoUseCase {
     if (input.contaSinteticaId) {
       const conta = await this.prisma.contaContabil.findFirst({
         where: { tenantId: input.tenantId, id: input.contaSinteticaId },
-        select: { isAnalitica: true },
+        select: { id: true },
       });
-      if (!conta || conta.isAnalitica) {
-        throw new ContaSugeridaAliquotaImpostoNaoSinteticaError();
+      if (!conta) {
+        throw new ContaSugeridaAliquotaImpostoNaoEncontradaError();
       }
     }
 

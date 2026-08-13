@@ -98,13 +98,13 @@ function formatarData(iso: string | null) {
 /** UC03.39-42 — grid com filtros + modal de criação/edição + confirmação de exclusão. */
 export function AliquotaImpostoListPanel({
   aliquotasIniciais,
-  opcoesContaSintetica,
+  opcoesContaSugerida,
   podeCriar,
   podeEditar,
   podeExcluir,
 }: {
   aliquotasIniciais: AliquotaImpostoResultado[];
-  opcoesContaSintetica: ContaOpcao[];
+  opcoesContaSugerida: ContaOpcao[];
   podeCriar: boolean;
   podeEditar: boolean;
   podeExcluir: boolean;
@@ -487,10 +487,10 @@ export function AliquotaImpostoListPanel({
 
               <div className="md:col-span-2">
                 <label className="mb-1 block text-xs font-medium text-gray-600">
-                  Conta Sintética Sugerida (opcional — default de UX no rateio, ADR-038)
+                  Conta Sugerida (opcional — default de UX no rateio, ADR-038 revisão 2026-08-13, qualquer nível)
                 </label>
                 <SeletorContaAnalitica
-                  contas={[{ id: '', label: '— Nenhuma —' }, ...opcoesContaSintetica]}
+                  contas={[{ id: '', label: '— Nenhuma —' }, ...opcoesContaSugerida]}
                   value={form.contaSinteticaId}
                   onChange={(id) => setForm({ ...form, contaSinteticaId: id })}
                   placeholder="Buscar conta sintética por nome ou código..."

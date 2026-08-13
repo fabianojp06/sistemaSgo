@@ -16,12 +16,12 @@ export default async function AliquotasImpostosPage() {
   const usuario = await prisma.usuario.findFirst({ where: { tenantId, clerkUserId: userId }, select: { id: true } });
   if (!usuario) redirect('/login');
 
-  const [podeCriar, podeEditar, podeExcluir, contasSinteticas, resultado] = await Promise.all([
+  const [podeCriar, podeEditar, podeExcluir, contasParaSugestao, resultado] = await Promise.all([
     usuarioTemFuncionalidade(prisma, tenantId, usuario.id, 'aliquotas-impostos.criar'),
     usuarioTemFuncionalidade(prisma, tenantId, usuario.id, 'aliquotas-impostos.editar'),
     usuarioTemFuncionalidade(prisma, tenantId, usuario.id, 'aliquotas-impostos.excluir'),
     prisma.contaContabil.findMany({
-      where: { tenantId, isAnalitica: false },
+      where: { tenantId },
       select: { id: true, codigoErp: true, nomeConta: true },
       orderBy: { codigoErp: 'asc' },
     }),
@@ -29,7 +29,7 @@ export default async function AliquotasImpostosPage() {
   ]);
 
   const aliquotas = resultado.sucesso ? resultado.dados : [];
-  const opcoesContaSintetica = contasSinteticas.map((c) => ({ id: c.id, label: `${c.codigoErp} — ${c.nomeConta}` }));
+  const opcoesContaSugerida = contasParaSugestao.map((c) => ({ id: c.id, label: `${c.codigoErp} — ${c.nomeConta}` }));
 
   return (
     <main className="flex min-h-screen flex-col gap-6 p-6">
@@ -51,7 +51,7 @@ export default async function AliquotasImpostosPage() {
       ) : (
         <AliquotaImpostoListPanel
           aliquotasIniciais={aliquotas}
-          opcoesContaSintetica={opcoesContaSintetica}
+          opcoesContaSugerida={opcoesContaSugerida}
           podeCriar={podeCriar}
           podeEditar={podeEditar}
           podeExcluir={podeExcluir}
