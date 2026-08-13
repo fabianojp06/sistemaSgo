@@ -252,8 +252,14 @@ function NovoEmpregadoForm({
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">Nome (opcional — &quot;A CONTRATAR&quot; se vazio)</label>
-          <input type="text" value={nome} onChange={(e) => setNome(e.target.value)} className="w-full rounded border px-2 py-1 text-sm" />
+          <label className="mb-1 block text-xs font-medium text-gray-600">Nome (opcional)</label>
+          <input
+            type="text"
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            placeholder="&quot;A CONTRATAR&quot; se vazio"
+            className="w-full rounded border px-2 py-1 text-sm"
+          />
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-600">Quantidade</label>
