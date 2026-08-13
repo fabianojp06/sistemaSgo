@@ -726,12 +726,14 @@ export function CargoPanel({
                 />
                 Plano de Saúde
               </label>
+              <div />
+              <div />
               <div className="flex items-center gap-2">
                 <select
                   value={dados.planoSaudeFaixa ?? ''}
                   onChange={(e) => setDados((d) => ({ ...d, planoSaudeFaixa: (e.target.value || null) as typeof d.planoSaudeFaixa }))}
                   disabled={!dados.planoSaudeAtivo}
-                  className="w-24 rounded border px-2 py-1 text-sm disabled:opacity-50"
+                  className="w-32 shrink-0 rounded border px-2 py-1 text-sm disabled:opacity-50"
                 >
                   <option value="">Faixa...</option>
                   <option value="BASICO">Básico</option>
@@ -746,12 +748,15 @@ export function CargoPanel({
                   className="w-full rounded border px-2 py-1 text-sm disabled:opacity-50"
                 />
               </div>
-              <ContaComponenteSelect
-                contasAnaliticas={contasAnaliticas}
-                value={dados.contaPlanoSaudeId}
-                onChange={(v) => setDados((d) => ({ ...d, contaPlanoSaudeId: v }))}
-                disabled={!dados.planoSaudeAtivo}
-              />
+              <div />
+              <div>
+                <ContaComponenteSelect
+                  contasAnaliticas={contasAnaliticas}
+                  value={dados.contaPlanoSaudeId}
+                  onChange={(v) => setDados((d) => ({ ...d, contaPlanoSaudeId: v }))}
+                  disabled={!dados.planoSaudeAtivo}
+                />
+              </div>
             </div>
           </div>
 
