@@ -52,13 +52,14 @@ type ConfigurarBeneficiosCargoInput = {
 
 /** ADR-044 — mesma regra para Periculosidade e Insalubridade: Ativo exige Tipo; Tipo=PERCENTUAL exige 0-100; qualquer tipo bloqueia valor negativo. */
 function validarValorAdicional(campo: 'Periculosidade' | 'Insalubridade', ativo: boolean, tipo: TipoValorAdicional | null, valor: number): void {
-  if (ativo && !tipo) {
+  if (!ativo) return;
+  if (!tipo) {
     throw new TipoValorAdicionalObrigatorioError(campo);
   }
   if (valor < 0) {
     throw new ValorAdicionalNegativoError();
   }
-  if (tipo === 'PERCENTUAL' && (valor < 0 || valor > 100)) {
+  if (tipo === 'PERCENTUAL' && valor > 100) {
     throw new PercentualValorAdicionalInvalidoError(campo);
   }
 }

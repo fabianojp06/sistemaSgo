@@ -795,7 +795,13 @@ export function CargoPanel({
                     <input
                       type="checkbox"
                       checked={dados[a.ativo]}
-                      onChange={(e) => setDados((d) => ({ ...d, [a.ativo]: e.target.checked }))}
+                      onChange={(e) =>
+                        setDados((d) => ({
+                          ...d,
+                          [a.ativo]: e.target.checked,
+                          ...(e.target.checked ? {} : { [a.tipo]: null, [a.valor]: '0' }),
+                        }))
+                      }
                     />
                     {a.label}
                   </label>
