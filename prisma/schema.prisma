@@ -781,6 +781,22 @@ model Cargo {
   contaPlanoSaudeId        String?
   contaAuxilioCrecheId     String?
 
+  // ADR-044 — US-136: Periculosidade e Insalubridade. Adicionais somados a
+  // custoTotalCargo DEPOIS de Encargos Sociais (não entram na base de cálculo
+  // de encargosSociaisPct). *Tipo nullable, só obrigatório quando *Ativo=true
+  // (validado na camada de aplicação); *Valor é % (0-100) quando
+  // *Tipo=PERCENTUAL ou R$ quando *Tipo=VALOR_FIXO, calculado sobre
+  // salarioTotal — mesma base já usada por Encargos Sociais.
+  periculosidadeAtivo   Boolean             @default(false)
+  periculosidadeTipo    TipoValorAdicional?
+  periculosidadeValor   Decimal             @default(0) @db.Decimal(15, 2)
+  contaPericulosidadeId String?
+
+  insalubridadeAtivo   Boolean             @default(false)
+  insalubridadeTipo    TipoValorAdicional?
+  insalubridadeValor   Decimal             @default(0) @db.Decimal(15, 2)
+  contaInsalubridadeId String?
+
   // Calculado e persistido pelo use case a cada create/update — nunca input direto.
   custoTotalCargo Decimal @default(0) @db.Decimal(15, 2)
 
@@ -847,6 +863,13 @@ enum FaixaPlanoSaude {
   BASICO
   INTERMEDIARIO
   EXECUTIVO
+}
+
+// ADR-044 — Periculosidade e Insalubridade do Cargo: escolha única de tipo de
+// entrada, percentual sobre salarioTotal ou valor fixo em R$, nunca os dois.
+enum TipoValorAdicional {
+  PERCENTUAL
+  VALOR_FIXO
 }
 
 // ADR-018 — US-108. EmpregadoHeadcount é escopado por Proposta (nesta US, só

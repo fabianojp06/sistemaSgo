@@ -1,5 +1,5 @@
 import { Prisma } from '@prisma/client';
-import type { FaixaPlanoSaude } from '@prisma/client';
+import type { FaixaPlanoSaude, TipoValorAdicional } from '@prisma/client';
 
 type BeneficiosCargo = {
   encargosSociaisPct: Prisma.Decimal.Value;
@@ -18,7 +18,32 @@ type BeneficiosCargo = {
   auxilioCrecheValor: Prisma.Decimal.Value;
   transporteAtivo: boolean;
   transporteValorUnitario: Prisma.Decimal.Value;
+  // ADR-044 — Periculosidade e Insalubridade: adicionais somados a
+  // custoTotalCargo DEPOIS de Encargos Sociais, nunca compondo a base de
+  // encargosSociaisPct.
+  periculosidadeAtivo: boolean;
+  periculosidadeTipo: TipoValorAdicional | null;
+  periculosidadeValor: Prisma.Decimal.Value;
+  insalubridadeAtivo: boolean;
+  insalubridadeTipo: TipoValorAdicional | null;
+  insalubridadeValor: Prisma.Decimal.Value;
 };
+
+/**
+ * ADR-044 — valor mensal de um adicional (Periculosidade/Insalubridade):
+ * 0 se inativo (mesmo com valor preenchido de configuração anterior),
+ * percentual sobre salarioTotal quando tipo=PERCENTUAL, ou o valor direto
+ * quando tipo=VALOR_FIXO.
+ */
+export function calcularValorAdicional(
+  ativo: boolean,
+  tipo: TipoValorAdicional | null,
+  valor: Prisma.Decimal.Value,
+  salarioTotal: Prisma.Decimal.Value,
+): Prisma.Decimal {
+  if (!ativo) return new Prisma.Decimal(0);
+  return tipo === 'PERCENTUAL' ? new Prisma.Decimal(salarioTotal).times(valor).dividedBy(100) : new Prisma.Decimal(valor);
+}
 
 /** US-107a — Encargos Sociais = salarioTotal × percentual configurado no Cargo. */
 export function calcularEncargosSociais(salarioTotal: Prisma.Decimal.Value, encargosSociaisPct: Prisma.Decimal.Value): Prisma.Decimal {
@@ -42,7 +67,12 @@ export function calcularTotalBeneficios(cargo: BeneficiosCargo, diasUteisPadrao:
   return total;
 }
 
-/** US-107a — custoTotalCargo = salarioTotal + Encargos Sociais + Total de Benefícios [ORIGEM BLINDADA]. */
+/**
+ * US-107a / ADR-044 — custoTotalCargo = salarioTotal + Encargos Sociais +
+ * Periculosidade + Insalubridade + Total de Benefícios [ORIGEM BLINDADA].
+ * Periculosidade/Insalubridade são somados depois de Encargos Sociais, sem
+ * entrar na base de cálculo dos Encargos (que continua salarioTotal × pct).
+ */
 export function calcularCustoTotalCargo(
   salarioTotal: Prisma.Decimal.Value,
   cargo: BeneficiosCargo,
@@ -50,7 +80,9 @@ export function calcularCustoTotalCargo(
 ): Prisma.Decimal {
   const encargos = calcularEncargosSociais(salarioTotal, cargo.encargosSociaisPct);
   const beneficios = calcularTotalBeneficios(cargo, diasUteisPadrao);
-  return new Prisma.Decimal(salarioTotal).plus(encargos).plus(beneficios);
+  const periculosidade = calcularValorAdicional(cargo.periculosidadeAtivo, cargo.periculosidadeTipo, cargo.periculosidadeValor, salarioTotal);
+  const insalubridade = calcularValorAdicional(cargo.insalubridadeAtivo, cargo.insalubridadeTipo, cargo.insalubridadeValor, salarioTotal);
+  return new Prisma.Decimal(salarioTotal).plus(encargos).plus(periculosidade).plus(insalubridade).plus(beneficios);
 }
 
 export type BreakdownComponenteCusto = {
@@ -63,6 +95,8 @@ export type BreakdownComponenteCusto = {
   seguroVida: Prisma.Decimal;
   planoSaude: Prisma.Decimal;
   auxilioCreche: Prisma.Decimal;
+  periculosidade: Prisma.Decimal;
+  insalubridade: Prisma.Decimal;
 };
 
 /**
@@ -89,5 +123,7 @@ export function calcularBreakdownComponenteCusto(
     seguroVida: cargo.seguroVidaAtivo ? new Prisma.Decimal(cargo.seguroVidaValor) : new Prisma.Decimal(0),
     planoSaude: cargo.planoSaudeAtivo ? new Prisma.Decimal(cargo.planoSaudeValor) : new Prisma.Decimal(0),
     auxilioCreche: cargo.auxilioCrecheAtivo ? new Prisma.Decimal(cargo.auxilioCrecheValor) : new Prisma.Decimal(0),
+    periculosidade: calcularValorAdicional(cargo.periculosidadeAtivo, cargo.periculosidadeTipo, cargo.periculosidadeValor, salarioTotal),
+    insalubridade: calcularValorAdicional(cargo.insalubridadeAtivo, cargo.insalubridadeTipo, cargo.insalubridadeValor, salarioTotal),
   };
 }

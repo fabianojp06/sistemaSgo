@@ -753,6 +753,15 @@ const ConfigurarBeneficiosCargoSchema = z.object({
   auxilioCrecheValor: z.number().min(0),
   transporteAtivo: z.boolean(),
   transporteValorUnitario: z.number().min(0),
+  // ADR-044 — US-136: Periculosidade e Insalubridade.
+  periculosidadeAtivo: z.boolean(),
+  periculosidadeTipo: z.enum(['PERCENTUAL', 'VALOR_FIXO']).nullable().optional(),
+  periculosidadeValor: z.number().min(0),
+  contaPericulosidadeId: z.string().nullable().optional(),
+  insalubridadeAtivo: z.boolean(),
+  insalubridadeTipo: z.enum(['PERCENTUAL', 'VALOR_FIXO']).nullable().optional(),
+  insalubridadeValor: z.number().min(0),
+  contaInsalubridadeId: z.string().nullable().optional(),
 });
 
 export type BeneficiosCargoResultado = { id: string; custoTotalCargo: string };
@@ -776,6 +785,14 @@ export async function configurarBeneficiosCargo(input: {
   auxilioCrecheValor: number;
   transporteAtivo: boolean;
   transporteValorUnitario: number;
+  periculosidadeAtivo: boolean;
+  periculosidadeTipo?: 'PERCENTUAL' | 'VALOR_FIXO' | null;
+  periculosidadeValor: number;
+  contaPericulosidadeId?: string | null;
+  insalubridadeAtivo: boolean;
+  insalubridadeTipo?: 'PERCENTUAL' | 'VALOR_FIXO' | null;
+  insalubridadeValor: number;
+  contaInsalubridadeId?: string | null;
 }): Promise<ActionResultComDados<BeneficiosCargoResultado>> {
   const contexto = await usuarioAtual();
   if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };

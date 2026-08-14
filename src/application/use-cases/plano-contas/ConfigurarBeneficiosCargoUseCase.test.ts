@@ -1,7 +1,14 @@
 import { Prisma } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 import { ConfigurarBeneficiosCargoUseCase } from './ConfigurarBeneficiosCargoUseCase';
-import { CargoNaoEncontradoError, EncargosSociaisPercentualInvalidoError, ValorBeneficioNegativoError } from '@/domain/plano-contas/errors';
+import {
+  CargoNaoEncontradoError,
+  EncargosSociaisPercentualInvalidoError,
+  PercentualValorAdicionalInvalidoError,
+  TipoValorAdicionalObrigatorioError,
+  ValorAdicionalNegativoError,
+  ValorBeneficioNegativoError,
+} from '@/domain/plano-contas/errors';
 
 type CargoMock = {
   id: string;
@@ -24,6 +31,12 @@ type CargoMock = {
   auxilioCrecheValor: Prisma.Decimal;
   transporteAtivo: boolean;
   transporteValorUnitario: Prisma.Decimal;
+  periculosidadeAtivo: boolean;
+  periculosidadeTipo: string | null;
+  periculosidadeValor: Prisma.Decimal;
+  insalubridadeAtivo: boolean;
+  insalubridadeTipo: string | null;
+  insalubridadeValor: Prisma.Decimal;
   custoTotalCargo: Prisma.Decimal;
 };
 
@@ -71,6 +84,12 @@ function cargoZerado(overrides: Partial<CargoMock> = {}): CargoMock {
     auxilioCrecheValor: new Prisma.Decimal(0),
     transporteAtivo: false,
     transporteValorUnitario: new Prisma.Decimal(0),
+    periculosidadeAtivo: false,
+    periculosidadeTipo: null,
+    periculosidadeValor: new Prisma.Decimal(0),
+    insalubridadeAtivo: false,
+    insalubridadeTipo: null,
+    insalubridadeValor: new Prisma.Decimal(0),
     custoTotalCargo: new Prisma.Decimal(0),
     ...overrides,
   };
@@ -101,6 +120,10 @@ describe('ConfigurarBeneficiosCargoUseCase [US-107a]', () => {
       auxilioCrecheValor: 0,
       transporteAtivo: false,
       transporteValorUnitario: 0,
+      periculosidadeAtivo: false,
+      periculosidadeValor: 0,
+      insalubridadeAtivo: false,
+      insalubridadeValor: 0,
     });
 
     // encargos = 6200*0.68 = 4216; beneficios = 30*22 + 25*22 + 450 + 40 = 660+550+450+40=1700
@@ -135,6 +158,10 @@ describe('ConfigurarBeneficiosCargoUseCase [US-107a]', () => {
       auxilioCrecheValor: 999,
       transporteAtivo: false,
       transporteValorUnitario: 0,
+      periculosidadeAtivo: false,
+      periculosidadeValor: 0,
+      insalubridadeAtivo: false,
+      insalubridadeValor: 0,
     });
 
     expect(cargo.custoTotalCargo.toString()).toBe('6200'); // só o salário
@@ -164,6 +191,10 @@ describe('ConfigurarBeneficiosCargoUseCase [US-107a]', () => {
         auxilioCrecheValor: 0,
         transporteAtivo: false,
         transporteValorUnitario: 0,
+        periculosidadeAtivo: false,
+        periculosidadeValor: 0,
+        insalubridadeAtivo: false,
+        insalubridadeValor: 0,
       }),
     ).rejects.toThrow(EncargosSociaisPercentualInvalidoError);
   });
@@ -192,6 +223,10 @@ describe('ConfigurarBeneficiosCargoUseCase [US-107a]', () => {
         auxilioCrecheValor: 0,
         transporteAtivo: false,
         transporteValorUnitario: 0,
+        periculosidadeAtivo: false,
+        periculosidadeValor: 0,
+        insalubridadeAtivo: false,
+        insalubridadeValor: 0,
       }),
     ).rejects.toThrow(ValorBeneficioNegativoError);
   });
@@ -220,6 +255,10 @@ describe('ConfigurarBeneficiosCargoUseCase [US-107a]', () => {
       auxilioCrecheValor: 0,
       transporteAtivo: false,
       transporteValorUnitario: 0,
+      periculosidadeAtivo: false,
+      periculosidadeValor: 0,
+      insalubridadeAtivo: false,
+      insalubridadeValor: 0,
     });
 
     expect(cargo.custoTotalCargo.toString()).toBe('10540'); // 6200 + 6200*0.70
@@ -252,6 +291,10 @@ describe('ConfigurarBeneficiosCargoUseCase [US-107a]', () => {
         auxilioCrecheValor: 0,
         transporteAtivo: false,
         transporteValorUnitario: 0,
+        periculosidadeAtivo: false,
+        periculosidadeValor: 0,
+        insalubridadeAtivo: false,
+        insalubridadeValor: 0,
       }),
     ).rejects.toThrow(CargoNaoEncontradoError);
   });
@@ -279,8 +322,148 @@ describe('ConfigurarBeneficiosCargoUseCase [US-107a]', () => {
       auxilioCrecheValor: 0,
       transporteAtivo: false,
       transporteValorUnitario: 0,
+      periculosidadeAtivo: false,
+      periculosidadeValor: 0,
+      insalubridadeAtivo: false,
+      insalubridadeValor: 0,
     });
 
     expect(cargo.custoTotalCargo.toString()).toBe('6420'); // 6200 + 10*22
+  });
+
+  // ADR-044 / US-136 — Periculosidade e Insalubridade.
+  const inputBase = {
+    tenantId: 't1',
+    usuarioId: 'u1',
+    cargoId: 'c1',
+    encargosSociaisPct: 0,
+    vaAtivo: false,
+    vaValorUnitario: 0,
+    vrAtivo: false,
+    vrValorUnitario: 0,
+    planoSaudeAtivo: false,
+    planoSaudeValor: 0,
+    planoOdontoAtivo: false,
+    planoOdontoValor: 0,
+    seguroVidaAtivo: false,
+    seguroVidaValor: 0,
+    auxilioCrecheAtivo: false,
+    auxilioCrecheValor: 0,
+    transporteAtivo: false,
+    transporteValorUnitario: 0,
+  };
+
+  it('Periculosidade percentual é calculada sobre salarioTotal e somada depois de Encargos [ADR-044]', async () => {
+    const { base } = criarPrismaMock(cargoZerado({ encargosSociaisPct: new Prisma.Decimal(10) }));
+    const useCase = new ConfigurarBeneficiosCargoUseCase(base as never);
+
+    const cargo = await useCase.execute({
+      ...inputBase,
+      encargosSociaisPct: 10,
+      periculosidadeAtivo: true,
+      periculosidadeTipo: 'PERCENTUAL',
+      periculosidadeValor: 30,
+      insalubridadeAtivo: false,
+      insalubridadeValor: 0,
+    });
+
+    // encargos = 6200*0.10 = 620; periculosidade = 6200*0.30 = 1860; total = 6200+620+1860 = 8680
+    expect(cargo.custoTotalCargo.toString()).toBe('8680');
+  });
+
+  it('Insalubridade valor fixo é somada direto, sem aplicar percentual [ADR-044]', async () => {
+    const { base } = criarPrismaMock(cargoZerado());
+    const useCase = new ConfigurarBeneficiosCargoUseCase(base as never);
+
+    const cargo = await useCase.execute({
+      ...inputBase,
+      periculosidadeAtivo: false,
+      periculosidadeValor: 0,
+      insalubridadeAtivo: true,
+      insalubridadeTipo: 'VALOR_FIXO',
+      insalubridadeValor: 250,
+    });
+
+    expect(cargo.custoTotalCargo.toString()).toBe('6450'); // 6200 + 250
+  });
+
+  it('bloqueia percentual de Periculosidade fora da faixa 0-100 [ADR-044, Cenário 3]', async () => {
+    const { base } = criarPrismaMock(cargoZerado());
+    const useCase = new ConfigurarBeneficiosCargoUseCase(base as never);
+
+    await expect(
+      useCase.execute({
+        ...inputBase,
+        periculosidadeAtivo: true,
+        periculosidadeTipo: 'PERCENTUAL',
+        periculosidadeValor: 150,
+        insalubridadeAtivo: false,
+        insalubridadeValor: 0,
+      }),
+    ).rejects.toThrow(PercentualValorAdicionalInvalidoError);
+  });
+
+  it('bloqueia valor negativo de Periculosidade em qualquer tipo [ADR-044, Cenário 4]', async () => {
+    const { base } = criarPrismaMock(cargoZerado());
+    const useCase = new ConfigurarBeneficiosCargoUseCase(base as never);
+
+    await expect(
+      useCase.execute({
+        ...inputBase,
+        periculosidadeAtivo: true,
+        periculosidadeTipo: 'VALOR_FIXO',
+        periculosidadeValor: -10,
+        insalubridadeAtivo: false,
+        insalubridadeValor: 0,
+      }),
+    ).rejects.toThrow(ValorAdicionalNegativoError);
+  });
+
+  it('bloqueia valor negativo de Insalubridade em qualquer tipo [ADR-044, Cenário 4]', async () => {
+    const { base } = criarPrismaMock(cargoZerado());
+    const useCase = new ConfigurarBeneficiosCargoUseCase(base as never);
+
+    await expect(
+      useCase.execute({
+        ...inputBase,
+        periculosidadeAtivo: false,
+        periculosidadeValor: 0,
+        insalubridadeAtivo: true,
+        insalubridadeTipo: 'PERCENTUAL',
+        insalubridadeValor: -5,
+      }),
+    ).rejects.toThrow(ValorAdicionalNegativoError);
+  });
+
+  it('bloqueia Ativo=true sem Tipo informado [ADR-044, Cenário 6]', async () => {
+    const { base } = criarPrismaMock(cargoZerado());
+    const useCase = new ConfigurarBeneficiosCargoUseCase(base as never);
+
+    await expect(
+      useCase.execute({
+        ...inputBase,
+        periculosidadeAtivo: true,
+        periculosidadeTipo: null,
+        periculosidadeValor: 30,
+        insalubridadeAtivo: false,
+        insalubridadeValor: 0,
+      }),
+    ).rejects.toThrow(TipoValorAdicionalObrigatorioError);
+  });
+
+  it('Periculosidade inativa não entra no cálculo mesmo com valor preenchido [ADR-044, Cenário 6]', async () => {
+    const { base } = criarPrismaMock(cargoZerado());
+    const useCase = new ConfigurarBeneficiosCargoUseCase(base as never);
+
+    const cargo = await useCase.execute({
+      ...inputBase,
+      periculosidadeAtivo: false,
+      periculosidadeTipo: 'PERCENTUAL',
+      periculosidadeValor: 30,
+      insalubridadeAtivo: false,
+      insalubridadeValor: 0,
+    });
+
+    expect(cargo.custoTotalCargo.toString()).toBe('6200'); // só o salário, periculosidade ignorada
   });
 });
