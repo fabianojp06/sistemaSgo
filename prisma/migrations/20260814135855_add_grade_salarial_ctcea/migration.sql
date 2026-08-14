@@ -1,9 +1,6 @@
 -- AlterEnum
 ALTER TYPE "TipoOperacao" ADD VALUE 'SYNC_GRADE_SALARIAL_CTCEA';
 
--- DropForeignKey
-ALTER TABLE "Cargo" DROP CONSTRAINT "Cargo_unidadeFuncionalId_fkey";
-
 -- CreateTable
 CREATE TABLE "GradeSalarialCtcea" (
     "id" TEXT NOT NULL,
@@ -33,6 +30,3 @@ CREATE INDEX "GradeSalarialCtcea_tenantId_idx" ON "GradeSalarialCtcea"("tenantId
 
 -- CreateIndex
 CREATE UNIQUE INDEX "GradeSalarialCtcea_tenantId_faixa_nivel_key" ON "GradeSalarialCtcea"("tenantId", "faixa", "nivel");
-
--- AddForeignKey
-ALTER TABLE "Cargo" ADD CONSTRAINT "Cargo_unidadeFuncionalId_fkey" FOREIGN KEY ("unidadeFuncionalId") REFERENCES "UnidadeFuncional"("id") ON DELETE SET NULL ON UPDATE CASCADE;
