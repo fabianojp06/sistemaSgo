@@ -3,8 +3,14 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+  // Incidente 2026-08-14: um `prisma migrate diff --shadow-database-url` apontado
+  // por engano para a própria URL de produção apagou todos os dados (schema
+  // preservado, tabelas zeradas). shadowDatabaseUrl SEMPRE aponta para um Postgres
+  // local descartável (docker, ver docs/DEV_SHADOW_DATABASE.md) — nunca para
+  // Supabase. Sem valor em CI (só usado por `migrate dev`/`migrate diff` local).
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
 // Alinhado a DC_EP084_24 + requisitos/RN_AUTH_Clerk_BancoProprio.md
