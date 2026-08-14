@@ -1,0 +1,486 @@
+<title>Reorganização de Cargos</title>
+<style>
+  :root {
+    --bg: #f4f5f7;
+    --surface: #ffffff;
+    --surface-2: #eef0f3;
+    --border: #dde1e6;
+    --text: #1c2128;
+    --text-muted: #5b6472;
+    --text-faint: #8a93a1;
+    --accent: #2f5d8a;
+    --accent-soft: #e3edf5;
+    --accent-ink: #1d3f5f;
+    --ok: #2f7a4f;
+    --ok-soft: #e4f3e9;
+    --warn: #a56a1c;
+    --warn-soft: #f7ecd8;
+    --radius: 8px;
+    --font: -apple-system, "Segoe UI", "Inter", system-ui, sans-serif;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14171c;
+      --surface: #1b1f26;
+      --surface-2: #22262e;
+      --border: #2d323c;
+      --text: #e7eaee;
+      --text-muted: #9aa3b0;
+      --text-faint: #6b7280;
+      --accent: #6fa3d4;
+      --accent-soft: #22374a;
+      --accent-ink: #cfe2f3;
+      --ok: #6fbf8b;
+      --ok-soft: #1c3226;
+      --warn: #d6a24a;
+      --warn-soft: #3a2e17;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14171c;
+    --surface: #1b1f26;
+    --surface-2: #22262e;
+    --border: #2d323c;
+    --text: #e7eaee;
+    --text-muted: #9aa3b0;
+    --text-faint: #6b7280;
+    --accent: #6fa3d4;
+    --accent-soft: #22374a;
+    --accent-ink: #cfe2f3;
+    --ok: #6fbf8b;
+    --ok-soft: #1c3226;
+    --warn: #d6a24a;
+    --warn-soft: #3a2e17;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 40px 24px 80px;
+  }
+
+  .wrap { max-width: 1180px; margin: 0 auto; }
+
+  header.page {
+    margin-bottom: 36px;
+  }
+  header.page .eyebrow {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  header.page h1 {
+    font-size: 26px;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    margin: 0 0 8px;
+    text-wrap: balance;
+  }
+  header.page p {
+    color: var(--text-muted);
+    max-width: 640px;
+    margin: 0;
+  }
+
+  .option {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 40px;
+    overflow: hidden;
+  }
+  .option-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-2);
+  }
+  .option-head .name {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .option-head .tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent-ink);
+    background: var(--accent-soft);
+    padding: 2px 7px;
+    border-radius: 5px;
+    font-weight: 600;
+  }
+  .option-head h2 {
+    font-size: 16px;
+    font-weight: 650;
+    margin: 0;
+  }
+  .option-head .verdict {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    text-align: right;
+    max-width: 320px;
+  }
+
+  .stage {
+    padding: 28px;
+    background: var(--bg);
+  }
+
+  /* --- shared form-mock primitives --- */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+  }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+  .field .input {
+    height: 30px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface-2);
+    display: flex;
+    align-items: center;
+    padding: 0 9px;
+    font-size: 12.5px;
+    color: var(--text-faint);
+  }
+  .field .hint { font-size: 10.5px; color: var(--text-faint); }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 30px;
+    padding: 0 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .btn.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 10px;
+  }
+
+  /* === Option A: sectioned accordion === */
+  .accordion { display: flex; flex-direction: column; gap: 10px; }
+  .accordion .panel {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    overflow: hidden;
+  }
+  .accordion .panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    cursor: default;
+  }
+  .accordion .panel-head.open { background: var(--accent-soft); }
+  .accordion .panel-head .title {
+    display: flex; align-items: center; gap: 9px;
+    font-size: 12.5px; font-weight: 650;
+  }
+  .accordion .panel-head .num {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--accent); color: #fff;
+    font-size: 10px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .accordion .panel-head .chev { color: var(--text-faint); font-size: 12px; }
+  .accordion .panel-body {
+    padding: 16px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  .accordion .panel-body.collapsed { display: none; }
+
+  /* === Option B: two-column with sticky sidebar === */
+  .split { display: grid; grid-template-columns: 1fr 300px; gap: 20px; align-items: start; }
+  .split .main { display: flex; flex-direction: column; gap: 16px; }
+  .split .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .split .grid2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .sidebar {
+    display: flex; flex-direction: column; gap: 14px;
+    position: sticky; top: 16px;
+  }
+  .sidebar .card { display: flex; flex-direction: column; gap: 10px; }
+  .badge-live {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 10.5px; font-weight: 650;
+    color: var(--ok);
+    background: var(--ok-soft);
+    padding: 3px 8px; border-radius: 20px;
+    width: fit-content;
+  }
+  .badge-live::before {
+    content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--ok);
+  }
+  .kv { display: flex; flex-direction: column; gap: 6px; }
+  .kv .row { display: flex; justify-content: space-between; font-size: 11.5px; }
+  .kv .row span:first-child { color: var(--text-faint); }
+  .kv .row span:last-child { color: var(--text); font-weight: 550; font-variant-numeric: tabular-nums; }
+
+  /* === Option C: wizard/stepper === */
+  .stepper { display: flex; flex-direction: column; gap: 0; }
+  .steps-nav { display: flex; gap: 4px; margin-bottom: 18px; }
+  .steps-nav .step {
+    flex: 1; display: flex; flex-direction: column; gap: 6px;
+  }
+  .steps-nav .bar { height: 3px; border-radius: 3px; background: var(--border); }
+  .steps-nav .step.done .bar, .steps-nav .step.active .bar { background: var(--accent); }
+  .steps-nav .label { font-size: 10.5px; font-weight: 650; color: var(--text-faint); display: flex; align-items: center; gap: 5px; }
+  .steps-nav .step.active .label { color: var(--accent-ink); }
+  .steps-nav .step.done .label { color: var(--text-muted); }
+  .steps-nav .check { color: var(--ok); }
+  .step-body { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 18px; }
+  .step-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 14px; border-top: 1px dashed var(--border); }
+  .step-footer .dots { display: flex; gap: 5px; }
+  .step-footer .dots span { width: 5px; height: 5px; border-radius: 50%; background: var(--border); }
+  .step-footer .dots span.active { background: var(--accent); width: 14px; border-radius: 3px; }
+
+  .rubi-callout {
+    grid-column: 1 / -1;
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--accent-soft);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 14px;
+  }
+  .rubi-callout .info { display: flex; flex-direction: column; gap: 2px; }
+  .rubi-callout .info .t { font-size: 12px; font-weight: 650; color: var(--accent-ink); }
+  .rubi-callout .info .d { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+  footer.notes {
+    max-width: 720px;
+    margin: 56px auto 0;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 12.5px;
+  }
+  footer.notes h3 { font-size: 13px; color: var(--text); margin: 0 0 8px; }
+  footer.notes ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 5px; }
+
+  @media (max-width: 860px) {
+    .split { grid-template-columns: 1fr; }
+    .accordion .panel-body, .step-body { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+
+<div class="wrap">
+  <header class="page">
+    <div class="eyebrow">Estrutura Funcional e Cargos · Proposta 001-2026</div>
+    <h1>3 opções de reorganização do formulário de Cargo</h1>
+    <p>O formulário cresceu (Dados de Mercado, Rubi, Fonte Ativa, Vínculo Funcional, Benefícios/Encargos, Periculosidade/Insalubridade) e ficou uma coluna longa. As três opções abaixo testam formas diferentes de agrupar isso — mesmos campos, disposição diferente. Wireframe de conteúdo, sem interação real.</p>
+  </header>
+
+  <!-- OPTION A -->
+  <section class="option">
+    <div class="option-head">
+      <div class="name"><span class="tag">A</span><h2>Blocos recolhíveis por etapa</h2></div>
+      <div class="verdict">Cada bloco vira uma seção numerada que abre/fecha. Reduz a rolagem inicial a três linhas de título.</div>
+    </div>
+    <div class="stage">
+      <div class="accordion">
+        <div class="panel">
+          <div class="panel-head open">
+            <div class="title"><span class="num">1</span>Identificação e Mercado</div>
+            <span class="chev">▾</span>
+          </div>
+          <div class="panel-body">
+            <div class="field"><label>Nome do Cargo (Mercado)</label><div class="input">Analista de Sistemas Pleno</div></div>
+            <div class="field"><label>Conta Contábil</label><div class="input">3.1.02.004 — Pessoal Técnico</div></div>
+            <div class="field"><label>Período Início</label><div class="input">01/03/2026</div></div>
+            <div class="field"><label>Salário Mercado Mínimo</label><div class="input">R$ 6.200,00</div></div>
+            <div class="field"><label>Salário Mercado Máximo</label><div class="input">R$ 8.900,00</div></div>
+            <div class="field"><label>Função Gratificada</label><div class="input">—</div></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head open">
+            <div class="title"><span class="num">2</span>Rubi &amp; Fonte Ativa</div>
+            <span class="chev">▾</span>
+          </div>
+          <div class="panel-body">
+            <div class="rubi-callout">
+              <div class="info">
+                <span class="t">Importado do Rubi — Faixa F3 · Nível N7</span>
+                <span class="d">Salário Real R$ 5.363,28 · sincronizado 14/08 12:04</span>
+              </div>
+              <span class="btn">Reimportar</span>
+            </div>
+            <div class="field"><label>Fonte Ativa</label><div class="input">Rubi (Salário Real)</div></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <div class="title"><span class="num">3</span>Vínculo Funcional</div>
+            <span class="chev">▸</span>
+          </div>
+          <div class="panel-body collapsed"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <div class="title"><span class="num">4</span>Benefícios e Encargos</div>
+            <span class="chev">▸</span>
+          </div>
+          <div class="panel-body collapsed"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <div class="title"><span class="num">5</span>Periculosidade e Insalubridade</div>
+            <span class="chev">▸</span>
+          </div>
+          <div class="panel-body collapsed"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- OPTION B -->
+  <section class="option">
+    <div class="option-head">
+      <div class="name"><span class="tag">B</span><h2>Coluna principal + painel de custo fixo</h2></div>
+      <div class="verdict">Campos de edição ficam à esquerda; um painel à direita acompanha a rolagem mostrando Rubi, Fonte Ativa e o custo calculado em tempo real.</div>
+    </div>
+    <div class="stage">
+      <div class="split">
+        <div class="main">
+          <div class="card">
+            <div class="section-label">Identificação e Mercado</div>
+            <div class="grid3">
+              <div class="field"><label>Nome do Cargo (Mercado)</label><div class="input">Analista de Sistemas Pleno</div></div>
+              <div class="field"><label>Conta Contábil</label><div class="input">3.1.02.004 — Pessoal Técnico</div></div>
+              <div class="field"><label>Período Início</label><div class="input">01/03/2026</div></div>
+              <div class="field"><label>Salário Mín.</label><div class="input">R$ 6.200,00</div></div>
+              <div class="field"><label>Salário Máx.</label><div class="input">R$ 8.900,00</div></div>
+              <div class="field"><label>Função Gratificada</label><div class="input">—</div></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="section-label">Vínculo Funcional</div>
+            <div class="grid2">
+              <div class="field"><label>Unidade Funcional</label><div class="input">GIA — Gerência de Infraestrutura</div></div>
+              <div class="field"><label>Conta de Rateio</label><div class="input">Custo integral ao setor</div></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="section-label">Benefícios, Encargos, Periculosidade e Insalubridade</div>
+            <div class="grid3">
+              <div class="field"><label>Encargos Sociais</label><div class="input">68,00%</div></div>
+              <div class="field"><label>Vale Alimentação</label><div class="input">R$ 30,00 · ativo</div></div>
+              <div class="field"><label>Vale Refeição</label><div class="input">R$ 25,00 · ativo</div></div>
+              <div class="field"><label>Periculosidade</label><div class="input">30% · ativo</div></div>
+              <div class="field"><label>Insalubridade</label><div class="input">inativo</div></div>
+              <div class="field"><label>Plano de Saúde</label><div class="input">Intermediário · R$ 450,00</div></div>
+            </div>
+          </div>
+        </div>
+        <aside class="sidebar">
+          <div class="card">
+            <div class="badge-live">Importado do Rubi</div>
+            <div class="kv">
+              <div class="row"><span>Faixa / Nível</span><span>F3 / N7</span></div>
+              <div class="row"><span>Salário Real</span><span>R$ 5.363,28</span></div>
+              <div class="row"><span>Sincronizado</span><span>14/08 12:04</span></div>
+            </div>
+            <span class="btn" style="align-self: flex-start;">Reimportar do Rubi</span>
+          </div>
+          <div class="card">
+            <div class="field"><label>Fonte Ativa</label><div class="input">Rubi (Salário Real)</div></div>
+          </div>
+          <div class="card">
+            <div class="section-label" style="margin-bottom:8px;">Custo total do cargo</div>
+            <div class="kv">
+              <div class="row"><span>Salário</span><span>R$ 5.363,28</span></div>
+              <div class="row"><span>Encargos</span><span>R$ 3.647,03</span></div>
+              <div class="row"><span>Benefícios</span><span>R$ 1.700,00</span></div>
+              <div class="row"><span>Periculosidade</span><span>R$ 1.608,98</span></div>
+            </div>
+            <div class="kv" style="border-top:1px solid var(--border); padding-top:8px; margin-top:2px;">
+              <div class="row"><span style="font-weight:650; color:var(--text);">Total mensal</span><span style="font-size:13px;">R$ 12.319,29</span></div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <!-- OPTION C -->
+  <section class="option">
+    <div class="option-head">
+      <div class="name"><span class="tag">C</span><h2>Assistente em etapas (wizard)</h2></div>
+      <div class="verdict">Uma etapa por vez, com barra de progresso. Bom para cadastro do zero; edição rápida de um campo isolado fica mais lenta.</div>
+    </div>
+    <div class="stage">
+      <div class="stepper">
+        <div class="steps-nav">
+          <div class="step done"><div class="bar"></div><div class="label"><span class="check">✓</span>Mercado</div></div>
+          <div class="step active"><div class="bar"></div><div class="label">Rubi &amp; Fonte</div></div>
+          <div class="step"><div class="bar"></div><div class="label">Vínculo</div></div>
+          <div class="step"><div class="bar"></div><div class="label">Benefícios</div></div>
+          <div class="step"><div class="bar"></div><div class="label">Adicionais</div></div>
+        </div>
+        <div class="step-body">
+          <div class="rubi-callout">
+            <div class="info">
+              <span class="t">Importado do Rubi — Faixa F3 · Nível N7</span>
+              <span class="d">Salário Real R$ 5.363,28 · sincronizado 14/08 12:04</span>
+            </div>
+            <span class="btn">Reimportar</span>
+          </div>
+          <div class="field"><label>Fonte Ativa</label><div class="input">Rubi (Salário Real)</div></div>
+          <div></div>
+        </div>
+        <div class="step-footer">
+          <span class="btn">Voltar</span>
+          <div class="dots">
+            <span class="active"></span><span class="active"></span><span></span><span></span><span></span>
+          </div>
+          <span class="btn primary">Avançar →</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="notes">
+    <h3>Leitura rápida</h3>
+    <ul>
+      <li><strong>A</strong> muda o mínimo — mesma tela, mesma ordem, só recolhe o que não está em uso. Menor risco, menor ganho.</li>
+      <li><strong>B</strong> é a mudança mais estrutural — separa "o que eu edito" de "o que eu confiro" (Rubi + custo calculado sempre visíveis). Melhor para quem edita Cargo com frequência.</li>
+      <li><strong>C</strong> força uma ordem — bom em cadastro guiado, mas atrapalha quem só quer corrigir um campo no meio.</li>
+    </ul>
+  </footer>
+</div>

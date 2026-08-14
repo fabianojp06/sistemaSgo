@@ -753,6 +753,60 @@ Sessão cobrindo várias frentes pequenas de UI seguidas de um ciclo completo de
 
 **Próximo passo natural:** usuário revisar/mergear o PR #1; depois, US-129 (simular/aplicar reajuste em lote) é a próxima peça natural do UC04.02, já com ADR-040 fechado — só falta codificar (é operação financeira, branch+PR obrigatório desde o primeiro commit desta vez).
 
+## 2026-08-14 — registrada às 14:38 UTC — Dia mais denso da história do projeto: incidente de perda total de dados de produção (causado pelo assistente) + 3 features entregues (US-136, US-132→revisada, US-137) + recuperação completa
+
+Sessão longa cobrindo, nesta ordem: retomada de contexto, um incidente grave de perda de dados em produção (causado por mim), recuperação parcial, e três entregas de feature completas (refinamento → ADR → código → review → merge) sobre os escombros do incidente.
+
+### 1. Retomada de contexto e incidente de produção herdado (US-135/ADR-043)
+
+Sessão começou com o usuário pedindo o status de onde paramos (via memória + este arquivo). Confirmado: US-135/ADR-043 (reversão do vínculo Cargo↔Unidade Funcional de N:M para 1:1, decidida em 2026-08-13) estava implementada na branch `feature/us-135-vinculo-1-1`, mas nunca mergeada. O usuário reportou, com screenshot, que a tela "Estrutura Funcional e Cargos" em produção (`sistema-sgo.vercel.app`) estava quebrada ("This page couldn't load"). Investigação (via `mcp__supabase__execute_sql`) revelou a causa raiz: **as migrations do ADR-043 já tinham sido aplicadas no banco de produção em 2026-08-13, mas o código correspondente nunca foi mergeado** — o banco já estava no formato 1:1, mas `master` (deployada) ainda fazia query pela relação N:M já removida. Corrigido: `/code-review high` na branch (limpo) → PR #5 → merge em `master` (`ac0cc0a`), restaurando a tela.
+
+### 2. US-136/ADR-044 — Periculosidade e Insalubridade do Cargo
+
+Pedido do usuário: 2 novos campos no Cargo, cada um configurável como % (sobre `salarioTotal`) ou valor fixo em R$. Fluxo completo: `analista-negocios-po` refinou a US com 6 decisões deixadas explicitamente para o Tech Lead → `techlead-fsg` produziu **ADR-044** (somados a `custoTotalCargo` **depois** de Encargos Sociais, não entram na base de cálculo de Encargos; conta contábil própria por componente, padrão ADR-029; cumulação dos dois permitida sem bloqueio — sistema não arbitra regra CLT) → agente em background implementou (migration + domínio + use case + UI + testes) na branch `feature/us-136-periculosidade-insalubridade` → `/code-review high` achou 4 problemas (validação bloqueando indevidamente valor residual negativo quando inativo; checagem morta/inalcançável; checkbox não resetando Tipo/Valor; FK não relacionada recriada à toa na migration) → todos corrigidos → PR #6 mergeado (`67b53cd`). Fix de UX adicional depois (busca por conta habilitada nos 2 campos novos, `SeletorContaAnalitica` em vez de `<select>` simples), direto na master (`6e27687`).
+
+### 3. Migração de US-132 e ADR-045 — Importar Cargo do Rubi
+
+US-132 (Tabela Salarial/Faixa/Nível do Rubi) estava bloqueada desde 2026-08-13 aguardando 2 decisões de arquitetura. Ambas resolvidas via `AskUserQuestion`: (a) mantém fixture simulada, sem integração HTTP real ainda; (b) `codigoCargo` continua gerado internamente pelo SGO, não vem do Rubi. Escopo ampliado a pedido do usuário para incluir também o **Nome do Cargo** na importação (não só Tabela/Faixa/Nível/Salário). Fluxo completo de novo: `analista-negocios-po` reescreveu a US com um fluxo de busca explícita (modal "Importar do Rubi", termo de busca livre não persistido) → `techlead-fsg` produziu **ADR-045** (novo use case dedicado `ImportarCargoRubiUseCase`, reaproveita `statusSyncSalario`/`syncedAt` já existentes em vez de criar timestamp novo) → agente implementou (6 novos campos em `Cargo`, todos [ORIGEM BLINDADA], provider fixture com hash determinístico, modal, testes) → `/code-review high` achou 4 problemas (update dentro de transação sem escopo por `tenantId`; leitura do "anterior" fora da transação arriscando auditoria desatualizada em corrida; validação frouxa do valor monetário; atributo `readOnly` redundante) → todos corrigidos → PR #7 mergeado (`e1825a9`).
+
+### 4. ⚠️ INCIDENTE CRÍTICO: perda total de dados de produção, causada pelo assistente
+
+Usuário pediu para investigar por que uma migration anterior precisou de aplicação manual (`prisma db execute` + `migrate resolve --applied`) em vez de `prisma migrate dev` — um "drift" aparente. Durante essa investigação, rodei:
+
+```
+npx prisma migrate diff --from-migrations prisma/migrations --to-url "$DATABASE_URL" --shadow-database-url "$DATABASE_URL"
+```
+
+**Passei a mesma URL de produção como alvo E como shadow database.** O Prisma trata o shadow database como descartável — isso **apagou todos os dados de todas as tabelas de produção** (`Usuario`, `Proposta`, `Cargo`, `Empregado`, `TabelaSalarial`, tudo), preservando só a estrutura (DDL) das tabelas, e **zerou também a própria `_prisma_migrations`** (histórico de controle). Sem backup disponível — projeto usa só o plano gratuito do Supabase, sem PITR nem backup automático. **Dados de negócio perdidos de forma permanente e definitiva.**
+
+**Causa raiz do "drift" original que eu estava investigando** (irônico): banal — falta de `directUrl`/shadow database configurado, e o pooler do Supabase não suporta bem `migrate dev`. Meu comando de diagnóstico é que causou o dano real, não o problema que eu estava investigando.
+
+**Recuperação (só de acesso, não dos dados):**
+1. Clerk (autenticação) não foi afetado — os 3 usuários reais continuavam lá. Script temporário resincronizou `Usuario` a partir da API do Clerk (mesma lógica do webhook).
+2. `prisma/seed.mjs` recriou o catálogo `Modulo`/`Funcionalidade` e o Perfil "Administrador".
+3. `_prisma_migrations` reconstruída marcando as 43 migrations existentes como aplicadas (`prisma migrate resolve --applied`, uma a uma, timeout obrigou rodar em 2 lotes).
+4. `Plano de Contas` (US-001) restaurado sem perda real — é alimentado por um arquivo fixo embutido no código (`plano-contas-raw.ts`), então rodar `SincronizarPlanoContasUseCase` via script trouxe de volta as 175 contas exatamente como estavam.
+
+**O que NÃO foi recuperado, perdido de fato:** todas as Propostas, Cargos, Empregados, Tabela Salarial, Alíquotas/Rateios de Imposto configurados manualmente, HistoricoOperacao anterior ao incidente. O usuário já começou a recadastrar manualmente durante a sessão (Proposta "001-2026", 3 Unidades Funcionais).
+
+**Correção estrutural aplicada** (commit `63bda41`, master): `prisma/schema.prisma` ganhou `shadowDatabaseUrl = env("SHADOW_DATABASE_URL")` apontando para um Postgres **local via Docker** (nunca Supabase); `docs/DEV_SHADOW_DATABASE.md` documenta o incidente e a regra permanente. Ver memória `incidente_perda_dados_producao_2026_08_14.md` para o registro completo — **este é o incidente mais grave já ocorrido no projeto, e a lição (nunca passar a URL de produção como shadow database) é inegociável daqui pra frente.**
+
+### 5. US-137/ADR-046 — Grade Salarial CTCEA (substitui fixture-hash do Rubi por catálogo real)
+
+Enquanto investigava o botão "Sincronizar" que sumiu (na verdade nunca existiu ativo — Funcionalidade `plano-contas.sincronizar` desligada desde 2026-08-11, decisão anterior não relacionada ao incidente), o usuário pediu que a importação do Rubi passasse a funcionar **exatamente como o Plano de Contas**: catálogo real carregado de um arquivo fixo via botão "Sincronizar", não mais busca por hash. Usuário forneceu 2 fotos de um relatório real "Tabela de Salários" da CTCEA (Organização Brasileira para o Desenvolvimento Científico e Técnico do Controle do Espaço Aéreo) — Classe (F1-F7) × Nível (N1-N20/22) → Salário. 2 valores anômalos (F1/N21=R$9,10, F1/N22=R$8,91, destoando da progressão) descartados por decisão do usuário. Fluxo completo: `analista-negocios-po` escreveu **US-137** → `techlead-fsg` produziu **ADR-046** (migração 100% do fixture-hash, sem convivência; loader plano sem hierarquia, mais simples que o do Plano de Contas; `cargoMercado`/`cargoCtcea` nascem nullable até uma 2ª fonte com nomes de cargo) → agente implementou (140 linhas transcritas, novo model `GradeSalarialCtcea`, `CargoRubiFixtureProvider` removido por completo, busca por Faixa/Nível no modal, botão Sincronizar na tela `/plano-contas`) → `/code-review high` achou 4 problemas (2 reais: migration com FK não relacionada recriada à toa — mesmo padrão de artefato já visto 2x hoje —, e loader sem chunking no INSERT em lote; 2 já mitigados no próprio código) → corrigidos → PR #8 mergeado (`be2334a`). Sincronização inicial rodada em produção (140 linhas, 7 Faixas × 20 Níveis, conferido contra os valores das fotos). Botão "Sincronizar" ativado manualmente (Funcionalidade + vínculo ao Perfil Administrador, que não existiam ainda porque o seed não tinha rodado desde o merge).
+
+### 6. Ajustes finais de UX
+
+Campo "Fonte Ativa" (já existia desde US-107, com opção "Rubi (Salário Real)") movido para abaixo do bloco de importação do Rubi no formulário de Cargo, a pedido do usuário — commit `b3c2f46`, direto na master (UI pura).
+
+Usuário pediu sugestões de reorganização de layout da tela de Cargo — gerado artefato com 3 opções (blocos recolhíveis / coluna principal + painel fixo com custo ao vivo / assistente em etapas), publicado e salvo em `docs/Mockup_Reorganizacao_Layout_Cargos_2026-08-14.html`. Decisão de qual opção implementar ainda **em aberto** ao fim da sessão.
+
+### Estado ao final do dia
+
+`master` em `b3c2f46` (mais o commit deste registro de sessão). Todas as 4 entregas de feature do dia (US-135 merge, US-136, US-132/ADR-045, US-137/ADR-046) estão em produção, testadas e com code-review aplicado. **O incidente de perda de dados é o fato mais importante do dia** — sistema funcional novamente, mas com todo o dado de negócio histórico perdido, exceto o que é regenerável de fontes fixas (Plano de Contas, Grade Salarial CTCEA) ou o que o usuário já recomeçou a recadastrar manualmente.
+
+**Próximo passo natural:** (1) usuário decidir qual das 3 opções de layout de Cargo implementar (ou nenhuma); (2) continuar recadastrando manualmente Propostas/Cargos/Empregados/Tabela Salarial/Rateios perdidos; (3) US-133 completar (`FonteAtivaSalario.TOTAL`) e US-134 (Snapshot de Oficialização) seguem como próximas peças do módulo de Cargos, agora desbloqueadas.
+
 ## Como usar este arquivo em sessões futuras
 
 No início de uma sessão, se o usuário perguntar "qual o contexto/status de X", leia este arquivo antes de assumir que a memória padrão (`~/.claude/.../memory/`) está atualizada — o ambiente deste projeto (Codespace) pode ter sido recriado desde a última sessão, apagando a memória padrão sem apagar o repositório.
