@@ -1,4 +1,3 @@
-import { Prisma } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 import { CadastrarCargoUseCase } from './CadastrarCargoUseCase';
 import {
@@ -7,7 +6,6 @@ import {
   VinculoCargoNaoAnaliticoError,
   VinculoFuncionalObrigatorioError,
 } from '@/domain/plano-contas/errors';
-import type { CargoRubiProvider } from '@/infrastructure/integrations/rubi/types';
 
 type UnidadeMock = { id: string; tenantId: string; propostaId: string; tipoNivel: string };
 type CargoMock = {
@@ -54,15 +52,10 @@ function criarPrismaMock(unidades: UnidadeMock[], cargosExistentes: CargoMock[] 
 const unidadeAnalitica: UnidadeMock = { id: 'u1', tenantId: 't1', propostaId: 'p1', tipoNivel: 'ANALITICO_SETOR' };
 const unidadeSintetica: UnidadeMock = { id: 'u2', tenantId: 't1', propostaId: 'p1', tipoNivel: 'SINTETICO_GERENCIA' };
 
-function providerFixo(valor: number | null): CargoRubiProvider {
-  return { buscarSalarioReal: vi.fn().mockResolvedValue(valor === null ? null : new Prisma.Decimal(valor)) };
-}
-
-describe('CadastrarCargoUseCase [US-107, ADR-043 — vínculo 1:1]', () => {
-  it('cadastra Cargo com Fonte Ativa = Mercado e registra auditoria [Cenário 1]', async () => {
+describe('CadastrarCargoUseCase [US-107, ADR-043 — vínculo 1:1; ADR-045 — sem sync automático do Rubi]', () => {
+  it('cadastra Cargo com Fonte Ativa = Mercado, sem chamar o Rubi automaticamente [Cenário 1]', async () => {
     const { base } = criarPrismaMock([unidadeAnalitica]);
-    const provider = providerFixo(5300);
-    const useCase = new CadastrarCargoUseCase(base as never, provider);
+    const useCase = new CadastrarCargoUseCase(base as never);
 
     const cargo = await useCase.execute({
       tenantId: 't1',
@@ -78,7 +71,10 @@ describe('CadastrarCargoUseCase [US-107, ADR-043 — vínculo 1:1]', () => {
     });
 
     expect(cargo.codigoCargo).toMatch(/^CARGO-\d{4}-0001$/);
-    expect(cargo.salarioReal?.toString()).toBe('5300');
+    // ADR-045 — Cargo novo nasce sem Salário Real; importação é ação separada do usuário.
+    expect(cargo.salarioReal).toBeNull();
+    expect(cargo.statusSyncSalario).toBe('PENDENTE');
+    expect(cargo.syncedAt).toBeNull();
     expect(cargo.salarioTotal.toString()).toBe('6200');
     expect(base.historicoOperacao.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ tipoOperacao: 'CARGO_CRIADO' }) }),
@@ -87,7 +83,7 @@ describe('CadastrarCargoUseCase [US-107, ADR-043 — vínculo 1:1]', () => {
 
   it('bloqueia cadastro sem vínculo funcional [Cenário 2]', async () => {
     const { base } = criarPrismaMock([unidadeAnalitica]);
-    const useCase = new CadastrarCargoUseCase(base as never, providerFixo(5000));
+    const useCase = new CadastrarCargoUseCase(base as never);
 
     await expect(
       useCase.execute({
@@ -107,7 +103,7 @@ describe('CadastrarCargoUseCase [US-107, ADR-043 — vínculo 1:1]', () => {
 
   it('bloqueia vínculo com nó Sintético [Cenário 3]', async () => {
     const { base } = criarPrismaMock([unidadeSintetica]);
-    const useCase = new CadastrarCargoUseCase(base as never, providerFixo(5000));
+    const useCase = new CadastrarCargoUseCase(base as never);
 
     await expect(
       useCase.execute({
@@ -127,7 +123,7 @@ describe('CadastrarCargoUseCase [US-107, ADR-043 — vínculo 1:1]', () => {
 
   it('bloqueia quando a unidade funcional não existe', async () => {
     const { base } = criarPrismaMock([]);
-    const useCase = new CadastrarCargoUseCase(base as never, providerFixo(5000));
+    const useCase = new CadastrarCargoUseCase(base as never);
 
     await expect(
       useCase.execute({
@@ -147,7 +143,7 @@ describe('CadastrarCargoUseCase [US-107, ADR-043 — vínculo 1:1]', () => {
 
   it('bloqueia cadastro sem campos obrigatórios', async () => {
     const { base } = criarPrismaMock([unidadeAnalitica]);
-    const useCase = new CadastrarCargoUseCase(base as never, providerFixo(5000));
+    const useCase = new CadastrarCargoUseCase(base as never);
 
     await expect(
       useCase.execute({
@@ -167,7 +163,7 @@ describe('CadastrarCargoUseCase [US-107, ADR-043 — vínculo 1:1]', () => {
 
   it('calcula Salário Total somando Função Gratificada à Fonte Ativa [Cenário 5]', async () => {
     const { base } = criarPrismaMock([unidadeAnalitica]);
-    const useCase = new CadastrarCargoUseCase(base as never, providerFixo(5000));
+    const useCase = new CadastrarCargoUseCase(base as never);
 
     const cargo = await useCase.execute({
       tenantId: 't1',
@@ -190,7 +186,7 @@ describe('CadastrarCargoUseCase [US-107, ADR-043 — vínculo 1:1]', () => {
     const { base } = criarPrismaMock([unidadeAnalitica], [
       { id: 'c0', tenantId: 't1', codigoCargo: `CARGO-${new Date().getFullYear()}-0001`, propostaId: 'p1' },
     ]);
-    const useCase = new CadastrarCargoUseCase(base as never, providerFixo(5000));
+    const useCase = new CadastrarCargoUseCase(base as never);
 
     const cargo = await useCase.execute({
       tenantId: 't1',

@@ -1,7 +1,7 @@
 'use server';
 
 import { z } from 'zod';
-import type { Cargo } from '@prisma/client';
+import { Prisma, type Cargo } from '@prisma/client';
 import { auth } from '@clerk/nextjs/server';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/infrastructure/db/prisma';
@@ -14,6 +14,8 @@ import {
   getCadastrarCargoUseCase,
   getCadastrarCargoRascunhoUseCase,
   getEditarCargoUseCase,
+  getImportarCargoRubiUseCase,
+  getCargoRubiProvider,
   getConfigurarBeneficiosCargoUseCase,
   getRessincronizarSnapshotEmpregadosCargoUseCase,
   getExcluirCargoUseCase,
@@ -27,6 +29,7 @@ import {
   getExcluirTabelaSalarialUseCase,
 } from '@/application/use-cases/plano-contas/container';
 import type { RessincronizacaoEmpregadoResultado } from '@/application/use-cases/plano-contas/RessincronizarSnapshotEmpregadosCargoUseCase';
+import type { CandidatoCargoRubi } from '@/infrastructure/integrations/rubi/types';
 import type { RegistroTabelaSalarial } from '@/application/use-cases/plano-contas/ListarTabelaSalarialUseCase';
 import { normalizarValorMonetario } from '@/lib/decimal/normalizarValorMonetario';
 
@@ -188,6 +191,15 @@ export type CargoResultado = {
   contaGratificacaoId: string | null;
   periodoInicio: string | null;
   salarioReal: string | null;
+  /** ADR-045 (US-132) — [ORIGEM BLINDADA], preenchidos só via importarCargoRubi. */
+  tabSalCodigo: string | null;
+  tabSalDescricao: string | null;
+  faixaCodigo: string | null;
+  faixaDescricao: string | null;
+  nivelCodigo: string | null;
+  nivelDescricao: string | null;
+  statusSyncSalario: 'SINCRONIZADO' | 'PENDENTE' | 'ERRO';
+  syncedAt: string | null;
   salarioTotal: string;
   custoTotalCargo: string;
   encargosSociaisPct: string;
@@ -241,6 +253,14 @@ function serializarCargo(cargo: Cargo): CargoResultado {
     contaGratificacaoId: cargo.contaGratificacaoId,
     periodoInicio: cargo.periodoInicio?.toISOString() ?? null,
     salarioReal: cargo.salarioReal?.toString() ?? null,
+    tabSalCodigo: cargo.tabSalCodigo,
+    tabSalDescricao: cargo.tabSalDescricao,
+    faixaCodigo: cargo.faixaCodigo,
+    faixaDescricao: cargo.faixaDescricao,
+    nivelCodigo: cargo.nivelCodigo,
+    nivelDescricao: cargo.nivelDescricao,
+    statusSyncSalario: cargo.statusSyncSalario,
+    syncedAt: cargo.syncedAt?.toISOString() ?? null,
     salarioTotal: cargo.salarioTotal.toString(),
     custoTotalCargo: cargo.custoTotalCargo.toString(),
     encargosSociaisPct: cargo.encargosSociaisPct.toString(),
@@ -425,6 +445,93 @@ export async function configurarBeneficiosCargo(
     const dados = entrada.data;
     const cargo = await getConfigurarBeneficiosCargoUseCase().execute({ ...contexto, ...dados, planoSaudeFaixa: dados.planoSaudeFaixa ?? null });
     revalidatePath('/', 'layout'); // invalida toda a árvore de /propostas (não há layout.tsx aninhado ali) — dropdown de Cargo em Empregados, etc.
+    return { sucesso: true, dados: serializarCargo(cargo) };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+export type CandidatoCargoRubiResultado = {
+  nomeCargoMercado: string;
+  tabSalCodigo: string;
+  tabSalDescricao: string;
+  faixaCodigo: string;
+  faixaDescricao: string;
+  nivelCodigo: string;
+  nivelDescricao: string;
+  salarioReal: string;
+};
+
+function serializarCandidatoRubi(candidato: CandidatoCargoRubi): CandidatoCargoRubiResultado {
+  return { ...candidato, salarioReal: candidato.salarioReal.toString() };
+}
+
+const BuscarCargosRubiSchema = z.object({ termo: z.string().trim().min(1) });
+
+/** ADR-045 (US-132) — busca por termo livre no Rubi (fixture); operação de leitura, não persiste o termo. */
+export async function buscarCargosRubi(
+  termo: string,
+): Promise<ActionResultComDados<CandidatoCargoRubiResultado[]>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const entrada = BuscarCargosRubiSchema.safeParse({ termo });
+  if (!entrada.success) return { sucesso: false, mensagem: 'Informe um termo de busca.' };
+
+  try {
+    const candidatos = await getCargoRubiProvider().buscarCargosPorTermo(entrada.data.termo);
+    return { sucesso: true, dados: candidatos.map(serializarCandidatoRubi) };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+const ImportarCargoRubiSchema = z.object({
+  cargoId: z.string().min(1),
+  candidato: z.object({
+    nomeCargoMercado: z.string().min(1),
+    tabSalCodigo: z.string().min(1),
+    tabSalDescricao: z.string().min(1),
+    faixaCodigo: z.string().min(1),
+    faixaDescricao: z.string().min(1),
+    nivelCodigo: z.string().min(1),
+    nivelDescricao: z.string().min(1),
+    salarioReal: z.coerce.string().transform((v, ctx) => {
+      const normalizado = normalizarValorMonetario(v);
+      const numero = Number(normalizado);
+      if (Number.isNaN(numero) || numero < 0) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Salário Real do candidato inválido.' });
+        return z.NEVER;
+      }
+      return normalizado;
+    }),
+  }),
+});
+
+/**
+ * ADR-045 (US-132) — importa, em bloco, os 5 campos [ORIGEM BLINDADA] de um candidato
+ * do Rubi já escolhido pelo usuário. Reimportação substitui os 5 campos juntos.
+ */
+export async function importarCargoRubi(
+  input: z.input<typeof ImportarCargoRubiSchema>,
+): Promise<ActionResultComDados<CargoResultado>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const entrada = ImportarCargoRubiSchema.safeParse(input);
+  if (!entrada.success) return { sucesso: false, mensagem: 'Selecione um candidato válido do Rubi.' };
+
+  const temPermissao = await usuarioTemFuncionalidade(prisma, contexto.tenantId, contexto.usuarioId, 'propostas.gerenciar-estrutura');
+  if (!temPermissao) return { sucesso: false, mensagem: 'Perfil sem permissão para gerenciar Cargos.' };
+
+  try {
+    const { cargoId, candidato } = entrada.data;
+    const cargo = await getImportarCargoRubiUseCase().execute({
+      ...contexto,
+      cargoId,
+      candidato: { ...candidato, salarioReal: new Prisma.Decimal(candidato.salarioReal) },
+    });
+    revalidatePath('/', 'layout');
     return { sucesso: true, dados: serializarCargo(cargo) };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };

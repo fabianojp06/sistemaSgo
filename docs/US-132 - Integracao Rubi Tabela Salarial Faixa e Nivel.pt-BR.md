@@ -1,43 +1,97 @@
-## [US-132] — Exibição Consolidada de Tabela Salarial, Faixa, Nível e Salário Real (Rubi)
+## [US-132] — Importar Cargo do Rubi (Nome, Salário Real, Faixa e Nível)
 
 **Módulo:** Cadastros — Cargos e Salários (UC03.19, Bloco A/B da Rev. Jun/2026)
 **Épico:** EP118/24
 **Prioridade:** Alta
 **Estimativa:** M
-**Bloqueio conhecido:** depende de decisão do usuário sobre a integração real com o Rubi — ver "Gaps e Perguntas de Validação" ao final. Sem essa decisão, esta US só pode ser implementada sobre a fixture já existente (`CargoRubiFixtureProvider`), não sobre dados reais.
 
 **Como** Usuário GRH,
-**Quero** ver, ao cadastrar um Cargo, os campos Tabela Salarial, Faixa e Nível (código + descrição) e o Salário Real consolidado com esses 3 componentes, todos vindos do Rubi,
-**Para** ter rastreabilidade completa da origem salarial (RN_CAR_09/REQ_CAR_007) sem depender de memória ou de outra tela para saber a que faixa/nível um Salário Real pertence.
+**Quero** buscar um Cargo no Rubi e importar de uma vez Nome do Cargo, Salário Real, Faixa e Nível
+(código + descrição), com esses campos ficando Read-only depois de importados,
+**Para** cadastrar um Cargo com rastreabilidade completa da origem salarial (RN_CAR_09/REQ_CAR_007)
+sem digitar manualmente dados que já existem no ERP, e sem risco de divergência entre o que foi
+digitado e o que está no Rubi.
 
 ### Contexto e Regras de Negócio
 
-Documento de origem: seção 4.1/4.2, RN_CAR_03/09, REQ_CAR_007 (GAP-CAR-001, ✅ resolvido no documento). Hoje o schema (`Cargo.salarioReal`) só tem o valor numérico — não existem os campos `tabSalCodigo`/`tabSalDescricao`/`faixaCodigo`/`faixaDescricao`/`nivelCodigo`/`nivelDescricao` que o documento pede, nem o `codigoCargo` é soberano do Rubi (hoje é **gerado internamente** pelo SGO, `CARGO-{ano}-{seq}` — o documento descreve `codigoCargo` como ORIGEM BLINDADA do Rubi, o que diverge do código atual).
+**Histórico:** esta US estava bloqueada desde a criação (2 gaps de arquitetura). Ambos foram
+decididos pelo usuário em 2026-08-14:
 
-Todos os 6 campos novos + `salarioReal` são [ORIGEM BLINDADA] — Read-only absoluto na UI, nunca editáveis por `CadastrarCargoUseCase`/`EditarCargoUseCase` (RN_CAR_03).
+1. **Sem integração HTTP real com o Rubi ainda.** `CargoRubiFixtureProvider` continua sendo a fonte
+   de dados — mesma decisão já usada para o Plano de Contas/Senior. Hoje ele só gera `salarioReal`
+   (hash determinístico do nome digitado pelo usuário); passa a gerar também Nome do Cargo, Faixa e
+   Nível de forma determinística. Os dados continuam simulados até uma integração real ser
+   priorizada — não é escopo desta US.
+2. **`Cargo.codigoCargo` continua gerado internamente pelo SGO** (`CARGO-{ano}-{seq}`), não passa a
+   vir do Rubi. Sem mudança de fonte de verdade, sem risco de colisão com Cargos já cadastrados.
+
+**Mudança de escopo pedida pelo usuário em 2026-08-14:** a US original só cobria Tabela
+Salarial/Faixa/Nível/Salário Real, assumindo que o Nome do Cargo já estava digitado antes da
+sincronização. Agora o Nome do Cargo também vem do Rubi — o que exige um fluxo de **busca
+explícita**, porque não faz sentido usar o Nome do Cargo como critério de busca de si mesmo.
+
+**Critério de busca da importação (decisão de UX desta US, não uma nova coluna no banco):** o
+usuário digita um **termo de busca livre** (nome parcial do cargo ou um código externo do Rubi, ex.
+"analista" ou "AN-SIS-003") em um campo de busca dentro do modal "Importar do Rubi". O sistema
+consulta o provider (`buscarCargosPorTermo`, novo método do `CargoRubiProvider`) e retorna uma lista
+de candidatos (Nome, Tabela Salarial, Faixa, Nível, Salário Real). O usuário escolhe um da lista e
+os 4 campos são preenchidos de uma vez. **Não é criado nenhum campo novo persistido** para esse
+critério de busca — o termo é só um parâmetro de consulta transiente, nunca gravado no `Cargo`. Essa
+escolha evita inventar um "Código Rubi" que não existe no schema atual e que só teria uso nesse
+fluxo. **Aponto como decisão do Tech Lead confirmar antes de codificar** — é uma escolha de UX/API,
+não uma regra de negócio fechada, e ele pode preferir uma abordagem diferente (ex: dropdown com
+lista pré-carregada em vez de busca livre).
+
+Os 6 campos de Tabela Salarial/Faixa/Nível + `salarioReal` **e agora também `nomeCargoMercado`**
+passam a ser [ORIGEM BLINDADA] — Read-only absoluto na UI depois de importados, nunca editáveis
+diretamente por `CadastrarCargoUseCase`/`EditarCargoUseCase` (RN_CAR_03). Antes da 1ª importação,
+`nomeCargoMercado` continua editável normalmente (Cargo "Rascunho", ADR-042, pode nascer só com nome
+digitado manualmente e ser importado do Rubi depois — ou já nascer via importação).
 
 ### Critérios de Aceite
 
-**Cenário 1 — Sincronização de Tabela Salarial/Faixa/Nível ao cadastrar Cargo**
+**Cenário 1 — Buscar e importar um Cargo do Rubi**
 ```gherkin
-Dado que o usuário está cadastrando um novo Cargo com Cargo Mercado = "Analista de Sistemas"
-Quando o sistema consulta o provider Rubi (fixture ou integração real, conforme decisão de arquitetura)
-Então o sistema exibe, Read-only:
-  | Tabela Salarial | "01 — Tabela Administrativa" |
-  | Faixa            | "A — Faixa Inicial"          |
-  | Nível            | "03 — Nível Sênior"          |
-  | Salário Real     | Faixa + Nível + Valor (R$)   |
+Dado que o usuário abre o modal "Importar do Rubi" ao cadastrar ou editar um Cargo
+Quando ele digita o termo de busca "Analista de Sistemas"
+E o sistema consulta o provider Rubi (fixture, determinístico) e retorna candidatos
+Então o sistema exibe uma lista com pelo menos 1 candidato:
+  | Nome do Cargo | Tabela Salarial | Faixa | Nível | Salário Real |
+Quando o usuário seleciona um candidato da lista
+Então o sistema preenche, Read-only:
+  | Nome do Cargo   | "Analista de Sistemas Pleno"  |
+  | Tabela Salarial | "01 — Tabela Administrativa"  |
+  | Faixa           | "A — Faixa Inicial"           |
+  | Nível           | "03 — Nível Sênior"           |
+  | Salário Real    | R$ (valor determinístico)     |
+E um registro de auditoria `CARGO_IMPORTADO_RUBI` é gravado em HistoricoOperacao
 ```
 
-**Cenário 2 — Bloqueio: tentativa de editar campo soberano [TRAVA O ERRO / ORIGEM BLINDADA]**
+**Cenário 2 — Busca sem resultados**
 ```gherkin
-Dado que o Cargo já tem Tabela Salarial/Faixa/Nível/Salário Real preenchidos pelo Rubi
-Quando o usuário (ou uma requisição direta à Server Action) tenta enviar um valor diferente para qualquer um desses 4 campos
+Dado que o usuário digita um termo de busca no modal "Importar do Rubi"
+Quando o provider Rubi não retorna nenhum candidato para esse termo
+Então o sistema exibe "Nenhum cargo encontrado no Rubi para esse termo."
+E nenhum campo do Cargo é alterado
+```
+
+**Cenário 3 — Bloqueio: tentativa de editar campo soberano após importação**
+```gherkin
+Dado que o Cargo já tem Nome/Tabela Salarial/Faixa/Nível/Salário Real preenchidos via importação do Rubi
+Quando o usuário (ou uma requisição direta à Server Action) tenta enviar um valor diferente para qualquer um desses 5 campos
 Então o sistema ignora o valor recebido para esses campos [ORIGEM BLINDADA]
-E persiste apenas o valor vindo do provider Rubi
+E persiste apenas o valor vindo da última importação do Rubi
 ```
 
-**Cenário 3 — Alerta de Desvio de Mercado (REQ_CAR_005 — já coberto pelo domínio existente)**
+**Cenário 4 — Reimportar substitui os 5 campos de uma vez**
+```gherkin
+Dado que o Cargo já foi importado do Rubi anteriormente
+Quando o usuário abre "Importar do Rubi" de novo e seleciona um candidato diferente
+Então os 5 campos (Nome, Tabela Salarial, Faixa, Nível, Salário Real) são substituídos juntos pelo novo candidato — nunca parcialmente
+E um novo registro `CARGO_IMPORTADO_RUBI` é gravado com o valor anterior e o novo
+```
+
+**Cenário 5 — Alerta de Desvio de Mercado (REQ_CAR_005 — já coberto pelo domínio existente)**
 ```gherkin
 Dado que o Salário Real do Cargo está fora do intervalo [Salário Mínimo de Mercado, Salário Máximo de Mercado]
 Quando a tela de Cargos exibe o Cargo
@@ -48,25 +102,34 @@ Então o sistema sinaliza visualmente o desvio (reaproveitar `alertaDesvioMercad
 
 | Aspecto | Detalhe |
 |---|---|
-| Tabelas afetadas | `Cargo` — 6 novos campos: `tabSalCodigo`/`tabSalDescricao`/`faixaCodigo`/`faixaDescricao`/`nivelCodigo`/`nivelDescricao` (todos `VARCHAR`, nullable até a 1ª sincronização) |
+| Tabelas afetadas | `Cargo` — 6 novos campos: `tabSalCodigo`/`tabSalDescricao`/`faixaCodigo`/`faixaDescricao`/`nivelCodigo`/`nivelDescricao` (todos `VARCHAR`, nullable até a 1ª importação). `nomeCargoMercado` já existe, sem mudança de tipo — só passa a ser Read-only depois da 1ª importação. |
 | Campos calculados | Nenhum novo — `alertaDesvioMercado` já existe e cobre REQ_CAR_005 |
-| Provider | Depende da decisão de arquitetura (ver gap abaixo) — se mantida a fixture, `CargoRubiFixtureProvider` precisa gerar também os 6 campos novos de forma determinística; se integração real, novo provider HTTP |
-| Migration | Nova, 6 colunas nullable em `Cargo` — sem backfill de dados reais possível sem a integração |
-| Regra de negócio | Os 6 campos + `salarioReal` nunca aceitos como input em `CadastrarCargoUseCase`/`EditarCargoUseCase` |
+| Provider | `CargoRubiFixtureProvider` ganha novo método `buscarCargosPorTermo(termo: string): Promise<CandidatoCargoRubi[]>`, determinístico (hash do termo), retornando 1-3 candidatos fictícios com Nome/Tabela/Faixa/Nível/Salário. `buscarSalarioReal` existente pode ser descontinuado em favor do novo método, ou mantido para compatibilidade — decisão do Tech Lead. |
+| Migration | Nova, 6 colunas nullable em `Cargo` — sem backfill de dados reais possível sem integração real |
+| Regra de negócio | Os 5 campos (Nome, Tabela Salarial, Faixa, Nível, Salário Real) nunca aceitos como input direto em `CadastrarCargoUseCase`/`EditarCargoUseCase` depois da 1ª importação; termo de busca nunca persistido |
+| Auditoria | Novo evento `CARGO_IMPORTADO_RUBI` em HistoricoOperacao (valor anterior + novo, mesmo padrão de outros eventos do Cargo) |
 
 ### Dependências
 
-- Decisão de arquitetura sobre integração real com o Rubi (ver gaps abaixo) — bloqueante antes de codificar
+- Nenhuma dependência bloqueante restante — os 2 gaps de arquitetura foram decididos.
+- **Decisão de UX/Tech Lead pendente antes de codificar:** confirmar o desenho do critério de busca
+  (busca livre por termo vs. outra abordagem) — ver seção acima.
 
 ### Definition of Done
 
-- [ ] Critérios de aceite implementados
-- [ ] Campos soberanos comprovadamente Read-only (teste tentando enviar valor via Server Action)
+- [ ] ADR do Tech Lead confirmando o desenho do fluxo de busca/importação
+- [ ] Critérios de aceite 1 a 5 implementados
+- [ ] Campos soberanos (Nome, Tabela Salarial, Faixa, Nível, Salário Real) comprovadamente Read-only após a 1ª importação (teste tentando enviar valor via Server Action)
+- [ ] Busca sem resultados tratada com mensagem clara, sem alterar o Cargo
+- [ ] Reimportação testada — substitui os 5 campos juntos, nunca parcialmente
+- [ ] Evento `CARGO_IMPORTADO_RUBI` gravado em HistoricoOperacao
 - [ ] Alerta de desvio de mercado reaproveitado sem duplicar lógica
 
 ---
 
-### ⚠️ Gaps e Perguntas de Validação (bloqueantes antes de codificar)
+### Gaps — histórico (resolvidos em 2026-08-14)
 
-1. **`Código do Cargo` como ORIGEM BLINDADA do Rubi (documento) vs. gerado internamente pelo SGO (código atual, `CARGO-{ano}-{seq}`).** O documento assume que o Código do Cargo vem do Senior; o sistema atual gera esse código internamente. Confirmar: o SGO passa a *receber* o código do Rubi (mudança de fonte de verdade, com risco de colisão com códigos já gerados internamente em Cargos existentes) ou o documento está descrevendo uma integração ainda não implementada e o código interno continua sendo a fonte enquanto isso?
-2. **Integração real com o Rubi ainda não existe.** Hoje `CargoRubiFixtureProvider` é 100% fixture (hash determinístico do nome do cargo), sem chamada HTTP real — mesma decisão já tomada para o Plano de Contas/Senior. Esta US amplia a superfície simulada (6 campos novos). Confirmar se: (a) a US deve estender a fixture (mais rápido, mas todos os 6 campos novos continuam "de mentira"), ou (b) esta é a deixa para iniciar a integração real com o Rubi (esforço maior, mas fecha a dívida de vez).
+1. ~~`Código do Cargo` como ORIGEM BLINDADA do Rubi vs. gerado internamente pelo SGO~~ —
+   **resolvido:** continua gerado internamente pelo SGO, sem mudança de fonte de verdade.
+2. ~~Integração real com o Rubi ainda não existe~~ — **resolvido:** mantém fixture estendida por
+   enquanto; integração HTTP real fica para quando for priorizada, não é escopo desta US.
