@@ -46,4 +46,30 @@ describe('CargoRubiFixtureProvider.buscarCargosPorTermo [ADR-045, US-132]', () =
 
     expect(candidatos).toEqual([]);
   });
+
+  it('nunca quebra por índice negativo, para qualquer termo (regressão: hash >> N com sinal gerava índice fora da faixa)', async () => {
+    const provider = new CargoRubiFixtureProvider();
+    const termos = [
+      'Assistente Administrativo',
+      'Coordenador de RH',
+      'Analista de Sistemas',
+      'Contador',
+      'Assessor Técnico',
+      'Gerente de Projetos',
+      'Auxiliar de Serviços Gerais',
+      'Supervisor de Operações',
+      'Especialista em Compliance',
+      'Técnico de Segurança do Trabalho',
+    ];
+
+    for (const termo of termos) {
+      const candidatos = await provider.buscarCargosPorTermo(termo);
+      for (const candidato of candidatos) {
+        expect(candidato.faixaCodigo).toBeTruthy();
+        expect(candidato.faixaDescricao).toBeTruthy();
+        expect(candidato.nivelCodigo).toBeTruthy();
+        expect(candidato.nivelDescricao).toBeTruthy();
+      }
+    }
+  });
 });

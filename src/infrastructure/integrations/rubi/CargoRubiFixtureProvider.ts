@@ -58,10 +58,10 @@ function gerarCandidato(termo: string, indice: number): CandidatoCargoRubi {
     nomeCargoMercado: `${nomeBase} ${SENIORIDADES[hash % SENIORIDADES.length]}`,
     tabSalCodigo: TABELAS[hash % TABELAS.length].codigo,
     tabSalDescricao: TABELAS[hash % TABELAS.length].descricao,
-    faixaCodigo: FAIXAS[(hash >> 2) % FAIXAS.length].codigo,
-    faixaDescricao: FAIXAS[(hash >> 2) % FAIXAS.length].descricao,
-    nivelCodigo: NIVEIS[(hash >> 4) % NIVEIS.length].codigo,
-    nivelDescricao: NIVEIS[(hash >> 4) % NIVEIS.length].descricao,
+    faixaCodigo: FAIXAS[(hash >>> 2) % FAIXAS.length].codigo,
+    faixaDescricao: FAIXAS[(hash >>> 2) % FAIXAS.length].descricao,
+    nivelCodigo: NIVEIS[(hash >>> 4) % NIVEIS.length].codigo,
+    nivelDescricao: NIVEIS[(hash >>> 4) % NIVEIS.length].descricao,
     salarioReal: new Prisma.Decimal(salario.toFixed(2)),
   };
 }
