@@ -25,6 +25,7 @@ import { ImportarEstruturaOrganizacionalUseCase } from './ImportarEstruturaOrgan
 import { CargoRubiFixtureProvider } from '@/infrastructure/integrations/rubi/CargoRubiFixtureProvider';
 import { CadastrarCargoUseCase } from './CadastrarCargoUseCase';
 import { CadastrarCargoRascunhoUseCase } from './CadastrarCargoRascunhoUseCase';
+import { ImportarCargoRubiUseCase } from './ImportarCargoRubiUseCase';
 import { EditarCargoUseCase } from './EditarCargoUseCase';
 import { CadastrarMetaUseCase } from './CadastrarMetaUseCase';
 import { EditarMetaUseCase } from './EditarMetaUseCase';
@@ -152,7 +153,7 @@ export function getImportarEstruturaOrganizacionalUseCase(): ImportarEstruturaOr
 }
 
 export function getCadastrarCargoUseCase(): CadastrarCargoUseCase {
-  return new CadastrarCargoUseCase(prisma, new CargoRubiFixtureProvider());
+  return new CadastrarCargoUseCase(prisma);
 }
 
 export function getCadastrarCargoRascunhoUseCase(): CadastrarCargoRascunhoUseCase {
@@ -161,6 +162,14 @@ export function getCadastrarCargoRascunhoUseCase(): CadastrarCargoRascunhoUseCas
 
 export function getEditarCargoUseCase(): EditarCargoUseCase {
   return new EditarCargoUseCase(prisma);
+}
+
+export function getImportarCargoRubiUseCase(): ImportarCargoRubiUseCase {
+  return new ImportarCargoRubiUseCase(prisma);
+}
+
+export function getCargoRubiProvider(): CargoRubiFixtureProvider {
+  return new CargoRubiFixtureProvider();
 }
 
 export function getCadastrarMetaUseCase(): CadastrarMetaUseCase {

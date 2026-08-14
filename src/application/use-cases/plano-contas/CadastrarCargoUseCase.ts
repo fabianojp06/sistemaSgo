@@ -11,7 +11,6 @@ import { gerarProximoCodigoCargo } from '@/domain/plano-contas/gerarCodigoCargo'
 import { isUniqueConstraintError } from '@/domain/plano-contas/gerarCodigoProposta';
 import { calcularSalarioTotalCargo } from '@/domain/plano-contas/calcularSalarioTotalCargo';
 import { validarContasComponenteCusto } from '@/domain/plano-contas/validarContasComponenteCusto';
-import type { CargoRubiProvider } from '@/infrastructure/integrations/rubi/types';
 
 const MAX_TENTATIVAS_CODIGO = 5;
 
@@ -44,9 +43,14 @@ type CadastrarCargoInput = {
  * US-107 — Cadastrar Cargo e Parametrizar Fonte Salarial. Cobre os blocos A
  * (Identificação e Vínculo Funcional) e B (Painel de Fontes Salariais) do
  * UC03.19; Benefícios/Encargos (bloco C) fica para US-107a.
+ *
+ * ADR-045 (US-132) — deixou de chamar o provider Rubi automaticamente: um Cargo
+ * novo nasce sem salarioReal/Tabela/Faixa/Nível (nullable, mesmo estado hoje já
+ * possível para Cargo Rascunho, ADR-042), preenchidos depois, sob demanda, via
+ * ImportarCargoRubiUseCase.
  */
 export class CadastrarCargoUseCase {
-  constructor(private readonly prisma: PrismaClient, private readonly rubiProvider: CargoRubiProvider) {}
+  constructor(private readonly prisma: PrismaClient) {}
 
   async execute(input: CadastrarCargoInput): Promise<Cargo> {
     const nome = input.nomeCargoMercado?.trim() ?? '';
@@ -90,8 +94,9 @@ export class CadastrarCargoUseCase {
       gratificacao: { id: input.contaGratificacaoId ?? null, label: 'Função Gratificada' },
     });
 
-    // RN_CAR_03 — Salário Real vem exclusivamente do provider Rubi (fixture por ora).
-    const salarioReal = await this.rubiProvider.buscarSalarioReal(nome);
+    // ADR-045 [RN_CAR_03] — Salário Real não é mais preenchido automaticamente no
+    // create; Cargo nasce sem ele, importado depois via ImportarCargoRubiUseCase.
+    const salarioReal = null;
 
     const salarioTotal = calcularSalarioTotalCargo({
       fonteAtiva: input.fonteAtiva,
@@ -125,8 +130,8 @@ export class CadastrarCargoUseCase {
               origemSalarioMaximo: input.origemSalarioMaximo ?? 'MANUAL',
               fonteAtiva: input.fonteAtiva,
               salarioReal,
-              statusSyncSalario: salarioReal ? 'SINCRONIZADO' : 'PENDENTE',
-              syncedAt: salarioReal ? new Date() : null,
+              statusSyncSalario: 'PENDENTE',
+              syncedAt: null,
               salarioTotal,
             },
           });

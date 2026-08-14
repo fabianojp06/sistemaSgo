@@ -10,6 +10,7 @@ import {
   type UnidadeFuncionalResultado,
 } from './estrutura-actions';
 import { TabelaSalarialModal } from './TabelaSalarialModal';
+import { ImportarCargoRubiModal } from './ImportarCargoRubiModal';
 import { SeletorContaAnalitica } from './SeletorContaAnalitica';
 
 export type CargoComVinculo = CargoResultado;
@@ -192,6 +193,7 @@ export function CargoPanel({
   const [cargos, setCargos] = useState(cargosIniciais);
   const [cargoEmEdicaoId, setCargoEmEdicaoId] = useState<string | null>(null);
   const [tabelaSalarialAberta, setTabelaSalarialAberta] = useState(false);
+  const [rubiModalAberta, setRubiModalAberta] = useState(false);
   const [dados, setDados] = useState(dadosVazios());
   const [erro, setErro] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -206,6 +208,17 @@ export function CargoPanel({
 
   const custoTotalMensal = cargos.reduce((soma, c) => soma + Number(c.custoTotalCargo), 0);
   const salarioTotalMensal = cargos.reduce((soma, c) => soma + Number(c.salarioTotal), 0);
+
+  // ADR-045 (US-132) — origem da verdade dos 5 campos [ORIGEM BLINDADA] é a lista `cargos`
+  // (espelha o que está persistido), não `dados` — eles nunca são editáveis no formulário.
+  const cargoEmEdicao = cargoEmEdicaoId ? (cargos.find((c) => c.id === cargoEmEdicaoId) ?? null) : null;
+  const importadoDoRubi = Boolean(cargoEmEdicao?.tabSalCodigo);
+
+  function handleImportadoRubi(cargoAtualizado: CargoComVinculo) {
+    setCargos((atual) => atual.map((c) => (c.id === cargoAtualizado.id ? cargoAtualizado : c)));
+    setDados((d) => ({ ...d, nomeCargoMercado: cargoAtualizado.nomeCargoMercado }));
+    setRubiModalAberta(false);
+  }
 
   function iniciarEdicao(cargo: CargoComVinculo | null) {
     setErro(null);
@@ -579,7 +592,10 @@ export function CargoPanel({
                 type="text"
                 value={dados.nomeCargoMercado}
                 onChange={(e) => setDados((d) => ({ ...d, nomeCargoMercado: e.target.value }))}
-                className="w-full rounded border px-2 py-1 text-sm"
+                readOnly={importadoDoRubi}
+                disabled={importadoDoRubi}
+                className="w-full rounded border px-2 py-1 text-sm disabled:bg-slate-50 disabled:text-slate-500"
+                title={importadoDoRubi ? 'Importado do Rubi — Read-only. Use "Reimportar do Rubi" para trocar.' : undefined}
               />
             </div>
             <div>
@@ -673,6 +689,37 @@ export function CargoPanel({
               </select>
             </div>
           </div>
+
+          {cargoEmEdicaoId && (
+            <div className="flex flex-col gap-2 border-t pt-3">
+              <p className="text-xs font-medium text-gray-600">Rubi — Tabela Salarial, Faixa, Nível e Salário Real</p>
+              {importadoDoRubi && cargoEmEdicao ? (
+                <>
+                  <div className="grid grid-cols-1 gap-x-4 gap-y-2 rounded-lg border border-gray-100 bg-slate-50 p-3 text-xs md:grid-cols-2">
+                    <p><span className="font-medium text-gray-500">Salário Real:</span> {formatarMoeda(cargoEmEdicao.salarioReal ?? '0')}</p>
+                    <p><span className="font-medium text-gray-500">Tabela Salarial:</span> {cargoEmEdicao.tabSalDescricao}</p>
+                    <p><span className="font-medium text-gray-500">Faixa:</span> {cargoEmEdicao.faixaDescricao}</p>
+                    <p><span className="font-medium text-gray-500">Nível:</span> {cargoEmEdicao.nivelDescricao}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setRubiModalAberta(true)}
+                    className="w-fit rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    Reimportar do Rubi
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setRubiModalAberta(true)}
+                  className="w-fit rounded-md bg-slate-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800"
+                >
+                  Importar do Rubi
+                </button>
+              )}
+            </div>
+          )}
 
           <div className="flex flex-col gap-2 border-t pt-3">
             <p className="text-xs font-medium text-gray-600">Vínculo Funcional (RN_CAR_08 — custo integral ao setor selecionado)</p>
@@ -878,6 +925,10 @@ export function CargoPanel({
             {mensagemRessincronizacao && <p className="w-full text-xs text-gray-600">{mensagemRessincronizacao}</p>}
           </div>
         </div>
+      )}
+
+      {rubiModalAberta && cargoEmEdicaoId && (
+        <ImportarCargoRubiModal cargoId={cargoEmEdicaoId} onFechar={() => setRubiModalAberta(false)} onImportado={handleImportadoRubi} />
       )}
 
       {tabelaSalarialAberta && cargoEmEdicaoId && (

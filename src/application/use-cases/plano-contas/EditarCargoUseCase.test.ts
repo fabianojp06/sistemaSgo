@@ -81,6 +81,39 @@ describe('EditarCargoUseCase [US-107, ADR-043 — vínculo 1:1]', () => {
     );
   });
 
+  it('ADR-045 — ignora tentativa de injetar Tabela/Faixa/Nível/Nome do Rubi via input direto [RN_CAR_03]', async () => {
+    const cargoImportado: CargoMock = {
+      ...cargoBase,
+      salarioReal: new Prisma.Decimal(5300),
+    };
+    const { base } = criarPrismaMock([unidadeAnalitica], cargoImportado);
+    const useCase = new EditarCargoUseCase(base as never);
+
+    // Client tenta injetar campos [ORIGEM BLINDADA] que nem fazem parte do tipo de
+    // input do use case — TS já bloqueia em compilação; o teste comprova que, mesmo
+    // se algo escapar por uma chamada não tipada (ex: Server Action com bug), o
+    // use case não lê nem grava esses campos.
+    await useCase.execute({
+      tenantId: 't1',
+      usuarioId: 'u1',
+      cargoId: 'c1',
+      contaId: 'conta1',
+      unidadeFuncionalId: 'u1',
+      nomeCargoMercado: 'Analista de Compras Sênior',
+      periodoInicio: new Date('2026-01-01'),
+      salarioMercadoMinimo: 4500,
+      salarioMercadoMaximo: 6200,
+      fonteAtiva: 'RUBI',
+      ...({ tabSalCodigo: 'INJETADO', faixaCodigo: 'INJETADO', nivelCodigo: 'INJETADO' } as Record<string, unknown>),
+    });
+
+    const chamadaUpdate = base.cargo.update.mock.calls[0][0] as { data: Record<string, unknown> };
+    expect(chamadaUpdate.data).not.toHaveProperty('tabSalCodigo');
+    expect(chamadaUpdate.data).not.toHaveProperty('faixaCodigo');
+    expect(chamadaUpdate.data).not.toHaveProperty('nivelCodigo');
+    expect(chamadaUpdate.data).not.toHaveProperty('salarioReal');
+  });
+
   it('bloqueia edição ao trocar vínculo para nó Sintético [Cenário 3]', async () => {
     const { base } = criarPrismaMock([unidadeAnalitica, unidadeSintetica], cargoBase);
     const useCase = new EditarCargoUseCase(base as never);
