@@ -673,20 +673,6 @@ export function CargoPanel({
                 />
               </div>
             </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">Fonte Ativa</label>
-              <select
-                value={dados.fonteAtiva}
-                onChange={(e) => setDados((d) => ({ ...d, fonteAtiva: e.target.value as (typeof FONTES)[number]['value'] }))}
-                className="w-full rounded border px-2 py-1 text-sm"
-              >
-                {FONTES.map((f) => (
-                  <option key={f.value} value={f.value}>
-                    {f.label}
-                  </option>
-                ))}
-              </select>
-            </div>
           </div>
 
           {cargoEmEdicaoId && (
@@ -719,6 +705,21 @@ export function CargoPanel({
               )}
             </div>
           )}
+
+          <div className="max-w-xs border-t pt-3">
+            <label className="mb-1 block text-xs font-medium text-gray-600">Fonte Ativa</label>
+            <select
+              value={dados.fonteAtiva}
+              onChange={(e) => setDados((d) => ({ ...d, fonteAtiva: e.target.value as (typeof FONTES)[number]['value'] }))}
+              className="w-full rounded border px-2 py-1 text-sm"
+            >
+              {FONTES.map((f) => (
+                <option key={f.value} value={f.value}>
+                  {f.label}
+                </option>
+              ))}
+            </select>
+          </div>
 
           <div className="flex flex-col gap-2 border-t pt-3">
             <p className="text-xs font-medium text-gray-600">Vínculo Funcional (RN_CAR_08 — custo integral ao setor selecionado)</p>
