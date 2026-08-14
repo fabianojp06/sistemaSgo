@@ -466,20 +466,30 @@ function serializarCandidatoRubi(candidato: CandidatoCargoRubi): CandidatoCargoR
   return { ...candidato, salarioReal: candidato.salarioReal.toString() };
 }
 
-const BuscarCargosRubiSchema = z.object({ termo: z.string().trim().min(1) });
+const BuscarCargosRubiSchema = z
+  .object({
+    faixa: z.string().trim().min(1).optional(),
+    nivel: z.string().trim().min(1).optional(),
+    termo: z.string().trim().min(1).optional(),
+  })
+  .refine((v) => v.faixa || v.nivel || v.termo, { message: 'Informe ao menos Faixa, Nível ou um termo de busca.' });
 
-/** ADR-045 (US-132) — busca por termo livre no Rubi (fixture); operação de leitura, não persiste o termo. */
+/**
+ * ADR-046 (US-137) — busca no catálogo persistido (GradeSalarialCtcea): Faixa/Nível
+ * como via principal, termo livre como complemento (útil só quando a 2ª fonte de
+ * nomes de cargo já tiver chegado). Operação de leitura, não persiste nada.
+ */
 export async function buscarCargosRubi(
-  termo: string,
+  input: { faixa?: string; nivel?: string; termo?: string },
 ): Promise<ActionResultComDados<CandidatoCargoRubiResultado[]>> {
   const contexto = await usuarioAtual();
   if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
 
-  const entrada = BuscarCargosRubiSchema.safeParse({ termo });
-  if (!entrada.success) return { sucesso: false, mensagem: 'Informe um termo de busca.' };
+  const entrada = BuscarCargosRubiSchema.safeParse(input);
+  if (!entrada.success) return { sucesso: false, mensagem: 'Informe ao menos Faixa, Nível ou um termo de busca.' };
 
   try {
-    const candidatos = await getCargoRubiProvider().buscarCargosPorTermo(entrada.data.termo);
+    const candidatos = await getCargoRubiProvider().buscarCandidatos({ tenantId: contexto.tenantId, ...entrada.data });
     return { sucesso: true, dados: candidatos.map(serializarCandidatoRubi) };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };

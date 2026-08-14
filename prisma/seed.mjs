@@ -36,6 +36,21 @@ async function seedModuloPlanoContas() {
     create: { moduloId: modulo.id, chave: 'plano-contas.classificar-natureza', nome: 'Classificar Natureza de Conta', tipo: 'CONTEXTUAL' },
   });
 
+  // ADR-046 (US-137) — CONTEXTUAL: 2ª seção da própria tela /plano-contas, mesmo
+  // padrão de plano-contas.sincronizar (ativação em produção é decisão separada,
+  // fora do escopo desta US).
+  await prisma.funcionalidade.upsert({
+    where: { moduloId_chave: { moduloId: modulo.id, chave: 'grade-salarial-ctcea.sincronizar' } },
+    update: { ativo: false },
+    create: {
+      moduloId: modulo.id,
+      chave: 'grade-salarial-ctcea.sincronizar',
+      nome: 'Sincronizar Grade Salarial CTCEA',
+      tipo: 'CONTEXTUAL',
+      ativo: false,
+    },
+  });
+
   // US-007 — Configurar Valor Orçado por Conta Analítica e Exercício. [ADR-021] CONTEXTUAL.
   await prisma.funcionalidade.upsert({
     where: { moduloId_chave: { moduloId: modulo.id, chave: 'plano-contas.configurar-valor-orcado' } },

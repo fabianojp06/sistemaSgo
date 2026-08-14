@@ -3,6 +3,10 @@ import { PlanoContasArquivoProvider } from '@/infrastructure/integrations/senior
 import { PlanoContasBulkLoader } from '@/infrastructure/plano-contas/PlanoContasBulkLoader';
 import { SincronismoLockRepository } from '@/infrastructure/plano-contas/SincronismoLockRepository';
 import { SincronizarPlanoContasUseCase } from './SincronizarPlanoContasUseCase';
+import { GradeSalarialCtceaArquivoProvider } from '@/infrastructure/integrations/ctcea/GradeSalarialCtceaArquivoProvider';
+import { GradeSalarialCtceaBulkLoader } from '@/infrastructure/plano-contas/GradeSalarialCtceaBulkLoader';
+import { SincronismoGradeSalarialCtceaLockRepository } from '@/infrastructure/plano-contas/SincronismoGradeSalarialCtceaLockRepository';
+import { SincronizarGradeSalarialCtceaUseCase } from './SincronizarGradeSalarialCtceaUseCase';
 import { CriarAgrupadorUseCase } from './CriarAgrupadorUseCase';
 import { EditarAgrupadorUseCase } from './EditarAgrupadorUseCase';
 import { ExcluirAgrupadorUseCase } from './ExcluirAgrupadorUseCase';
@@ -22,7 +26,7 @@ import { DuplicarPropostaUseCase } from './DuplicarPropostaUseCase';
 import { CriarUnidadeFuncionalUseCase } from './CriarUnidadeFuncionalUseCase';
 import { InativarUnidadeFuncionalUseCase } from './InativarUnidadeFuncionalUseCase';
 import { ImportarEstruturaOrganizacionalUseCase } from './ImportarEstruturaOrganizacionalUseCase';
-import { CargoRubiFixtureProvider } from '@/infrastructure/integrations/rubi/CargoRubiFixtureProvider';
+import { GradeSalarialCtceaRubiProvider } from '@/infrastructure/integrations/rubi/GradeSalarialCtceaRubiProvider';
 import { CadastrarCargoUseCase } from './CadastrarCargoUseCase';
 import { CadastrarCargoRascunhoUseCase } from './CadastrarCargoRascunhoUseCase';
 import { ImportarCargoRubiUseCase } from './ImportarCargoRubiUseCase';
@@ -168,8 +172,17 @@ export function getImportarCargoRubiUseCase(): ImportarCargoRubiUseCase {
   return new ImportarCargoRubiUseCase(prisma);
 }
 
-export function getCargoRubiProvider(): CargoRubiFixtureProvider {
-  return new CargoRubiFixtureProvider();
+export function getCargoRubiProvider(): GradeSalarialCtceaRubiProvider {
+  return new GradeSalarialCtceaRubiProvider(prisma);
+}
+
+export function getSincronizarGradeSalarialCtceaUseCase(): SincronizarGradeSalarialCtceaUseCase {
+  return new SincronizarGradeSalarialCtceaUseCase(
+    prisma,
+    new GradeSalarialCtceaArquivoProvider(),
+    new GradeSalarialCtceaBulkLoader(prisma),
+    new SincronismoGradeSalarialCtceaLockRepository(prisma),
+  );
 }
 
 export function getCadastrarMetaUseCase(): CadastrarMetaUseCase {

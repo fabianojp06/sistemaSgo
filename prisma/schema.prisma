@@ -84,6 +84,7 @@ enum TipoOperacao {
   TABELA_SALARIAL_EXCLUIDA
   CARGO_RASCUNHO_CRIADO
   CARGO_IMPORTADO_RUBI
+  SYNC_GRADE_SALARIAL_CTCEA
 }
 
 model Usuario {
@@ -280,6 +281,42 @@ model ContaAgrupadoraItem {
 
 // Lock pessimista de sincronismo por tenant [RNF_PLA_REQ_007].
 model SincronismoPlanoContasLock {
+  tenantId    String    @id
+  emAndamento Boolean   @default(false)
+  iniciadoEm  DateTime?
+  iniciadoPor String?
+}
+
+// ADR-046 (US-137) — Grade Salarial CTCEA persistida, substitui o gerador por
+// hash do fixture-hash do Rubi (CargoRubiFixtureProvider). Catálogo PLANO (sem
+// hierarquia pai/filho, diferente de ContaContabil): cada linha é independente,
+// chave é só (faixa, nivel). cargoMercado/cargoCtcea nascem nulos — o relatório
+// fonte da CTCEA não tem nomes de cargo, só a grade numérica Faixa/Nível/Salário.
+model GradeSalarialCtcea {
+  id       String @id @default(uuid())
+  tenantId String
+
+  faixa String
+  nivel String
+
+  salario Decimal @db.Decimal(15, 2)
+
+  cargoMercado String?
+  cargoCtcea   String?
+
+  syncedAt DateTime @default(now())
+
+  @@unique([tenantId, faixa, nivel])
+  @@index([tenantId])
+}
+
+// Lock pessimista de sincronismo da Grade Salarial CTCEA por tenant, mesmo
+// padrão de SincronismoPlanoContasLock — tabela própria (não reaproveitada)
+// porque o lock do Plano de Contas é keyed só por tenantId (uma linha por
+// tenant); reaproveitá-lo faria a sincronização da Grade CTCEA bloquear/ser
+// bloqueada pela do Plano de Contas sem necessidade real, já que são fontes
+// independentes [ADR-046].
+model SincronismoGradeSalarialCtceaLock {
   tenantId    String    @id
   emAndamento Boolean   @default(false)
   iniciadoEm  DateTime?

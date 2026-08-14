@@ -46,6 +46,7 @@ import {
   getListarTermosAjusteUseCase,
   getSimularReajusteUseCase,
   getAplicarReajusteUseCase,
+  getSincronizarGradeSalarialCtceaUseCase,
 } from '@/application/use-cases/plano-contas/container';
 import type { EscopoReajuste } from '@/application/use-cases/plano-contas/reajusteLoteTipos';
 import type { PlanoReajusteLote } from '@/application/use-cases/plano-contas/prepararPlanoReajuste';
@@ -78,6 +79,27 @@ export async function sincronizarPlanoContas(): Promise<ActionResult> {
 
   try {
     await getSincronizarPlanoContasUseCase().execute({ ...contexto, temPermissaoAdministrativa });
+    revalidatePath('/', 'layout');
+    return { sucesso: true };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+/** ADR-046 (US-137) — dispara a sincronização da Grade Salarial CTCEA, mesmo fluxo de sincronizarPlanoContas. */
+export async function sincronizarGradeSalarialCtcea(): Promise<ActionResult> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const temPermissaoAdministrativa = await usuarioTemFuncionalidade(
+    prisma,
+    contexto.tenantId,
+    contexto.usuarioId,
+    'grade-salarial-ctcea.sincronizar',
+  );
+
+  try {
+    await getSincronizarGradeSalarialCtceaUseCase().execute({ ...contexto, temPermissaoAdministrativa });
     revalidatePath('/', 'layout');
     return { sucesso: true };
   } catch (erro) {
