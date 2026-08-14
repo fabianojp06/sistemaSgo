@@ -496,7 +496,15 @@ const ImportarCargoRubiSchema = z.object({
     faixaDescricao: z.string().min(1),
     nivelCodigo: z.string().min(1),
     nivelDescricao: z.string().min(1),
-    salarioReal: z.coerce.string(),
+    salarioReal: z.coerce.string().transform((v, ctx) => {
+      const normalizado = normalizarValorMonetario(v);
+      const numero = Number(normalizado);
+      if (Number.isNaN(numero) || numero < 0) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Salário Real do candidato inválido.' });
+        return z.NEVER;
+      }
+      return normalizado;
+    }),
   }),
 });
 

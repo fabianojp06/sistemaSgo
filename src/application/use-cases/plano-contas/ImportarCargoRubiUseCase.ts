@@ -22,18 +22,18 @@ export class ImportarCargoRubiUseCase {
   constructor(private readonly prisma: PrismaClient) {}
 
   async execute(input: ImportarCargoRubiInput): Promise<Cargo> {
-    const cargoAtual = await this.prisma.cargo.findFirst({
-      where: { tenantId: input.tenantId, id: input.cargoId },
-    });
-    if (!cargoAtual) {
-      throw new CargoNaoEncontradoError();
-    }
-
     const { candidato } = input;
 
     return this.prisma.$transaction(async (tx) => {
+      const cargoAtual = await tx.cargo.findFirst({
+        where: { tenantId: input.tenantId, id: input.cargoId },
+      });
+      if (!cargoAtual) {
+        throw new CargoNaoEncontradoError();
+      }
+
       const cargo = await tx.cargo.update({
-        where: { id: input.cargoId },
+        where: { id: input.cargoId, tenantId: input.tenantId },
         data: {
           nomeCargoMercado: candidato.nomeCargoMercado,
           tabSalCodigo: candidato.tabSalCodigo,

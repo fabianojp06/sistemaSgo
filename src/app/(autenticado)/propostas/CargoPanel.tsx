@@ -592,7 +592,6 @@ export function CargoPanel({
                 type="text"
                 value={dados.nomeCargoMercado}
                 onChange={(e) => setDados((d) => ({ ...d, nomeCargoMercado: e.target.value }))}
-                readOnly={importadoDoRubi}
                 disabled={importadoDoRubi}
                 className="w-full rounded border px-2 py-1 text-sm disabled:bg-slate-50 disabled:text-slate-500"
                 title={importadoDoRubi ? 'Importado do Rubi — Read-only. Use "Reimportar do Rubi" para trocar.' : undefined}
