@@ -39,13 +39,13 @@ function criarPrismaMock(propostas: PropostaMock[], unidadesIniciais: UnidadeMoc
           where,
           select,
         }: {
-          where: { tenantId: string; propostaId: string; ativa: boolean; alocacoesCargo?: { some: object } };
+          where: { tenantId: string; propostaId: string; ativa: boolean; cargos?: { some: object } };
           select?: { id: boolean; nome: boolean };
         }) => {
           let resultado = unidades.filter(
             (u) => u.tenantId === where.tenantId && u.propostaId === where.propostaId && u.ativa === where.ativa,
           );
-          if (where.alocacoesCargo) {
+          if (where.cargos) {
             resultado = resultado.filter((u) => u.temCargo);
           }
           if (select) {

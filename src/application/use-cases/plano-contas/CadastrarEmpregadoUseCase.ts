@@ -69,20 +69,22 @@ export class CadastrarEmpregadoUseCase {
 
     const cargo = await this.prisma.cargo.findFirst({
       where: { tenantId: input.tenantId, id: input.cargoId, propostaId: input.propostaId },
-      include: { alocacoes: { include: { unidadeFuncional: true } } },
+      include: { unidadeFuncional: true },
     });
     if (!cargo) {
       throw new CargoNaoEncontradoParaEmpregadoError();
     }
     // ADR-042 [TRAVA O ERRO] — Cargo Rascunho (cadastrado só com nome) não tem
     // Vínculo Funcional/Conta/salário definidos; não pode receber Empregado ainda.
-    // A checagem de contaId (além de status) também estreita o tipo para o TS.
-    if (cargo.status === 'RASCUNHO' || !cargo.contaId) {
+    // A checagem de contaId/unidadeFuncional (além de status) também estreita o tipo para o TS.
+    if (cargo.status === 'RASCUNHO' || !cargo.contaId || !cargo.unidadeFuncional) {
       throw new CargoRascunhoNaoPodeReceberEmpregadoError();
     }
-    // Extraído em variável local — narrowing de `cargo.contaId` não atravessa a closure
-    // da transação abaixo (TS não garante que a propriedade não mude nesse meio-tempo).
+    // Extraído em variável local — narrowing de `cargo.contaId`/`cargo.unidadeFuncional` não
+    // atravessa a closure da transação abaixo (TS não garante que a propriedade não mude nesse
+    // meio-tempo).
     const contaIdCargo = cargo.contaId;
+    const unidadeFuncionalCargo = cargo.unidadeFuncional;
 
     const parametro = await this.prisma.parametroSistema.findUnique({ where: { tenantId: input.tenantId } });
     const diasUteisPadrao = parametro?.diasUteisPadrao ?? 22;
@@ -104,7 +106,7 @@ export class CadastrarEmpregadoUseCase {
           // numeroDependentes deliberadamente omitido (default 0) — deprecated
           // pelo ADR-020/US-108a; dependentes agora são por benefício em
           // EmpregadoBeneficioElegibilidade.
-          vinculoFuncionalHerdado: formatarVinculoFuncionalHerdado(cargo.alocacoes),
+          vinculoFuncionalHerdado: formatarVinculoFuncionalHerdado(unidadeFuncionalCargo),
           custoTotalMensal: cargo.custoTotalCargo,
           contaId: contaIdCargo, // ADR-027 — snapshot herdado, mesmo padrão de vinculoFuncionalHerdado
           ...snapshotComponentes, // ADR-029 — snapshot de valor + conta de cada componente de custo

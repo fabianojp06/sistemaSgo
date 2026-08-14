@@ -10,7 +10,7 @@ type CargoMock = {
   propostaId: string;
   codigoCargo: string;
   custoTotalCargo: Prisma.Decimal;
-  alocacoes: { percentual: number; unidadeFuncional: { nome: string } }[];
+  unidadeFuncional: { nome: string } | null;
 };
 type EmpregadoMock = {
   id: string;
@@ -102,7 +102,7 @@ const cargoOriginal: CargoMock = {
   propostaId: 'p1',
   codigoCargo: 'CARGO-2026-0001',
   custoTotalCargo: new Prisma.Decimal(6200),
-  alocacoes: [{ percentual: 100, unidadeFuncional: { nome: 'Setor de Compras' } }],
+  unidadeFuncional: { nome: 'Setor de Compras' },
 };
 const cargoNovo: CargoMock = {
   id: 'c2',
@@ -110,7 +110,7 @@ const cargoNovo: CargoMock = {
   propostaId: 'p1',
   codigoCargo: 'CARGO-2026-0003',
   custoTotalCargo: new Prisma.Decimal(7100),
-  alocacoes: [{ percentual: 100, unidadeFuncional: { nome: 'Coordenadoria Financeira' } }],
+  unidadeFuncional: { nome: 'Coordenadoria Financeira' },
 };
 
 const empregadoBase: EmpregadoMock = {

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { OrganogramaPanel } from './OrganogramaPanel';
-import { CargoPanel, type CargoComAlocacoes } from './CargoPanel';
+import { CargoPanel, type CargoComVinculo } from './CargoPanel';
 import { TabelaSalarialListPanel } from '../tabela-salarial/TabelaSalarialListPanel';
 import { cadastrarCargoRascunho } from './estrutura-actions';
 import type { UnidadeFuncionalResultado, TabelaSalarialResultado, SenioridadeResultado } from './estrutura-actions';
@@ -20,7 +20,7 @@ export function EstruturaFuncionalPanel({
 }: {
   propostaId: string;
   unidadesIniciais: UnidadeFuncionalResultado[];
-  cargosIniciais: CargoComAlocacoes[];
+  cargosIniciais: CargoComVinculo[];
   contasAnaliticas: { id: string; label: string }[];
   tabelaSalarialIniciais: TabelaSalarialResultado[];
   senioridadesIniciais: SenioridadeResultado[];
@@ -52,7 +52,7 @@ export function EstruturaFuncionalPanel({
         setErroNovoCargo(resposta.mensagem);
         return;
       }
-      setCargos((atual) => [...atual, { ...resposta.dados, alocacoes: [] }]);
+      setCargos((atual) => [...atual, resposta.dados]);
       setNovoCargoNome('');
     });
   }

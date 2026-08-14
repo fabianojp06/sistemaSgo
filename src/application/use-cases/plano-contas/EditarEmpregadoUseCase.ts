@@ -96,16 +96,16 @@ export class EditarEmpregadoUseCase {
     if (input.cargoId !== empregadoAtual.cargoId) {
       const novoCargo = await this.prisma.cargo.findFirst({
         where: { tenantId: input.tenantId, id: input.cargoId, propostaId: empregadoAtual.propostaId },
-        include: { alocacoes: { include: { unidadeFuncional: true } } },
+        include: { unidadeFuncional: true },
       });
       if (!novoCargo) {
         throw new CargoNaoEncontradoParaEmpregadoError();
       }
       // ADR-042 [TRAVA O ERRO] — mesmo bloqueio de CadastrarEmpregadoUseCase.
-      if (novoCargo.status === 'RASCUNHO' || !novoCargo.contaId) {
+      if (novoCargo.status === 'RASCUNHO' || !novoCargo.contaId || !novoCargo.unidadeFuncional) {
         throw new CargoRascunhoNaoPodeReceberEmpregadoError();
       }
-      vinculoFuncionalHerdado = formatarVinculoFuncionalHerdado(novoCargo.alocacoes);
+      vinculoFuncionalHerdado = formatarVinculoFuncionalHerdado(novoCargo.unidadeFuncional);
       custoTotalMensal = novoCargo.custoTotalCargo;
       contaId = novoCargo.contaId; // ADR-027 — snapshot recalculado só na troca de cargo
       codigoCargoParaAuditoria = novoCargo.codigoCargo;

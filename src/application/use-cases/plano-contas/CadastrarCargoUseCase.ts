@@ -3,7 +3,6 @@ import {
   CamposObrigatoriosCargoError,
   CodigoCargoGeracaoFalhouError,
   ContaCargoNaoAnaliticaError,
-  SomaAlocacaoCargoInvalidaError,
   UnidadeFuncionalNaoEncontradaError,
   VinculoCargoNaoAnaliticoError,
   VinculoFuncionalObrigatorioError,
@@ -20,14 +19,12 @@ const MAX_TENTATIVAS_CODIGO = 5;
 // (Diretoria/Gerência) existem apenas para consolidar.
 const TIPOS_ANALITICOS = ['ANALITICO_ASSESSOR', 'ANALITICO_COORDENADORIA', 'ANALITICO_SETOR'];
 
-type AlocacaoInput = { unidadeFuncionalId: string; percentual: number };
-
 type CadastrarCargoInput = {
   tenantId: string;
   usuarioId: string;
   propostaId: string;
-  /** ADR-026, RN_EST_03 — rateio percentual entre unidades funcionais analíticas, soma sempre 100. */
-  alocacoes: AlocacaoInput[];
+  /** ADR-043 — vínculo 1:1 com Unidade Funcional Analítica (RN_CAR_08, custo integral ao setor). */
+  unidadeFuncionalId: string;
   /** ADR-027 — natureza da despesa (ex: "Despesa com Pessoal"); 1 conta analítica fixa por Cargo. */
   contaId: string;
   nomeCargoMercado: string;
@@ -64,29 +61,19 @@ export class CadastrarCargoUseCase {
     }
 
     // Cenário 2 [TRAVA O ERRO] — vínculo funcional é obrigatório (RN_EST_01).
-    if (!input.alocacoes || input.alocacoes.length === 0) {
+    if (!input.unidadeFuncionalId) {
       throw new VinculoFuncionalObrigatorioError();
     }
 
-    // RN_EST_03 [TRAVA O ERRO] — soma das alocações deve ser exatamente 100%.
-    const somaPercentual = input.alocacoes.reduce((soma, a) => soma + a.percentual, 0);
-    if (Math.abs(somaPercentual - 100) > 0.01) {
-      throw new SomaAlocacaoCargoInvalidaError();
-    }
-
-    const unidades = await this.prisma.unidadeFuncional.findMany({
-      where: { tenantId: input.tenantId, id: { in: input.alocacoes.map((a) => a.unidadeFuncionalId) }, propostaId: input.propostaId },
+    const unidade = await this.prisma.unidadeFuncional.findFirst({
+      where: { tenantId: input.tenantId, id: input.unidadeFuncionalId, propostaId: input.propostaId },
     });
-    const unidadesPorId = new Map(unidades.map((u) => [u.id, u]));
-    for (const alocacao of input.alocacoes) {
-      const unidade = unidadesPorId.get(alocacao.unidadeFuncionalId);
-      if (!unidade) {
-        throw new UnidadeFuncionalNaoEncontradaError();
-      }
-      // Cenário 3 [TRAVA O ERRO] — só nó Analítico aceita vínculo de Cargo (RN_EST_02), linha a linha.
-      if (!TIPOS_ANALITICOS.includes(unidade.tipoNivel)) {
-        throw new VinculoCargoNaoAnaliticoError();
-      }
+    if (!unidade) {
+      throw new UnidadeFuncionalNaoEncontradaError();
+    }
+    // Cenário 3 [TRAVA O ERRO] — só nó Analítico aceita vínculo de Cargo (RN_EST_02).
+    if (!TIPOS_ANALITICOS.includes(unidade.tipoNivel)) {
+      throw new VinculoCargoNaoAnaliticoError();
     }
 
     // ADR-027 [TRAVA O ERRO] — conta precisa existir, pertencer ao tenant e ser analítica.
@@ -125,6 +112,7 @@ export class CadastrarCargoUseCase {
             data: {
               tenantId: input.tenantId,
               propostaId: input.propostaId,
+              unidadeFuncionalId: input.unidadeFuncionalId,
               contaId: input.contaId,
               nomeCargoMercado: nome,
               codigoCargo,
@@ -143,15 +131,6 @@ export class CadastrarCargoUseCase {
             },
           });
 
-          await tx.cargoAlocacaoPercentual.createMany({
-            data: input.alocacoes.map((a) => ({
-              tenantId: input.tenantId,
-              cargoId: cargo.id,
-              unidadeFuncionalId: a.unidadeFuncionalId,
-              percentual: a.percentual,
-            })),
-          });
-
           await tx.historicoOperacao.create({
             data: {
               tenantId: input.tenantId,
@@ -161,7 +140,7 @@ export class CadastrarCargoUseCase {
               dadosSerializados: {
                 cargoId: cargo.id,
                 propostaId: input.propostaId,
-                alocacoes: input.alocacoes,
+                unidadeFuncionalId: input.unidadeFuncionalId,
                 fonteAtiva: input.fonteAtiva,
                 salarioTotal: salarioTotal.toString(),
               },

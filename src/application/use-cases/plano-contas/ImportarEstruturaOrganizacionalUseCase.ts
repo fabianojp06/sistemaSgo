@@ -57,7 +57,7 @@ export class ImportarEstruturaOrganizacionalUseCase {
         tenantId: input.tenantId,
         propostaId: destino.id,
         ativa: true,
-        alocacoesCargo: { some: {} },
+        cargos: { some: { ativo: true } },
       },
       select: { id: true, nome: true },
     });

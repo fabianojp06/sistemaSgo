@@ -647,7 +647,9 @@ model UnidadeFuncional {
   createdAt  DateTime                  @default(now())
   updatedAt  DateTime                  @updatedAt
 
-  alocacoesCargo CargoAlocacaoPercentual[]
+  // ADR-043 — reverte ADR-026: vínculo volta a ser 1:1 direto (Cargo.unidadeFuncionalId),
+  // custo integral ao setor selecionado (RN_CAR_08), sem rateio percentual.
+  cargos Cargo[]
 
   @@index([tenantId, propostaId])
   @@index([tenantId, propostaId, idPai])
@@ -658,6 +660,10 @@ model UnidadeFuncional {
 // (ANALITICO_ASSESSOR/COORDENADORIA/SETOR, nunca SINTETICO_*) é feita no use case
 // (validarVinculoNoAnalitico), não em constraint de banco — mesmo padrão de
 // RN_PLA_003 (isAnalitica em ContaContabil).
+// ADR-043 — reverte ADR-026 (rateio percentual N:M via CargoAlocacaoPercentual):
+// o documento de negócio Rev. Jun/2026 revogou RN_CAR_02, o vínculo volta a ser
+// 1:1 direto (RN_CAR_08, custo integral ao setor). unidadeFuncionalId é nullable
+// pelo mesmo motivo de contaId (ADR-042) — um Cargo RASCUNHO ainda não tem vínculo.
 // ADR-042 — Cargo cadastrado só com nome (aba Tabela Salarial) nasce RASCUNHO; vira
 // COMPLETO só ao passar pelo formulário inteiro (aba Cargos), transição de mão única.
 enum StatusCargo {
@@ -684,7 +690,11 @@ model Cargo {
   propostaId String
   proposta   Proposta @relation(fields: [propostaId], references: [id])
 
-  alocacoes CargoAlocacaoPercentual[]
+  // ADR-043 — nullable: só um Cargo RASCUNHO tem unidadeFuncionalId null (mesmo
+  // padrão de contaId, ADR-042). A validação de nó Analítico (nunca Sintético)
+  // é feita no use case (TIPOS_ANALITICOS), não em constraint de banco.
+  unidadeFuncionalId String?
+  unidadeFuncional   UnidadeFuncional? @relation(fields: [unidadeFuncionalId], references: [id])
 
   // ADR-042 — Cargo "Rascunho" (cadastro só com nome, a partir da aba Tabela Salarial):
   // COMPLETO é o único status que passou por todas as travas do formulário inteiro
@@ -785,27 +795,6 @@ model Cargo {
 
   @@unique([tenantId, codigoCargo])
   @@index([tenantId, propostaId])
-}
-
-// ADR-026 — RN_EST_03 (UC03.18). Substitui o vínculo 1:1 de ADR-016
-// (Cargo.unidadeFuncionalId) por rateio percentual N:M: um Cargo pode ser
-// distribuído por múltiplas UnidadeFuncional analíticas, soma sempre 100%.
-// Soma e "só nível Analítico" (RN_EST_02) são validadas no use case a cada
-// substituição atômica do array de alocações — mesmo padrão de
-// validarVinculoNoAnalitico (ADR-016) e RN_PLA_003 (isAnalitica).
-model CargoAlocacaoPercentual {
-  id                 String           @id @default(uuid())
-  tenantId           String
-  cargoId            String
-  cargo              Cargo            @relation(fields: [cargoId], references: [id])
-  unidadeFuncionalId String
-  unidadeFuncional   UnidadeFuncional @relation(fields: [unidadeFuncionalId], references: [id])
-  percentual         Decimal          @db.Decimal(5, 2)
-  createdAt          DateTime         @default(now())
-  updatedAt          DateTime         @updatedAt
-
-  @@unique([tenantId, cargoId, unidadeFuncionalId])
-  @@index([tenantId, cargoId])
   @@index([tenantId, unidadeFuncionalId])
 }
 
