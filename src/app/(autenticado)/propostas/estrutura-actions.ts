@@ -214,6 +214,14 @@ export type CargoResultado = {
   transporteAtivo: boolean;
   transporteValorUnitario: string;
   contaValeTransporteId: string | null;
+  periculosidadeAtivo: boolean;
+  periculosidadeTipo: 'PERCENTUAL' | 'VALOR_FIXO' | null;
+  periculosidadeValor: string;
+  contaPericulosidadeId: string | null;
+  insalubridadeAtivo: boolean;
+  insalubridadeTipo: 'PERCENTUAL' | 'VALOR_FIXO' | null;
+  insalubridadeValor: string;
+  contaInsalubridadeId: string | null;
 };
 
 function serializarCargo(cargo: Cargo): CargoResultado {
@@ -259,6 +267,14 @@ function serializarCargo(cargo: Cargo): CargoResultado {
     transporteAtivo: cargo.transporteAtivo,
     transporteValorUnitario: cargo.transporteValorUnitario.toString(),
     contaValeTransporteId: cargo.contaValeTransporteId,
+    periculosidadeAtivo: cargo.periculosidadeAtivo,
+    periculosidadeTipo: cargo.periculosidadeTipo,
+    periculosidadeValor: cargo.periculosidadeValor.toString(),
+    contaPericulosidadeId: cargo.contaPericulosidadeId,
+    insalubridadeAtivo: cargo.insalubridadeAtivo,
+    insalubridadeTipo: cargo.insalubridadeTipo,
+    insalubridadeValor: cargo.insalubridadeValor.toString(),
+    contaInsalubridadeId: cargo.contaInsalubridadeId,
   };
 }
 
@@ -379,6 +395,15 @@ const BeneficiosCargoSchema = z.object({
   transporteAtivo: z.boolean(),
   transporteValorUnitario: z.coerce.number(),
   contaValeTransporteId: z.string().nullable().optional(),
+  // ADR-044 — US-136: Periculosidade e Insalubridade.
+  periculosidadeAtivo: z.boolean(),
+  periculosidadeTipo: z.enum(['PERCENTUAL', 'VALOR_FIXO']).nullable().optional(),
+  periculosidadeValor: z.coerce.number(),
+  contaPericulosidadeId: z.string().nullable().optional(),
+  insalubridadeAtivo: z.boolean(),
+  insalubridadeTipo: z.enum(['PERCENTUAL', 'VALOR_FIXO']).nullable().optional(),
+  insalubridadeValor: z.coerce.number(),
+  contaInsalubridadeId: z.string().nullable().optional(),
 });
 
 /** US-107a (bloco C do UC03.19) — Configurar Benefícios e Encargos do Cargo. */
@@ -513,6 +538,14 @@ export async function salvarCargoCompleto(input: z.input<typeof SalvarCargoCompl
     transporteAtivo,
     transporteValorUnitario,
     contaValeTransporteId,
+    periculosidadeAtivo,
+    periculosidadeTipo,
+    periculosidadeValor,
+    contaPericulosidadeId,
+    insalubridadeAtivo,
+    insalubridadeTipo,
+    insalubridadeValor,
+    contaInsalubridadeId,
     ...dadosCargo
   } = entrada.data;
   const beneficios = {
@@ -540,6 +573,14 @@ export async function salvarCargoCompleto(input: z.input<typeof SalvarCargoCompl
     transporteAtivo,
     transporteValorUnitario,
     contaValeTransporteId,
+    periculosidadeAtivo,
+    periculosidadeTipo,
+    periculosidadeValor,
+    contaPericulosidadeId,
+    insalubridadeAtivo,
+    insalubridadeTipo,
+    insalubridadeValor,
+    contaInsalubridadeId,
   };
 
   const respostaCargo = cargoId ? await editarCargo({ ...dadosCargo, cargoId }) : await cadastrarCargo(dadosCargo);

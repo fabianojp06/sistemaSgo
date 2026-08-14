@@ -1,5 +1,12 @@
-import { Prisma, type Cargo, type FaixaPlanoSaude, type PrismaClient } from '@prisma/client';
-import { CargoNaoEncontradoError, EncargosSociaisPercentualInvalidoError, ValorBeneficioNegativoError } from '@/domain/plano-contas/errors';
+import { Prisma, type Cargo, type FaixaPlanoSaude, type PrismaClient, type TipoValorAdicional } from '@prisma/client';
+import {
+  CargoNaoEncontradoError,
+  EncargosSociaisPercentualInvalidoError,
+  PercentualValorAdicionalInvalidoError,
+  TipoValorAdicionalObrigatorioError,
+  ValorAdicionalNegativoError,
+  ValorBeneficioNegativoError,
+} from '@/domain/plano-contas/errors';
 import { calcularCustoTotalCargo } from '@/domain/plano-contas/calcularCustoTotalCargo';
 import { validarContasComponenteCusto } from '@/domain/plano-contas/validarContasComponenteCusto';
 
@@ -32,7 +39,30 @@ type ConfigurarBeneficiosCargoInput = {
   transporteAtivo: boolean;
   transporteValorUnitario: number;
   contaValeTransporteId?: string | null;
+  // ADR-044 — US-136: Periculosidade e Insalubridade.
+  periculosidadeAtivo: boolean;
+  periculosidadeTipo?: TipoValorAdicional | null;
+  periculosidadeValor: number;
+  contaPericulosidadeId?: string | null;
+  insalubridadeAtivo: boolean;
+  insalubridadeTipo?: TipoValorAdicional | null;
+  insalubridadeValor: number;
+  contaInsalubridadeId?: string | null;
 };
+
+/** ADR-044 — mesma regra para Periculosidade e Insalubridade: Ativo exige Tipo; Tipo=PERCENTUAL exige 0-100; qualquer tipo bloqueia valor negativo. */
+function validarValorAdicional(campo: 'Periculosidade' | 'Insalubridade', ativo: boolean, tipo: TipoValorAdicional | null, valor: number): void {
+  if (!ativo) return;
+  if (!tipo) {
+    throw new TipoValorAdicionalObrigatorioError(campo);
+  }
+  if (valor < 0) {
+    throw new ValorAdicionalNegativoError();
+  }
+  if (tipo === 'PERCENTUAL' && valor > 100) {
+    throw new PercentualValorAdicionalInvalidoError(campo);
+  }
+}
 
 const CAMPOS_VALOR_NAO_NEGATIVO = [
   'vaValorUnitario',
@@ -63,6 +93,9 @@ export class ConfigurarBeneficiosCargoUseCase {
       }
     }
 
+    validarValorAdicional('Periculosidade', input.periculosidadeAtivo, input.periculosidadeTipo ?? null, input.periculosidadeValor);
+    validarValorAdicional('Insalubridade', input.insalubridadeAtivo, input.insalubridadeTipo ?? null, input.insalubridadeValor);
+
     const cargo = await this.prisma.cargo.findFirst({ where: { tenantId: input.tenantId, id: input.cargoId } });
     if (!cargo) {
       throw new CargoNaoEncontradoError();
@@ -78,6 +111,8 @@ export class ConfigurarBeneficiosCargoUseCase {
       seguroVida: { id: input.contaSeguroVidaId ?? null, label: 'Seguro de Vida' },
       auxilioCreche: { id: input.contaAuxilioCrecheId ?? null, label: 'Auxílio Creche' },
       valeTransporte: { id: input.contaValeTransporteId ?? null, label: 'Vale Transporte' },
+      periculosidade: { id: input.contaPericulosidadeId ?? null, label: 'Periculosidade' },
+      insalubridade: { id: input.contaInsalubridadeId ?? null, label: 'Insalubridade' },
     });
 
     const parametro = await this.prisma.parametroSistema.findUnique({ where: { tenantId: input.tenantId } });
@@ -108,11 +143,29 @@ export class ConfigurarBeneficiosCargoUseCase {
       transporteAtivo: input.transporteAtivo,
       transporteValorUnitario: new Prisma.Decimal(input.transporteValorUnitario),
       contaValeTransporteId: input.contaValeTransporteId ?? null,
+      periculosidadeAtivo: input.periculosidadeAtivo,
+      periculosidadeTipo: input.periculosidadeTipo ?? null,
+      periculosidadeValor: new Prisma.Decimal(input.periculosidadeValor),
+      contaPericulosidadeId: input.contaPericulosidadeId ?? null,
+      insalubridadeAtivo: input.insalubridadeAtivo,
+      insalubridadeTipo: input.insalubridadeTipo ?? null,
+      insalubridadeValor: new Prisma.Decimal(input.insalubridadeValor),
+      contaInsalubridadeId: input.contaInsalubridadeId ?? null,
     };
 
     const custoTotalCargo = calcularCustoTotalCargo(cargo.salarioTotal, dadosBeneficios, diasUteisPadrao);
     // Heurística de auditoria: estado "nunca configurado" é o default (0%, tudo inativo).
-    const jaConfigurado = !cargo.encargosSociaisPct.isZero() || cargo.vaAtivo || cargo.vrAtivo || cargo.planoSaudeAtivo || cargo.planoOdontoAtivo || cargo.seguroVidaAtivo || cargo.auxilioCrecheAtivo || cargo.transporteAtivo;
+    const jaConfigurado =
+      !cargo.encargosSociaisPct.isZero() ||
+      cargo.vaAtivo ||
+      cargo.vrAtivo ||
+      cargo.planoSaudeAtivo ||
+      cargo.planoOdontoAtivo ||
+      cargo.seguroVidaAtivo ||
+      cargo.auxilioCrecheAtivo ||
+      cargo.transporteAtivo ||
+      cargo.periculosidadeAtivo ||
+      cargo.insalubridadeAtivo;
 
     return this.prisma.$transaction(async (tx) => {
       const atualizado = await tx.cargo.update({

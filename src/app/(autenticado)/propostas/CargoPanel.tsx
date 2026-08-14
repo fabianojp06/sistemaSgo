@@ -28,6 +28,13 @@ const BENEFICIOS_SIMPLES = [
   { ativo: 'transporteAtivo', valor: 'transporteValorUnitario', conta: 'contaValeTransporteId', label: 'Vale Transporte' },
 ] as const;
 
+// ADR-044 — US-136: Periculosidade e Insalubridade, cada um com escolha única de
+// tipo (Percentual sobre salarioTotal ou Valor Fixo em R$), nunca os dois ao mesmo tempo.
+const ADICIONAIS = [
+  { ativo: 'periculosidadeAtivo', tipo: 'periculosidadeTipo', valor: 'periculosidadeValor', conta: 'contaPericulosidadeId', label: 'Periculosidade' },
+  { ativo: 'insalubridadeAtivo', tipo: 'insalubridadeTipo', valor: 'insalubridadeValor', conta: 'contaInsalubridadeId', label: 'Insalubridade' },
+] as const;
+
 const formatadorMoeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 function formatarMoeda(valor: number | string): string {
   return formatadorMoeda.format(Number(valor));
@@ -150,6 +157,14 @@ function dadosVazios() {
     transporteAtivo: false,
     transporteValorUnitario: '0',
     contaValeTransporteId: '',
+    periculosidadeAtivo: false,
+    periculosidadeTipo: null as 'PERCENTUAL' | 'VALOR_FIXO' | null,
+    periculosidadeValor: '0',
+    contaPericulosidadeId: '',
+    insalubridadeAtivo: false,
+    insalubridadeTipo: null as 'PERCENTUAL' | 'VALOR_FIXO' | null,
+    insalubridadeValor: '0',
+    contaInsalubridadeId: '',
   };
 }
 
@@ -237,6 +252,14 @@ export function CargoPanel({
       transporteAtivo: cargo.transporteAtivo,
       transporteValorUnitario: cargo.transporteValorUnitario,
       contaValeTransporteId: cargo.contaValeTransporteId ?? '',
+      periculosidadeAtivo: cargo.periculosidadeAtivo,
+      periculosidadeTipo: cargo.periculosidadeTipo,
+      periculosidadeValor: cargo.periculosidadeValor,
+      contaPericulosidadeId: cargo.contaPericulosidadeId ?? '',
+      insalubridadeAtivo: cargo.insalubridadeAtivo,
+      insalubridadeTipo: cargo.insalubridadeTipo,
+      insalubridadeValor: cargo.insalubridadeValor,
+      contaInsalubridadeId: cargo.contaInsalubridadeId ?? '',
     });
   }
 
@@ -280,6 +303,14 @@ export function CargoPanel({
       transporteAtivo: dados.transporteAtivo,
       transporteValorUnitario: Number(dados.transporteValorUnitario),
       contaValeTransporteId: dados.contaValeTransporteId || null,
+      periculosidadeAtivo: dados.periculosidadeAtivo,
+      periculosidadeTipo: dados.periculosidadeTipo,
+      periculosidadeValor: Number(dados.periculosidadeValor),
+      contaPericulosidadeId: dados.contaPericulosidadeId || null,
+      insalubridadeAtivo: dados.insalubridadeAtivo,
+      insalubridadeTipo: dados.insalubridadeTipo,
+      insalubridadeValor: Number(dados.insalubridadeValor),
+      contaInsalubridadeId: dados.contaInsalubridadeId || null,
     };
 
     startTransition(async () => {
@@ -754,6 +785,65 @@ export function CargoPanel({
                   disabled={!dados.planoSaudeAtivo}
                 />
               </div>
+
+              {ADICIONAIS.map((a) => (
+                <Fragment key={a.ativo}>
+                  <label
+                    className="flex items-center gap-2 border-t border-gray-100 pt-2 text-xs text-gray-600"
+                    title="Cumulação com CLT pode não ser válida — o sistema não bloqueia, decisão de RH/jurídico do tenant."
+                  >
+                    <input
+                      type="checkbox"
+                      checked={dados[a.ativo]}
+                      onChange={(e) =>
+                        setDados((d) => ({
+                          ...d,
+                          [a.ativo]: e.target.checked,
+                          ...(e.target.checked ? {} : { [a.tipo]: null, [a.valor]: '0' }),
+                        }))
+                      }
+                    />
+                    {a.label}
+                  </label>
+                  <div className="border-t border-gray-100 pt-2" />
+                  <div className="border-t border-gray-100 pt-2" />
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={dados[a.tipo] ?? ''}
+                      onChange={(e) =>
+                        // US-136, Cenário 5 — trocar o tipo reinicia o Valor (client-side, não persiste até salvar).
+                        setDados((d) => ({
+                          ...d,
+                          [a.tipo]: (e.target.value || null) as 'PERCENTUAL' | 'VALOR_FIXO' | null,
+                          [a.valor]: '0',
+                        }))
+                      }
+                      disabled={!dados[a.ativo]}
+                      className="w-32 shrink-0 rounded border px-2 py-1 text-sm disabled:opacity-50"
+                    >
+                      <option value="">Tipo...</option>
+                      <option value="PERCENTUAL">Percentual (%)</option>
+                      <option value="VALOR_FIXO">Valor Fixo (R$)</option>
+                    </select>
+                    <input
+                      type="number"
+                      value={dados[a.valor]}
+                      onChange={(e) => setDados((d) => ({ ...d, [a.valor]: e.target.value }))}
+                      disabled={!dados[a.ativo]}
+                      className="w-full rounded border px-2 py-1 text-sm disabled:opacity-50"
+                    />
+                  </div>
+                  <div />
+                  <div>
+                    <ContaComponenteSelect
+                      contasAnaliticas={contasAnaliticas}
+                      value={dados[a.conta]}
+                      onChange={(v) => setDados((d) => ({ ...d, [a.conta]: v }))}
+                      disabled={!dados[a.ativo]}
+                    />
+                  </div>
+                </Fragment>
+              ))}
             </div>
           </div>
 

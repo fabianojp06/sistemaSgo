@@ -97,6 +97,14 @@ export default async function EstruturaFuncionalPage({ params }: { params: Promi
     transporteAtivo: c.transporteAtivo,
     transporteValorUnitario: c.transporteValorUnitario.toString(),
     contaValeTransporteId: c.contaValeTransporteId,
+    periculosidadeAtivo: c.periculosidadeAtivo,
+    periculosidadeTipo: c.periculosidadeTipo,
+    periculosidadeValor: c.periculosidadeValor.toString(),
+    contaPericulosidadeId: c.contaPericulosidadeId,
+    insalubridadeAtivo: c.insalubridadeAtivo,
+    insalubridadeTipo: c.insalubridadeTipo,
+    insalubridadeValor: c.insalubridadeValor.toString(),
+    contaInsalubridadeId: c.contaInsalubridadeId,
   }));
 
   const contasAnaliticas = contasDb.map((c) => ({ id: c.id, label: `${c.codigoErp} — ${c.nomeConta}` }));

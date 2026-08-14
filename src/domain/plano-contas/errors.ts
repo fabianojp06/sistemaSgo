@@ -414,6 +414,30 @@ export class ValorBeneficioNegativoError extends Error {
   }
 }
 
+// ADR-044/US-136 — Ativo=true exige Tipo preenchido (Periculosidade ou Insalubridade).
+export class TipoValorAdicionalObrigatorioError extends Error {
+  constructor(campo: 'Periculosidade' | 'Insalubridade') {
+    super(`Tipo de valor de ${campo} é obrigatório quando ativo.`);
+    this.name = 'TipoValorAdicionalObrigatorioError';
+  }
+}
+
+// ADR-044/US-136, Cenário 3 — Tipo=PERCENTUAL exige Valor entre 0 e 100.
+export class PercentualValorAdicionalInvalidoError extends Error {
+  constructor(campo: 'Periculosidade' | 'Insalubridade') {
+    super(`Percentual de ${campo} deve estar entre 0 e 100.`);
+    this.name = 'PercentualValorAdicionalInvalidoError';
+  }
+}
+
+// ADR-044/US-136, Cenário 4 — valor negativo em qualquer tipo (percentual ou valor fixo).
+export class ValorAdicionalNegativoError extends Error {
+  constructor() {
+    super('Valores de Periculosidade/Insalubridade não podem ser negativos.');
+    this.name = 'ValorAdicionalNegativoError';
+  }
+}
+
 // US-108a, Cenário 2 — elegibilidade só é aceita para benefício ativo no Cargo do Empregado.
 export class BeneficioIndisponivelNoCargoError extends Error {
   constructor() {
