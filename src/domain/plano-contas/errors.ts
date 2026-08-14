@@ -12,6 +12,22 @@ export class SincronismoEmAndamentoError extends Error {
   }
 }
 
+// ADR-046 (US-137) — mesma família de erros do sincronismo do Plano de Contas,
+// aplicada à Grade Salarial CTCEA.
+export class AcessoNegadoSincronismoGradeSalarialCtceaError extends Error {
+  constructor() {
+    super('Perfil sem permissão para disparar sincronismo da Grade Salarial CTCEA.');
+    this.name = 'AcessoNegadoSincronismoGradeSalarialCtceaError';
+  }
+}
+
+export class SincronismoGradeSalarialCtceaEmAndamentoError extends Error {
+  constructor() {
+    super('Já existe um sincronismo da Grade Salarial CTCEA em andamento para este tenant.');
+    this.name = 'SincronismoGradeSalarialCtceaEmAndamentoError';
+  }
+}
+
 // RN_PLA_002 / cenário E2 — lote abortado por conta analítica sem sintética pai.
 export class ContasOrfasError extends Error {
   constructor(public readonly codigosOrfaos: string[]) {

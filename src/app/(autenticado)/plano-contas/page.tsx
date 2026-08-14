@@ -5,6 +5,7 @@ import { getTenantId } from '@/infrastructure/tenant';
 import { usuarioTemFuncionalidade } from '@/application/use-cases/plano-contas/verificarPermissao';
 import { getListarAgrupadoresUseCase } from '@/application/use-cases/plano-contas/container';
 import { BotaoSincronizar } from './BotaoSincronizar';
+import { BotaoSincronizarGradeSalarialCtcea } from './BotaoSincronizarGradeSalarialCtcea';
 import { AgrupadorPanel } from './AgrupadorPanel';
 import { ArvoreContas, type NoContaContabil } from './ArvoreContas';
 
@@ -34,7 +35,7 @@ export default async function PlanoContasPage() {
   const usuario = await prisma.usuario.findFirst({ where: { tenantId, clerkUserId: userId }, select: { id: true } });
   if (!usuario) redirect('/login');
 
-  const [podeSincronizar, podeClassificarNatureza, contas, agrupadores] = await Promise.all([
+  const [podeSincronizar, podeClassificarNatureza, contas, agrupadores, podeSincronizarGradeSalarialCtcea, totalGradeSalarialCtcea] = await Promise.all([
     usuarioTemFuncionalidade(prisma, tenantId, usuario.id, 'plano-contas.sincronizar'),
     usuarioTemFuncionalidade(prisma, tenantId, usuario.id, 'plano-contas.classificar-natureza'),
     prisma.contaContabil.findMany({
@@ -43,6 +44,8 @@ export default async function PlanoContasPage() {
       select: { id: true, codigoErp: true, nomeConta: true, idPai: true, isAnalitica: true, statusSync: true, natureza: true },
     }),
     getListarAgrupadoresUseCase().execute(tenantId),
+    usuarioTemFuncionalidade(prisma, tenantId, usuario.id, 'grade-salarial-ctcea.sincronizar'),
+    prisma.gradeSalarialCtcea.count({ where: { tenantId } }),
   ]);
 
   const contasAnaliticas = contas.filter((c) => c.isAnalitica);
@@ -72,6 +75,18 @@ export default async function PlanoContasPage() {
           agrupadores={agrupadores.map((a) => ({ ...a, total: a.total.toString() }))}
           contasAnaliticas={contasAnaliticas.map((c) => ({ id: c.id, label: `${c.codigoErp} — ${c.nomeConta}` }))}
         />
+      </section>
+
+      <section>
+        <header className="mb-2 flex items-center justify-between">
+          <h2 className="text-sm font-medium text-gray-500">Grade Salarial CTCEA</h2>
+          {podeSincronizarGradeSalarialCtcea && <BotaoSincronizarGradeSalarialCtcea />}
+        </header>
+        <p className="text-sm text-gray-500">
+          {totalGradeSalarialCtcea === 0
+            ? 'Nenhuma linha sincronizada ainda. Clique em "Sincronizar Grade Salarial CTCEA" para importar a grade Faixa x Nível x Salário.'
+            : `${totalGradeSalarialCtcea} linha(s) sincronizada(s) (Faixa F1-F7 x Nível N1-N20). Usada na busca "Importar do Rubi" ao cadastrar um Cargo.`}
+        </p>
       </section>
     </main>
   );
