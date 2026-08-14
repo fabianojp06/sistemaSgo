@@ -10,6 +10,7 @@ import {
   type UnidadeFuncionalResultado,
 } from './estrutura-actions';
 import { TabelaSalarialModal } from './TabelaSalarialModal';
+import { SeletorContaAnalitica } from './SeletorContaAnalitica';
 
 export type CargoComVinculo = CargoResultado;
 
@@ -835,8 +836,8 @@ export function CargoPanel({
                   </div>
                   <div />
                   <div>
-                    <ContaComponenteSelect
-                      contasAnaliticas={contasAnaliticas}
+                    <SeletorContaAnalitica
+                      contas={contasAnaliticas}
                       value={dados[a.conta]}
                       onChange={(v) => setDados((d) => ({ ...d, [a.conta]: v }))}
                       disabled={!dados[a.ativo]}
