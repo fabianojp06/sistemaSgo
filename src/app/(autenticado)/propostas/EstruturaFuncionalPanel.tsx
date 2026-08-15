@@ -60,7 +60,7 @@ export function EstruturaFuncionalPanel({
 
   return (
     <div className="flex flex-col gap-4">
-      <nav className="flex gap-1 border-b">
+      <nav className="flex flex-wrap items-center gap-1 border-b">
         <button
           type="button"
           onClick={() => setSubAba('organograma')}
