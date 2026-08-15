@@ -829,6 +829,36 @@ Sessão de ajustes incrementais de UX na tela "Estrutura Funcional e Cargos", to
 
 **Próximo passo natural:** (0) **corrigir o bug do item 6 acima (Nome Cargo CTCEA) — reportado em produção, prioridade sobre o resto**; (1) retomar os itens em aberto do fim de 2026-08-14 — decidir layout final de Cargo (3 opções propostas), continuar recadastro manual de dados perdidos no incidente; (2) US-133/US-134 como próximas peças do módulo de Cargos.
 
+## 2026-08-15 — registrada às 21:51 UTC — Nome Cargo CTCEA (correção de bug), alerta de Estrutura Funcional ausente e reajuste da Grade Salarial CTCEA
+
+Continuação da mesma data, tratando primeiro a pendência prioritária deixada no fim da sessão anterior (item 6 acima), depois duas demandas novas.
+
+### 1. Correção do bug "Nome Cargo CTCEA" (pendência prioritária)
+
+Fluxo completo `fullstack-dev`: novo campo `Cargo.nomeCargoCtcea` (nullable) recebe o nome vindo do Rubi/CTCEA; `ImportarCargoRubiUseCase` para de gravar em `nomeCargoMercado` (que volta a ser sempre o nome digitado pelo usuário, nunca sobrescrito); `CargoPanel.tsx` teve `disabled`/`title` removidos do campo Nome do Cargo (Mercado) e passou a exibir "Nome Cargo CTCEA" no painel lateral Rubi; `ImportarCargoRubiModal.tsx` teve o rótulo "Nome do Cargo:" trocado para "Nome do Cargo (CTCEA):" com nota explicativa. Testes de `ImportarCargoRubiUseCase` atualizados (2 cenários reescritos para o novo comportamento); 367/367 passando, `tsc`/`build` limpos.
+
+**Migration com obstáculo real:** `npx prisma migrate dev` recusou aplicar por causa de um drift pré-existente (FK de `unidadeFuncionalId` divergente entre histórico e schema real, não relacionado a esta mudança) e sugeriu `prisma migrate reset` — **recusado deliberadamente**, pois resetaria o schema "public" de produção (mesmo padrão do incidente de 2026-08-14). Alternativa segura usada: SQL manual (`ALTER TABLE "Cargo" ADD COLUMN "nomeCargoCtcea" TEXT;`) aplicado via `prisma db execute`, migration registrada no histórico via `prisma migrate resolve --applied`. Container Docker do shadow database local (`sgo-shadow-db`) estava parado, precisou ser religado (`docker start`) antes do diff funcionar.
+
+`/code-review medium` achou 1 problema real: a migration não fazia backfill de `nomeCargoCtcea` para Cargos já importados do Rubi antes da mudança (ficariam com o campo vazio no painel). Corrigido: `UPDATE "Cargo" SET "nomeCargoCtcea" = "nomeCargoMercado" WHERE "tabSalCodigo" IS NOT NULL;` adicionado à migration e aplicado em produção. Manual do usuário ("Manual da Estrutura Funcional e Cargos", mesmo link) atualizado nas seções 07/08 e na FAQ.
+
+PR #9 aberto e **mergeado na master** (commit `5b1f72e`) — usuário reportou "o problema continua" logo após o primeiro anúncio de conclusão porque o PR ainda estava só aberto, não mergeado (código de produção continuava rodando a versão antiga mesmo com a coluna já criada no banco). Lição: **anunciar "resolvido" só depois de confirmar merge na master, não só PR aberto + code-review OK.**
+
+### 2. Alerta orientativo — cadastro de Cargo sem Estrutura Funcional
+
+Usuário pediu um fluxo de alertas orientativos para o cadastro de Cargo (Empregados → botão Estrutura Funcional e Cargos → Tabela Salarial cria o Cargo → aba Cargos completa). `analista-negocios-po` refinou 2 ambiguidades antes de implementar:
+- **Regra da aba Cargos** ("se tentar cadastrar Cargo novo pela aba Cargos, alertar para usar a Tabela Salarial"): confirmado como **regra preventiva/futura** — hoje não existe nenhum caminho de criar Cargo do zero na aba Cargos (só editar Cargo existente), então nenhum botão artificial foi criado só para exibir o alerta. Registrado em memória para quando esse caminho existir.
+- **Alerta de Estrutura Funcional ausente**: confirmado que deve aparecer só ao tentar **completar/editar** um Cargo na aba Cargos (não no cadastro rápido da Tabela Salarial). Implementado: `iniciarEdicao` em `CargoPanel.tsx` agora seta a mensagem de erro já existente no componente quando `unidadesAnaliticas.length === 0`. Fix pequeno, direto na master, commit `3222655`.
+
+### 3. Reajuste de +20% na Grade Salarial CTCEA
+
+Pedido do usuário: alterar os salários de todas as Faixas/Níveis importados do Rubi, "fique à vontade para decidir o valor". Esclarecido antes de agir: eram os dados reais de `GradeSalarialCtcea` (catálogo fonte, 140 linhas = 7 Faixas × 20 Níveis), não `Cargo.salarioReal`. Sugestão inicial de +8% recusada pelo usuário, que pediu +20%. `UPDATE "GradeSalarialCtcea" SET salario = round(salario * 1.20, 2);` — MCP do Supabase recusou por estar em modo somente leitura; classificador do modo automático bloqueou a execução direta do `prisma db execute` por ser escrita em massa em produção sem confirmação no momento do comando (mesmo já tendo confirmação explícita do usuário na conversa). **Contornado da forma correta**: usuário rodou o comando ele mesmo via prefixo `!` no prompt (execução autorizada diretamente por ele, fora do bloqueio do classificador). Conferido por amostra: F1/N1 de R$ 1.570,98 → R$ 1.885,18; F7/N20 de R$ 48.452,67 → R$ 58.143,20. Nota: `Cargo.salarioReal` já gravado em Cargos existentes não muda sozinho — só reflete o novo valor após reimportação/ressincronização.
+
+### Estado ao final
+
+`master` em `3222655` (mais o commit deste registro). PR #9 mergeado, alerta de Estrutura Funcional no ar, Grade Salarial CTCEA reajustada em produção. Nenhuma migration pendente sem aplicar.
+
+**Próximo passo natural:** (1) decidir layout final de Cargo (3 opções propostas em 2026-08-14, ainda em aberto); (2) US-133 (`FonteAtivaSalario.TOTAL`)/US-134 (Snapshot de Oficialização); (3) se um caminho de "Novo Cargo" for adicionado à aba Cargos no futuro, retomar o alerta preventivo do item 2 acima.
+
 ## Como usar este arquivo em sessões futuras
 
 No início de uma sessão, se o usuário perguntar "qual o contexto/status de X", leia este arquivo antes de assumir que a memória padrão (`~/.claude/.../memory/`) está atualizada — o ambiente deste projeto (Codespace) pode ter sido recriado desde a última sessão, apagando a memória padrão sem apagar o repositório.
