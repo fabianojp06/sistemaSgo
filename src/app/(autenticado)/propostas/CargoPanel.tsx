@@ -585,344 +585,368 @@ export function CargoPanel({
         <div className="flex flex-col gap-4 rounded-lg border border-gray-100 bg-white p-4 shadow-sm md:p-5">
           <h4 className="text-sm font-semibold text-slate-800">{cargoEmEdicaoId ? 'Editar Cargo' : 'Novo Cargo'}</h4>
 
-          <div className="grid grid-cols-1 items-start gap-x-4 gap-y-3 md:grid-cols-3">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">Nome do Cargo (Mercado)</label>
-              <input
-                type="text"
-                value={dados.nomeCargoMercado}
-                onChange={(e) => setDados((d) => ({ ...d, nomeCargoMercado: e.target.value }))}
-                disabled={importadoDoRubi}
-                className="w-full rounded border px-2 py-1 text-sm disabled:bg-slate-50 disabled:text-slate-500"
-                title={importadoDoRubi ? 'Importado do Rubi — Read-only. Use "Reimportar do Rubi" para trocar.' : undefined}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">Conta Contábil (natureza da despesa)</label>
-              <select
-                value={dados.contaId}
-                onChange={(e) => setDados((d) => ({ ...d, contaId: e.target.value }))}
-                className="w-full rounded border px-2 py-1 text-sm"
-              >
-                <option value="">Selecione...</option>
-                {contasAnaliticas.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">Período Início</label>
-              <input
-                type="date"
-                value={dados.periodoInicio}
-                onChange={(e) => setDados((d) => ({ ...d, periodoInicio: e.target.value }))}
-                className="w-full rounded border px-2 py-1 text-sm"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">Salário Mercado Mínimo</label>
-              <input
-                type="number"
-                value={dados.salarioMercadoMinimo}
-                onChange={(e) => setDados((d) => ({ ...d, salarioMercadoMinimo: e.target.value, origemSalarioMinimo: 'MANUAL' }))}
-                className="w-full rounded border px-2 py-1 text-sm"
-              />
-              <p className="mt-0.5 text-[11px] text-gray-400">
-                {dados.origemSalarioMinimo === 'TABELA_SALARIAL' ? 'Preenchido via Tabela Salarial' : 'Editado manualmente'}
-              </p>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">Salário Mercado Máximo</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  value={dados.salarioMercadoMaximo}
-                  onChange={(e) => setDados((d) => ({ ...d, salarioMercadoMaximo: e.target.value, origemSalarioMaximo: 'MANUAL' }))}
-                  className="w-full rounded border px-2 py-1 text-sm"
-                />
-                {cargoEmEdicaoId && (
-                  <button
-                    type="button"
-                    onClick={() => setTabelaSalarialAberta(true)}
-                    className="whitespace-nowrap rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                    title="Selecionar ou consultar Tabela Salarial de mercado (US-131/US-133)"
-                  >
-                    Tabela Salarial
-                  </button>
+          {/* Opção B (mockup "Reorganização de Cargos", 2026-08-14): coluna principal de edição + painel lateral fixo com Rubi/Fonte Ativa/custo. */}
+          <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[1fr_300px]">
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-3">
+                <p className="text-xs font-medium text-gray-600">Identificação e Mercado</p>
+                <div className="grid grid-cols-1 items-start gap-x-4 gap-y-3 md:grid-cols-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">Nome do Cargo (Mercado)</label>
+                    <input
+                      type="text"
+                      value={dados.nomeCargoMercado}
+                      onChange={(e) => setDados((d) => ({ ...d, nomeCargoMercado: e.target.value }))}
+                      disabled={importadoDoRubi}
+                      className="w-full rounded border px-2 py-1 text-sm disabled:bg-slate-50 disabled:text-slate-500"
+                      title={importadoDoRubi ? 'Importado do Rubi — Read-only. Use "Reimportar do Rubi" para trocar.' : undefined}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">Conta Contábil (natureza da despesa)</label>
+                    <select
+                      value={dados.contaId}
+                      onChange={(e) => setDados((d) => ({ ...d, contaId: e.target.value }))}
+                      className="w-full rounded border px-2 py-1 text-sm"
+                    >
+                      <option value="">Selecione...</option>
+                      {contasAnaliticas.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">Período Início</label>
+                    <input
+                      type="date"
+                      value={dados.periodoInicio}
+                      onChange={(e) => setDados((d) => ({ ...d, periodoInicio: e.target.value }))}
+                      className="w-full rounded border px-2 py-1 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">Salário Mercado Mínimo</label>
+                    <input
+                      type="number"
+                      value={dados.salarioMercadoMinimo}
+                      onChange={(e) => setDados((d) => ({ ...d, salarioMercadoMinimo: e.target.value, origemSalarioMinimo: 'MANUAL' }))}
+                      className="w-full rounded border px-2 py-1 text-sm"
+                    />
+                    <p className="mt-0.5 text-[11px] text-gray-400">
+                      {dados.origemSalarioMinimo === 'TABELA_SALARIAL' ? 'Preenchido via Tabela Salarial' : 'Editado manualmente'}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">Salário Mercado Máximo</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={dados.salarioMercadoMaximo}
+                        onChange={(e) => setDados((d) => ({ ...d, salarioMercadoMaximo: e.target.value, origemSalarioMaximo: 'MANUAL' }))}
+                        className="w-full rounded border px-2 py-1 text-sm"
+                      />
+                      {cargoEmEdicaoId && (
+                        <button
+                          type="button"
+                          onClick={() => setTabelaSalarialAberta(true)}
+                          className="whitespace-nowrap rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                          title="Selecionar ou consultar Tabela Salarial de mercado (US-131/US-133)"
+                        >
+                          Tabela Salarial
+                        </button>
+                      )}
+                    </div>
+                    <p className="mt-0.5 text-[11px] text-gray-400">
+                      {dados.origemSalarioMaximo === 'TABELA_SALARIAL' ? 'Preenchido via Tabela Salarial' : 'Editado manualmente'}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">Função Gratificada (opcional)</label>
+                    <input
+                      type="number"
+                      value={dados.funcaoGratificada}
+                      onChange={(e) => setDados((d) => ({ ...d, funcaoGratificada: e.target.value }))}
+                      className="w-full rounded border px-2 py-1 text-sm"
+                    />
+                    <div className="mt-1">
+                      <ContaComponenteSelect
+                        contasAnaliticas={contasAnaliticas}
+                        value={dados.contaGratificacaoId}
+                        onChange={(v) => setDados((d) => ({ ...d, contaGratificacaoId: v }))}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2 border-t pt-3">
+                <p className="text-xs font-medium text-gray-600">Vínculo Funcional (RN_CAR_08 — custo integral ao setor selecionado)</p>
+                <select
+                  value={dados.unidadeFuncionalId}
+                  onChange={(e) => setDados((d) => ({ ...d, unidadeFuncionalId: e.target.value }))}
+                  className="w-full rounded border px-2 py-1 text-sm md:w-1/3"
+                >
+                  <option value="">Selecione a Unidade Funcional...</option>
+                  {unidadesAnaliticas.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.nome}
+                    </option>
+                  ))}
+                </select>
+                {unidadesAnaliticas.length === 0 && (
+                  <p className="text-xs text-gray-400">Cadastre ao menos uma unidade funcional Analítica no Organograma antes de vincular um Cargo.</p>
                 )}
               </div>
-              <p className="mt-0.5 text-[11px] text-gray-400">
-                {dados.origemSalarioMaximo === 'TABELA_SALARIAL' ? 'Preenchido via Tabela Salarial' : 'Editado manualmente'}
-              </p>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">Função Gratificada (opcional)</label>
-              <input
-                type="number"
-                value={dados.funcaoGratificada}
-                onChange={(e) => setDados((d) => ({ ...d, funcaoGratificada: e.target.value }))}
-                className="w-full rounded border px-2 py-1 text-sm"
-              />
-              <div className="mt-1">
-                <ContaComponenteSelect
-                  contasAnaliticas={contasAnaliticas}
-                  value={dados.contaGratificacaoId}
-                  onChange={(v) => setDados((d) => ({ ...d, contaGratificacaoId: v }))}
-                />
-              </div>
-            </div>
-          </div>
 
-          {cargoEmEdicaoId && (
-            <div className="flex flex-col gap-2 border-t pt-3">
-              <p className="text-xs font-medium text-gray-600">Rubi — Tabela Salarial, Faixa, Nível e Salário Real</p>
-              {importadoDoRubi && cargoEmEdicao ? (
-                <>
-                  <div className="grid grid-cols-1 gap-x-4 gap-y-2 rounded-lg border border-gray-100 bg-slate-50 p-3 text-xs md:grid-cols-2">
-                    <p><span className="font-medium text-gray-500">Salário Real:</span> {formatarMoeda(cargoEmEdicao.salarioReal ?? '0')}</p>
-                    <p><span className="font-medium text-gray-500">Tabela Salarial:</span> {cargoEmEdicao.tabSalDescricao}</p>
-                    <p><span className="font-medium text-gray-500">Faixa:</span> {cargoEmEdicao.faixaDescricao}</p>
-                    <p><span className="font-medium text-gray-500">Nível:</span> {cargoEmEdicao.nivelDescricao}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setRubiModalAberta(true)}
-                    className="w-fit rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                  >
-                    Reimportar do Rubi
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setRubiModalAberta(true)}
-                  className="w-fit rounded-md bg-slate-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800"
-                >
-                  Importar do Rubi
-                </button>
-              )}
-            </div>
-          )}
+              <div className="flex flex-col gap-3 border-t pt-3">
+                <p className="text-xs font-medium text-gray-600">Benefícios e Encargos</p>
 
-          <div className="max-w-xs border-t pt-3">
-            <label className="mb-1 block text-xs font-medium text-gray-600">Fonte Ativa</label>
-            <select
-              value={dados.fonteAtiva}
-              onChange={(e) => setDados((d) => ({ ...d, fonteAtiva: e.target.value as (typeof FONTES)[number]['value'] }))}
-              className="w-full rounded border px-2 py-1 text-sm"
-            >
-              {FONTES.map((f) => (
-                <option key={f.value} value={f.value}>
-                  {f.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-2 border-t pt-3">
-            <p className="text-xs font-medium text-gray-600">Vínculo Funcional (RN_CAR_08 — custo integral ao setor selecionado)</p>
-            <select
-              value={dados.unidadeFuncionalId}
-              onChange={(e) => setDados((d) => ({ ...d, unidadeFuncionalId: e.target.value }))}
-              className="w-full rounded border px-2 py-1 text-sm md:w-1/3"
-            >
-              <option value="">Selecione a Unidade Funcional...</option>
-              {unidadesAnaliticas.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.nome}
-                </option>
-              ))}
-            </select>
-            {unidadesAnaliticas.length === 0 && (
-              <p className="text-xs text-gray-400">Cadastre ao menos uma unidade funcional Analítica no Organograma antes de vincular um Cargo.</p>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-3 border-t pt-3">
-            <p className="text-xs font-medium text-gray-600">Benefícios e Encargos</p>
-
-            <div className="grid grid-cols-[minmax(180px,1fr)_128px_minmax(160px,1fr)] items-center gap-x-3 gap-y-2">
-              <label className="text-xs font-medium text-gray-600">Encargos Sociais (%)</label>
-              <div />
-              <div />
-              <div className="border-b border-gray-100 pb-2">
-                <input
-                  type="number"
-                  value={dados.encargosSociaisPct}
-                  onChange={(e) => setDados((d) => ({ ...d, encargosSociaisPct: e.target.value }))}
-                  className="w-full rounded border px-2 py-1 text-sm"
-                />
-              </div>
-              <div className="border-b border-gray-100 pb-2" />
-              <div className="border-b border-gray-100 pb-2">
-                <ContaComponenteSelect
-                  contasAnaliticas={contasAnaliticas}
-                  value={dados.contaEncargosSociaisId}
-                  onChange={(v) => setDados((d) => ({ ...d, contaEncargosSociaisId: v }))}
-                />
-              </div>
-
-              {BENEFICIOS_SIMPLES.map((b) => (
-                <Fragment key={b.ativo}>
-                  <label className="flex items-center gap-2 border-b border-gray-100 pb-2 text-xs text-gray-600">
-                    <input
-                      type="checkbox"
-                      checked={dados[b.ativo]}
-                      onChange={(e) => setDados((d) => ({ ...d, [b.ativo]: e.target.checked }))}
-                    />
-                    {b.label}
-                  </label>
+                <div className="grid grid-cols-[minmax(180px,1fr)_128px_minmax(160px,1fr)] items-center gap-x-3 gap-y-2">
+                  <label className="text-xs font-medium text-gray-600">Encargos Sociais (%)</label>
+                  <div />
+                  <div />
                   <div className="border-b border-gray-100 pb-2">
                     <input
                       type="number"
-                      value={dados[b.valor]}
-                      onChange={(e) => setDados((d) => ({ ...d, [b.valor]: e.target.value }))}
-                      disabled={!dados[b.ativo]}
-                      className="w-full rounded border px-2 py-1 text-sm disabled:opacity-50"
+                      value={dados.encargosSociaisPct}
+                      onChange={(e) => setDados((d) => ({ ...d, encargosSociaisPct: e.target.value }))}
+                      className="w-full rounded border px-2 py-1 text-sm"
                     />
                   </div>
+                  <div className="border-b border-gray-100 pb-2" />
                   <div className="border-b border-gray-100 pb-2">
                     <ContaComponenteSelect
                       contasAnaliticas={contasAnaliticas}
-                      value={dados[b.conta]}
-                      onChange={(v) => setDados((d) => ({ ...d, [b.conta]: v }))}
-                      disabled={!dados[b.ativo]}
+                      value={dados.contaEncargosSociaisId}
+                      onChange={(v) => setDados((d) => ({ ...d, contaEncargosSociaisId: v }))}
                     />
                   </div>
-                </Fragment>
-              ))}
 
-              <label className="flex items-center gap-2 text-xs text-gray-600">
-                <input
-                  type="checkbox"
-                  checked={dados.planoSaudeAtivo}
-                  onChange={(e) => setDados((d) => ({ ...d, planoSaudeAtivo: e.target.checked }))}
-                />
-                Plano de Saúde
-              </label>
-              <div />
-              <div />
-              <div className="flex items-center gap-2">
-                <select
-                  value={dados.planoSaudeFaixa ?? ''}
-                  onChange={(e) => setDados((d) => ({ ...d, planoSaudeFaixa: (e.target.value || null) as typeof d.planoSaudeFaixa }))}
-                  disabled={!dados.planoSaudeAtivo}
-                  className="w-32 shrink-0 rounded border px-2 py-1 text-sm disabled:opacity-50"
-                >
-                  <option value="">Faixa...</option>
-                  <option value="BASICO">Básico</option>
-                  <option value="INTERMEDIARIO">Intermediário</option>
-                  <option value="EXECUTIVO">Executivo</option>
-                </select>
-                <input
-                  type="number"
-                  value={dados.planoSaudeValor}
-                  onChange={(e) => setDados((d) => ({ ...d, planoSaudeValor: e.target.value }))}
-                  disabled={!dados.planoSaudeAtivo}
-                  className="w-full rounded border px-2 py-1 text-sm disabled:opacity-50"
-                />
-              </div>
-              <div />
-              <div>
-                <ContaComponenteSelect
-                  contasAnaliticas={contasAnaliticas}
-                  value={dados.contaPlanoSaudeId}
-                  onChange={(v) => setDados((d) => ({ ...d, contaPlanoSaudeId: v }))}
-                  disabled={!dados.planoSaudeAtivo}
-                />
-              </div>
+                  {BENEFICIOS_SIMPLES.map((b) => (
+                    <Fragment key={b.ativo}>
+                      <label className="flex items-center gap-2 border-b border-gray-100 pb-2 text-xs text-gray-600">
+                        <input
+                          type="checkbox"
+                          checked={dados[b.ativo]}
+                          onChange={(e) => setDados((d) => ({ ...d, [b.ativo]: e.target.checked }))}
+                        />
+                        {b.label}
+                      </label>
+                      <div className="border-b border-gray-100 pb-2">
+                        <input
+                          type="number"
+                          value={dados[b.valor]}
+                          onChange={(e) => setDados((d) => ({ ...d, [b.valor]: e.target.value }))}
+                          disabled={!dados[b.ativo]}
+                          className="w-full rounded border px-2 py-1 text-sm disabled:opacity-50"
+                        />
+                      </div>
+                      <div className="border-b border-gray-100 pb-2">
+                        <ContaComponenteSelect
+                          contasAnaliticas={contasAnaliticas}
+                          value={dados[b.conta]}
+                          onChange={(v) => setDados((d) => ({ ...d, [b.conta]: v }))}
+                          disabled={!dados[b.ativo]}
+                        />
+                      </div>
+                    </Fragment>
+                  ))}
 
-              {ADICIONAIS.map((a) => (
-                <Fragment key={a.ativo}>
-                  <label
-                    className="flex items-center gap-2 border-t border-gray-100 pt-2 text-xs text-gray-600"
-                    title="Cumulação com CLT pode não ser válida — o sistema não bloqueia, decisão de RH/jurídico do tenant."
-                  >
+                  <label className="flex items-center gap-2 text-xs text-gray-600">
                     <input
                       type="checkbox"
-                      checked={dados[a.ativo]}
-                      onChange={(e) =>
-                        setDados((d) => ({
-                          ...d,
-                          [a.ativo]: e.target.checked,
-                          ...(e.target.checked ? {} : { [a.tipo]: null, [a.valor]: '0' }),
-                        }))
-                      }
+                      checked={dados.planoSaudeAtivo}
+                      onChange={(e) => setDados((d) => ({ ...d, planoSaudeAtivo: e.target.checked }))}
                     />
-                    {a.label}
+                    Plano de Saúde
                   </label>
-                  <div className="border-t border-gray-100 pt-2" />
-                  <div className="border-t border-gray-100 pt-2" />
+                  <div />
+                  <div />
                   <div className="flex items-center gap-2">
                     <select
-                      value={dados[a.tipo] ?? ''}
-                      onChange={(e) =>
-                        // US-136, Cenário 5 — trocar o tipo reinicia o Valor (client-side, não persiste até salvar).
-                        setDados((d) => ({
-                          ...d,
-                          [a.tipo]: (e.target.value || null) as 'PERCENTUAL' | 'VALOR_FIXO' | null,
-                          [a.valor]: '0',
-                        }))
-                      }
-                      disabled={!dados[a.ativo]}
+                      value={dados.planoSaudeFaixa ?? ''}
+                      onChange={(e) => setDados((d) => ({ ...d, planoSaudeFaixa: (e.target.value || null) as typeof d.planoSaudeFaixa }))}
+                      disabled={!dados.planoSaudeAtivo}
                       className="w-32 shrink-0 rounded border px-2 py-1 text-sm disabled:opacity-50"
                     >
-                      <option value="">Tipo...</option>
-                      <option value="PERCENTUAL">Percentual (%)</option>
-                      <option value="VALOR_FIXO">Valor Fixo (R$)</option>
+                      <option value="">Faixa...</option>
+                      <option value="BASICO">Básico</option>
+                      <option value="INTERMEDIARIO">Intermediário</option>
+                      <option value="EXECUTIVO">Executivo</option>
                     </select>
                     <input
                       type="number"
-                      value={dados[a.valor]}
-                      onChange={(e) => setDados((d) => ({ ...d, [a.valor]: e.target.value }))}
-                      disabled={!dados[a.ativo]}
+                      value={dados.planoSaudeValor}
+                      onChange={(e) => setDados((d) => ({ ...d, planoSaudeValor: e.target.value }))}
+                      disabled={!dados.planoSaudeAtivo}
                       className="w-full rounded border px-2 py-1 text-sm disabled:opacity-50"
                     />
                   </div>
                   <div />
                   <div>
-                    <SeletorContaAnalitica
-                      contas={contasAnaliticas}
-                      value={dados[a.conta]}
-                      onChange={(v) => setDados((d) => ({ ...d, [a.conta]: v }))}
-                      disabled={!dados[a.ativo]}
+                    <ContaComponenteSelect
+                      contasAnaliticas={contasAnaliticas}
+                      value={dados.contaPlanoSaudeId}
+                      onChange={(v) => setDados((d) => ({ ...d, contaPlanoSaudeId: v }))}
+                      disabled={!dados.planoSaudeAtivo}
                     />
                   </div>
-                </Fragment>
-              ))}
+
+                  {ADICIONAIS.map((a) => (
+                    <Fragment key={a.ativo}>
+                      <label
+                        className="flex items-center gap-2 border-t border-gray-100 pt-2 text-xs text-gray-600"
+                        title="Cumulação com CLT pode não ser válida — o sistema não bloqueia, decisão de RH/jurídico do tenant."
+                      >
+                        <input
+                          type="checkbox"
+                          checked={dados[a.ativo]}
+                          onChange={(e) =>
+                            setDados((d) => ({
+                              ...d,
+                              [a.ativo]: e.target.checked,
+                              ...(e.target.checked ? {} : { [a.tipo]: null, [a.valor]: '0' }),
+                            }))
+                          }
+                        />
+                        {a.label}
+                      </label>
+                      <div className="border-t border-gray-100 pt-2" />
+                      <div className="border-t border-gray-100 pt-2" />
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={dados[a.tipo] ?? ''}
+                          onChange={(e) =>
+                            // US-136, Cenário 5 — trocar o tipo reinicia o Valor (client-side, não persiste até salvar).
+                            setDados((d) => ({
+                              ...d,
+                              [a.tipo]: (e.target.value || null) as 'PERCENTUAL' | 'VALOR_FIXO' | null,
+                              [a.valor]: '0',
+                            }))
+                          }
+                          disabled={!dados[a.ativo]}
+                          className="w-32 shrink-0 rounded border px-2 py-1 text-sm disabled:opacity-50"
+                        >
+                          <option value="">Tipo...</option>
+                          <option value="PERCENTUAL">Percentual (%)</option>
+                          <option value="VALOR_FIXO">Valor Fixo (R$)</option>
+                        </select>
+                        <input
+                          type="number"
+                          value={dados[a.valor]}
+                          onChange={(e) => setDados((d) => ({ ...d, [a.valor]: e.target.value }))}
+                          disabled={!dados[a.ativo]}
+                          className="w-full rounded border px-2 py-1 text-sm disabled:opacity-50"
+                        />
+                      </div>
+                      <div />
+                      <div>
+                        <SeletorContaAnalitica
+                          contas={contasAnaliticas}
+                          value={dados[a.conta]}
+                          onChange={(v) => setDados((d) => ({ ...d, [a.conta]: v }))}
+                          disabled={!dados[a.ativo]}
+                        />
+                      </div>
+                    </Fragment>
+                  ))}
+                </div>
+              </div>
+
+              {erro && <p className="text-xs text-red-600">{erro}</p>}
+
+              <div className="flex flex-wrap items-center gap-2 border-t pt-3">
+                <button
+                  type="button"
+                  onClick={salvar}
+                  disabled={pending || !podeSalvar}
+                  className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white disabled:opacity-50"
+                >
+                  {pending ? 'Salvando...' : 'Salvar Cargo'}
+                </button>
+                {cargoEmEdicaoId && (
+                  <button type="button" onClick={() => iniciarEdicao(null)} className="text-sm text-gray-500 hover:underline">
+                    Cancelar
+                  </button>
+                )}
+                {cargoEmEdicaoId && (
+                  <button
+                    type="button"
+                    onClick={ressincronizarEmpregados}
+                    disabled={ressincronizando}
+                    title="Atualiza o custo/conta dos Empregados já cadastrados deste Cargo com os benefícios salvos acima. Empregados de Proposta oficializada não são alterados."
+                    className="rounded border border-blue-600 px-3 py-1.5 text-sm text-blue-700 disabled:opacity-50"
+                  >
+                    {ressincronizando ? 'Ressincronizando...' : 'Ressincronizar Empregados'}
+                  </button>
+                )}
+                {mensagemRessincronizacao && <p className="w-full text-xs text-gray-600">{mensagemRessincronizacao}</p>}
+              </div>
             </div>
-          </div>
 
-          {erro && <p className="text-xs text-red-600">{erro}</p>}
+            <aside className="flex flex-col gap-4 lg:sticky lg:top-4">
+              {cargoEmEdicaoId && (
+                <div className="flex flex-col gap-2">
+                  <p className="text-xs font-medium text-gray-600">Rubi — Tabela Salarial, Faixa, Nível e Salário Real</p>
+                  {importadoDoRubi && cargoEmEdicao ? (
+                    <>
+                      <div className="grid grid-cols-1 gap-x-4 gap-y-2 rounded-lg border border-gray-100 bg-slate-50 p-3 text-xs">
+                        <p><span className="font-medium text-gray-500">Salário Real:</span> {formatarMoeda(cargoEmEdicao.salarioReal ?? '0')}</p>
+                        <p><span className="font-medium text-gray-500">Tabela Salarial:</span> {cargoEmEdicao.tabSalDescricao}</p>
+                        <p><span className="font-medium text-gray-500">Faixa:</span> {cargoEmEdicao.faixaDescricao}</p>
+                        <p><span className="font-medium text-gray-500">Nível:</span> {cargoEmEdicao.nivelDescricao}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setRubiModalAberta(true)}
+                        className="w-fit rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                      >
+                        Reimportar do Rubi
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setRubiModalAberta(true)}
+                      className="w-fit rounded-md bg-slate-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800"
+                    >
+                      Importar do Rubi
+                    </button>
+                  )}
+                </div>
+              )}
 
-          <div className="flex flex-wrap items-center gap-2 border-t pt-3">
-            <button
-              type="button"
-              onClick={salvar}
-              disabled={pending || !podeSalvar}
-              className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white disabled:opacity-50"
-            >
-              {pending ? 'Salvando...' : 'Salvar Cargo'}
-            </button>
-            {cargoEmEdicaoId && (
-              <button type="button" onClick={() => iniciarEdicao(null)} className="text-sm text-gray-500 hover:underline">
-                Cancelar
-              </button>
-            )}
-            {cargoEmEdicaoId && (
-              <button
-                type="button"
-                onClick={ressincronizarEmpregados}
-                disabled={ressincronizando}
-                title="Atualiza o custo/conta dos Empregados já cadastrados deste Cargo com os benefícios salvos acima. Empregados de Proposta oficializada não são alterados."
-                className="rounded border border-blue-600 px-3 py-1.5 text-sm text-blue-700 disabled:opacity-50"
-              >
-                {ressincronizando ? 'Ressincronizando...' : 'Ressincronizar Empregados'}
-              </button>
-            )}
-            {mensagemRessincronizacao && <p className="w-full text-xs text-gray-600">{mensagemRessincronizacao}</p>}
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">Fonte Ativa</label>
+                <select
+                  value={dados.fonteAtiva}
+                  onChange={(e) => setDados((d) => ({ ...d, fonteAtiva: e.target.value as (typeof FONTES)[number]['value'] }))}
+                  className="w-full rounded border px-2 py-1 text-sm"
+                >
+                  {FONTES.map((f) => (
+                    <option key={f.value} value={f.value}>
+                      {f.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {cargoEmEdicao && (
+                <div className="flex flex-col gap-2 rounded-lg border border-gray-100 bg-slate-50 p-3 text-xs">
+                  <p className="font-medium text-gray-600">Custo do Cargo (última gravação)</p>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Salário Total</span>
+                    <span className="tabular-nums">{formatarMoeda(cargoEmEdicao.salarioTotal)}</span>
+                  </div>
+                  <div className="flex justify-between border-t border-gray-200 pt-2 font-medium text-slate-800">
+                    <span>Custo Total</span>
+                    <span className="tabular-nums">{formatarMoeda(cargoEmEdicao.custoTotalCargo)}</span>
+                  </div>
+                </div>
+              )}
+            </aside>
           </div>
         </div>
       )}
