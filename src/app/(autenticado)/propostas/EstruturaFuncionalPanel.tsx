@@ -60,30 +60,39 @@ export function EstruturaFuncionalPanel({
 
   return (
     <div className="flex flex-col gap-4">
-      <nav className="flex items-center justify-between border-b">
-        <div className="flex gap-1">
-          {(
-            [
-              { slug: 'organograma', label: 'Estrutura Funcional (Organograma)' },
-              { slug: 'cargos', label: 'Cargos' },
-              { slug: 'tabela-salarial', label: 'Tabela Salarial' },
-            ] as const
-          ).map((sub) => (
-            <button
-              key={sub.slug}
-              type="button"
-              onClick={() => setSubAba(sub.slug)}
-              className={`rounded-t px-3 py-1.5 text-sm ${
-                subAba === sub.slug ? 'border-b-2 border-blue-600 font-medium text-blue-700' : 'text-gray-500 hover:text-gray-800'
-              }`}
-            >
-              {sub.label}
-            </button>
-          ))}
-        </div>
-        <Link href={`/propostas/${propostaId}/empregados`} className="px-3 py-1.5 text-sm text-blue-700 underline hover:text-blue-900">
+      <nav className="flex gap-1 border-b">
+        <button
+          type="button"
+          onClick={() => setSubAba('organograma')}
+          className={`rounded-t px-3 py-1.5 text-sm ${
+            subAba === 'organograma' ? 'border-b-2 border-blue-600 font-medium text-blue-700' : 'text-gray-500 hover:text-gray-800'
+          }`}
+        >
+          Estrutura Funcional (Organograma)
+        </button>
+        <Link
+          href={`/propostas/${propostaId}/empregados`}
+          className="rounded-t px-3 py-1.5 text-sm text-blue-700 hover:text-blue-900"
+        >
           Empregados
         </Link>
+        {(
+          [
+            { slug: 'cargos', label: 'Cargos' },
+            { slug: 'tabela-salarial', label: 'Tabela Salarial' },
+          ] as const
+        ).map((sub) => (
+          <button
+            key={sub.slug}
+            type="button"
+            onClick={() => setSubAba(sub.slug)}
+            className={`rounded-t px-3 py-1.5 text-sm ${
+              subAba === sub.slug ? 'border-b-2 border-blue-600 font-medium text-blue-700' : 'text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            {sub.label}
+          </button>
+        ))}
       </nav>
 
       {subAba === 'organograma' && (
