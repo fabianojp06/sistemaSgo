@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState, useTransition } from 'react';
 import {
   criarUnidadeFuncional,
@@ -125,7 +126,15 @@ export function OrganogramaPanel({
   return (
     <div className="flex flex-col gap-4 rounded border p-4">
       <div className="flex items-center justify-between">
-        <h3 className="font-medium">Estrutura Funcional (Organograma)</h3>
+        <div className="flex items-center gap-3">
+          <h3 className="font-medium">Estrutura Funcional (Organograma)</h3>
+          <Link
+            href={`/propostas/${propostaId}/empregados`}
+            className="text-xs text-blue-700 underline hover:text-blue-900"
+          >
+            Empregados
+          </Link>
+        </div>
         {!readOnly && (
           <button
             type="button"

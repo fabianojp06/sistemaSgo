@@ -1,6 +1,7 @@
 'use client';
 
 import { Fragment, useState, useTransition } from 'react';
+import { toast } from 'sonner';
 import {
   salvarCargoCompleto,
   ressincronizarSnapshotEmpregadosCargo,
@@ -348,6 +349,7 @@ export function CargoPanel({
         const existe = atual.some((c) => c.id === cargoSalvo.id);
         return existe ? atual.map((c) => (c.id === cargoSalvo.id ? cargoSalvo : c)) : [...atual, cargoSalvo];
       });
+      toast.success(`Cargo "${cargoSalvo.nomeCargoMercado}" salvo com sucesso.`);
       iniciarEdicao(null);
     });
   }
