@@ -1,7 +1,6 @@
 'use client';
 
 import { Fragment, useState, useTransition } from 'react';
-import { toast } from 'sonner';
 import {
   salvarCargoCompleto,
   ressincronizarSnapshotEmpregadosCargo,
@@ -206,6 +205,7 @@ export function CargoPanel({
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [excluindo, setExcluindo] = useState(false);
   const [erroExclusao, setErroExclusao] = useState<string | null>(null);
+  const [mensagemSucesso, setMensagemSucesso] = useState<string | null>(null);
 
   const custoTotalMensal = cargos.reduce((soma, c) => soma + Number(c.custoTotalCargo), 0);
   const salarioTotalMensal = cargos.reduce((soma, c) => soma + Number(c.salarioTotal), 0);
@@ -349,7 +349,7 @@ export function CargoPanel({
         const existe = atual.some((c) => c.id === cargoSalvo.id);
         return existe ? atual.map((c) => (c.id === cargoSalvo.id ? cargoSalvo : c)) : [...atual, cargoSalvo];
       });
-      toast.success(`Cargo "${cargoSalvo.nomeCargoMercado}" salvo com sucesso.`);
+      setMensagemSucesso(`Cargo "${cargoSalvo.nomeCargoMercado}" salvo com sucesso.`);
       iniciarEdicao(null);
     });
   }
@@ -978,6 +978,21 @@ export function CargoPanel({
             setTabelaSalarialAberta(false);
           }}
         />
+      )}
+
+      {mensagemSucesso && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-lg bg-white p-6 text-center shadow-xl">
+            <p className="text-sm text-slate-800">{mensagemSucesso}</p>
+            <button
+              type="button"
+              onClick={() => setMensagemSucesso(null)}
+              className="mt-4 rounded-md bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              OK
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
