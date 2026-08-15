@@ -192,6 +192,7 @@ export type CargoResultado = {
   periodoInicio: string | null;
   salarioReal: string | null;
   /** ADR-045 (US-132) — [ORIGEM BLINDADA], preenchidos só via importarCargoRubi. */
+  nomeCargoCtcea: string | null;
   tabSalCodigo: string | null;
   tabSalDescricao: string | null;
   faixaCodigo: string | null;
@@ -253,6 +254,7 @@ function serializarCargo(cargo: Cargo): CargoResultado {
     contaGratificacaoId: cargo.contaGratificacaoId,
     periodoInicio: cargo.periodoInicio?.toISOString() ?? null,
     salarioReal: cargo.salarioReal?.toString() ?? null,
+    nomeCargoCtcea: cargo.nomeCargoCtcea,
     tabSalCodigo: cargo.tabSalCodigo,
     tabSalDescricao: cargo.tabSalDescricao,
     faixaCodigo: cargo.faixaCodigo,

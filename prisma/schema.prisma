@@ -777,8 +777,13 @@ model Cargo {
   syncedAt          DateTime?
   erpUpdatedAt      DateTime?
 
+  // Pendência 2026-08-15 — nome do cargo vindo do Rubi/CTCEA, separado de
+  // nomeCargoMercado (que é sempre digitado/decidido pelo usuário e nunca é
+  // tocado pela importação). Nullable até a 1ª importação.
+  nomeCargoCtcea String?
+
   // ADR-045 (US-132) — Tabela Salarial/Faixa/Nível do Rubi (fixture). Nullable até a
-  // 1ª importação. [ORIGEM BLINDADA] junto de nomeCargoMercado e salarioReal — nunca
+  // 1ª importação. [ORIGEM BLINDADA] junto de nomeCargoCtcea e salarioReal — nunca
   // input direto em CadastrarCargoUseCase/EditarCargoUseCase depois de importados;
   // única via de escrita legítima é ImportarCargoRubiUseCase.
   tabSalCodigo    String?

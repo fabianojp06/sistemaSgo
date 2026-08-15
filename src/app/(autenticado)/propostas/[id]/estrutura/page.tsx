@@ -71,6 +71,7 @@ export default async function EstruturaFuncionalPage({ params }: { params: Promi
     contaGratificacaoId: c.contaGratificacaoId,
     periodoInicio: c.periodoInicio?.toISOString() ?? null,
     salarioReal: c.salarioReal?.toString() ?? null,
+    nomeCargoCtcea: c.nomeCargoCtcea,
     tabSalCodigo: c.tabSalCodigo,
     tabSalDescricao: c.tabSalDescricao,
     faixaCodigo: c.faixaCodigo,

@@ -79,6 +79,9 @@ export function ImportarCargoRubiModal({ cargoId, onFechar, onImportado }: Props
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
+          <p className="mb-3 rounded bg-slate-50 px-3 py-2 text-xs text-slate-600">
+            O nome importado é gravado em &quot;Nome Cargo CTCEA&quot; — o campo &quot;Nome do Cargo (Mercado)&quot; não é alterado por esta importação.
+          </p>
           {erro && <p className="mb-3 rounded bg-red-50 px-3 py-2 text-xs text-red-700">{erro}</p>}
 
           <div className="mb-3 flex flex-wrap items-end gap-2">
@@ -139,7 +142,7 @@ export function ImportarCargoRubiModal({ cargoId, onFechar, onImportado }: Props
               {candidatos.map((c, indice) => (
                 <div key={`${c.tabSalCodigo}-${c.faixaCodigo}-${c.nivelCodigo}-${indice}`} className="rounded-lg border border-gray-100 bg-slate-50 p-3">
                   <div className="grid grid-cols-1 gap-x-4 gap-y-1 text-xs text-slate-700 md:grid-cols-2">
-                    <p><span className="font-medium text-gray-500">Nome do Cargo:</span> {c.nomeCargoMercado}</p>
+                    <p><span className="font-medium text-gray-500">Nome do Cargo (CTCEA):</span> {c.nomeCargoMercado}</p>
                     <p><span className="font-medium text-gray-500">Salário Real:</span> {formatarMoeda(c.salarioReal)}</p>
                     <p><span className="font-medium text-gray-500">Tabela Salarial:</span> {c.tabSalDescricao}</p>
                     <p><span className="font-medium text-gray-500">Faixa:</span> {c.faixaDescricao}</p>
