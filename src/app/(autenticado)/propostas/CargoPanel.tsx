@@ -586,10 +586,10 @@ export function CargoPanel({
           <h4 className="text-sm font-semibold text-slate-800">{cargoEmEdicaoId ? 'Editar Cargo' : 'Novo Cargo'}</h4>
 
           {/* Opção B (mockup "Reorganização de Cargos", 2026-08-14): coluna principal de edição + painel lateral fixo com Rubi/Fonte Ativa/custo. */}
-          <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[1fr_300px]">
+          <div className="grid grid-cols-1 items-start gap-4 rounded-lg bg-slate-50 p-3 lg:grid-cols-[1fr_300px] lg:p-4">
             <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-3">
-                <p className="text-xs font-medium text-gray-600">Identificação e Mercado</p>
+              <div className="flex flex-col gap-3 rounded-lg border border-gray-100 bg-white p-3.5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Identificação e Mercado</p>
                 <div className="grid grid-cols-1 items-start gap-x-4 gap-y-3 md:grid-cols-3">
                   <div>
                     <label className="mb-1 block text-xs font-medium text-gray-600">Nome do Cargo (Mercado)</label>
@@ -681,8 +681,8 @@ export function CargoPanel({
                 </div>
               </div>
 
-              <div className="flex flex-col gap-2 border-t pt-3">
-                <p className="text-xs font-medium text-gray-600">Vínculo Funcional (RN_CAR_08 — custo integral ao setor selecionado)</p>
+              <div className="flex flex-col gap-2 rounded-lg border border-gray-100 bg-white p-3.5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Vínculo Funcional (RN_CAR_08 — custo integral ao setor selecionado)</p>
                 <select
                   value={dados.unidadeFuncionalId}
                   onChange={(e) => setDados((d) => ({ ...d, unidadeFuncionalId: e.target.value }))}
@@ -700,8 +700,8 @@ export function CargoPanel({
                 )}
               </div>
 
-              <div className="flex flex-col gap-3 border-t pt-3">
-                <p className="text-xs font-medium text-gray-600">Benefícios e Encargos</p>
+              <div className="flex flex-col gap-3 rounded-lg border border-gray-100 bg-white p-3.5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Benefícios e Encargos</p>
 
                 <div className="grid grid-cols-[minmax(180px,1fr)_128px_minmax(160px,1fr)] items-center gap-x-3 gap-y-2">
                   <label className="text-xs font-medium text-gray-600">Encargos Sociais (%)</label>
@@ -888,15 +888,17 @@ export function CargoPanel({
 
             <aside className="flex flex-col gap-4 lg:sticky lg:top-4">
               {cargoEmEdicaoId && (
-                <div className="flex flex-col gap-2">
-                  <p className="text-xs font-medium text-gray-600">Rubi — Tabela Salarial, Faixa, Nível e Salário Real</p>
+                <div className="flex flex-col gap-2 rounded-lg border border-gray-100 bg-white p-3.5">
                   {importadoDoRubi && cargoEmEdicao ? (
                     <>
-                      <div className="grid grid-cols-1 gap-x-4 gap-y-2 rounded-lg border border-gray-100 bg-slate-50 p-3 text-xs">
-                        <p><span className="font-medium text-gray-500">Salário Real:</span> {formatarMoeda(cargoEmEdicao.salarioReal ?? '0')}</p>
-                        <p><span className="font-medium text-gray-500">Tabela Salarial:</span> {cargoEmEdicao.tabSalDescricao}</p>
-                        <p><span className="font-medium text-gray-500">Faixa:</span> {cargoEmEdicao.faixaDescricao}</p>
-                        <p><span className="font-medium text-gray-500">Nível:</span> {cargoEmEdicao.nivelDescricao}</p>
+                      <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                        Importado do Rubi
+                      </span>
+                      <div className="flex flex-col gap-1 text-xs">
+                        <div className="flex justify-between"><span className="text-gray-500">Faixa / Nível</span><span>{cargoEmEdicao.faixaDescricao} / {cargoEmEdicao.nivelDescricao}</span></div>
+                        <div className="flex justify-between"><span className="text-gray-500">Salário Real</span><span className="tabular-nums">{formatarMoeda(cargoEmEdicao.salarioReal ?? '0')}</span></div>
+                        <div className="flex justify-between"><span className="text-gray-500">Tabela Salarial</span><span>{cargoEmEdicao.tabSalDescricao}</span></div>
                       </div>
                       <button
                         type="button"
@@ -907,18 +909,21 @@ export function CargoPanel({
                       </button>
                     </>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={() => setRubiModalAberta(true)}
-                      className="w-fit rounded-md bg-slate-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800"
-                    >
-                      Importar do Rubi
-                    </button>
+                    <>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Rubi — Tabela Salarial</p>
+                      <button
+                        type="button"
+                        onClick={() => setRubiModalAberta(true)}
+                        className="w-fit rounded-md bg-slate-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800"
+                      >
+                        Importar do Rubi
+                      </button>
+                    </>
                   )}
                 </div>
               )}
 
-              <div>
+              <div className="rounded-lg border border-gray-100 bg-white p-3.5">
                 <label className="mb-1 block text-xs font-medium text-gray-600">Fonte Ativa</label>
                 <select
                   value={dados.fonteAtiva}
@@ -934,8 +939,8 @@ export function CargoPanel({
               </div>
 
               {cargoEmEdicao && (
-                <div className="flex flex-col gap-2 rounded-lg border border-gray-100 bg-slate-50 p-3 text-xs">
-                  <p className="font-medium text-gray-600">Custo do Cargo (última gravação)</p>
+                <div className="flex flex-col gap-2 rounded-lg border border-gray-100 bg-white p-3.5 text-xs">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Custo do Cargo (última gravação)</p>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Salário Total</span>
                     <span className="tabular-nums">{formatarMoeda(cargoEmEdicao.salarioTotal)}</span>
