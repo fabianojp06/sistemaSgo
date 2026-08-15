@@ -216,8 +216,9 @@ export function CargoPanel({
   const importadoDoRubi = Boolean(cargoEmEdicao?.tabSalCodigo);
 
   function handleImportadoRubi(cargoAtualizado: CargoComVinculo) {
+    // Pendência 2026-08-15 — "Nome do Cargo (Mercado)" nunca é tocado pela importação;
+    // o nome vindo do Rubi/CTCEA fica só em cargoAtualizado.nomeCargoCtcea.
     setCargos((atual) => atual.map((c) => (c.id === cargoAtualizado.id ? cargoAtualizado : c)));
-    setDados((d) => ({ ...d, nomeCargoMercado: cargoAtualizado.nomeCargoMercado }));
     setRubiModalAberta(false);
   }
 
@@ -599,9 +600,7 @@ export function CargoPanel({
                       type="text"
                       value={dados.nomeCargoMercado}
                       onChange={(e) => setDados((d) => ({ ...d, nomeCargoMercado: e.target.value }))}
-                      disabled={importadoDoRubi}
-                      className="w-full rounded border px-2 py-1 text-sm disabled:bg-slate-50 disabled:text-slate-500"
-                      title={importadoDoRubi ? 'Importado do Rubi — Read-only. Use "Reimportar do Rubi" para trocar.' : undefined}
+                      className="w-full rounded border px-2 py-1 text-sm"
                     />
                   </div>
                   <div>
@@ -896,6 +895,7 @@ export function CargoPanel({
                         Importado do Rubi
                       </span>
                       <div className="flex flex-col gap-1 text-xs">
+                        <div className="flex justify-between"><span className="text-gray-500">Nome Cargo CTCEA</span><span>{cargoEmEdicao.nomeCargoCtcea}</span></div>
                         <div className="flex justify-between"><span className="text-gray-500">Faixa / Nível</span><span>{cargoEmEdicao.faixaDescricao} / {cargoEmEdicao.nivelDescricao}</span></div>
                         <div className="flex justify-between"><span className="text-gray-500">Salário Real</span><span className="tabular-nums">{formatarMoeda(cargoEmEdicao.salarioReal ?? '0')}</span></div>
                         <div className="flex justify-between"><span className="text-gray-500">Tabela Salarial</span><span>{cargoEmEdicao.tabSalDescricao}</span></div>

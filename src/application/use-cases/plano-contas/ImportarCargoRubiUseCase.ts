@@ -12,11 +12,15 @@ type ImportarCargoRubiInput = {
 
 /**
  * ADR-045 (US-132) — grava, em bloco atômico, os 5 campos [ORIGEM BLINDADA] vindos
- * de um candidato do Rubi escolhido pelo usuário: Nome do Cargo, Tabela
+ * de um candidato do Rubi escolhido pelo usuário: Nome do Cargo CTCEA, Tabela
  * Salarial (código+descrição), Faixa (código+descrição), Nível (código+descrição)
  * e Salário Real. Única via de escrita legítima para esses campos — nunca por
  * CadastrarCargoUseCase/EditarCargoUseCase (RN_CAR_03). Reimportação substitui
  * os 5 campos juntos, nunca parcialmente (Cenário 4 da US-132).
+ *
+ * Pendência 2026-08-15: o nome vindo do Rubi grava em `nomeCargoCtcea`, nunca em
+ * `nomeCargoMercado` — esse último é sempre o nome digitado/decidido pelo usuário
+ * e não deve ser alterado pela importação.
  */
 export class ImportarCargoRubiUseCase {
   constructor(private readonly prisma: PrismaClient) {}
@@ -35,7 +39,7 @@ export class ImportarCargoRubiUseCase {
       const cargo = await tx.cargo.update({
         where: { id: input.cargoId, tenantId: input.tenantId },
         data: {
-          nomeCargoMercado: candidato.nomeCargoMercado,
+          nomeCargoCtcea: candidato.nomeCargoMercado,
           tabSalCodigo: candidato.tabSalCodigo,
           tabSalDescricao: candidato.tabSalDescricao,
           faixaCodigo: candidato.faixaCodigo,
@@ -57,7 +61,7 @@ export class ImportarCargoRubiUseCase {
           dadosSerializados: {
             cargoId: cargo.id,
             anterior: {
-              nomeCargoMercado: cargoAtual.nomeCargoMercado,
+              nomeCargoCtcea: cargoAtual.nomeCargoCtcea,
               tabSalCodigo: cargoAtual.tabSalCodigo,
               tabSalDescricao: cargoAtual.tabSalDescricao,
               faixaCodigo: cargoAtual.faixaCodigo,
@@ -67,7 +71,7 @@ export class ImportarCargoRubiUseCase {
               salarioReal: cargoAtual.salarioReal?.toString() ?? null,
             },
             novo: {
-              nomeCargoMercado: candidato.nomeCargoMercado,
+              nomeCargoCtcea: candidato.nomeCargoMercado,
               tabSalCodigo: candidato.tabSalCodigo,
               tabSalDescricao: candidato.tabSalDescricao,
               faixaCodigo: candidato.faixaCodigo,

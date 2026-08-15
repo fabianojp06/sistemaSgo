@@ -9,6 +9,7 @@ type CargoMock = {
   tenantId: string;
   codigoCargo: string;
   nomeCargoMercado: string;
+  nomeCargoCtcea: string | null;
   tabSalCodigo: string | null;
   tabSalDescricao: string | null;
   faixaCodigo: string | null;
@@ -44,6 +45,7 @@ const cargoNovo: CargoMock = {
   tenantId: 't1',
   codigoCargo: 'CARGO-2026-0001',
   nomeCargoMercado: 'Cargo Rascunho',
+  nomeCargoCtcea: null,
   tabSalCodigo: null,
   tabSalDescricao: null,
   faixaCodigo: null,
@@ -84,7 +86,9 @@ describe('ImportarCargoRubiUseCase [ADR-045, US-132]', () => {
 
     const cargo = await useCase.execute({ tenantId: 't1', usuarioId: 'u1', cargoId: 'c1', candidato: candidato1 });
 
-    expect(cargo.nomeCargoMercado).toBe('Analista de Sistemas Pleno');
+    // "Nome do Cargo (Mercado)" nunca é alterado pela importação do Rubi.
+    expect(cargo.nomeCargoMercado).toBe('Cargo Rascunho');
+    expect(cargo.nomeCargoCtcea).toBe('Analista de Sistemas Pleno');
     expect(cargo.tabSalCodigo).toBe('01');
     expect(cargo.faixaCodigo).toBe('A');
     expect(cargo.nivelCodigo).toBe('03');
@@ -98,8 +102,8 @@ describe('ImportarCargoRubiUseCase [ADR-045, US-132]', () => {
           tipoOperacao: 'CARGO_IMPORTADO_RUBI',
           dadosSerializados: expect.objectContaining({
             cargoId: 'c1',
-            anterior: expect.objectContaining({ nomeCargoMercado: 'Cargo Rascunho', salarioReal: null }),
-            novo: expect.objectContaining({ nomeCargoMercado: 'Analista de Sistemas Pleno', salarioReal: '5300' }),
+            anterior: expect.objectContaining({ nomeCargoCtcea: null, salarioReal: null }),
+            novo: expect.objectContaining({ nomeCargoCtcea: 'Analista de Sistemas Pleno', salarioReal: '5300' }),
           }),
         }),
       }),
@@ -109,7 +113,7 @@ describe('ImportarCargoRubiUseCase [ADR-045, US-132]', () => {
   it('reimportação substitui os 5 campos juntos, nunca parcialmente [Cenário 4]', async () => {
     const cargoJaImportado: CargoMock = {
       ...cargoNovo,
-      nomeCargoMercado: candidato1.nomeCargoMercado,
+      nomeCargoCtcea: candidato1.nomeCargoMercado,
       tabSalCodigo: candidato1.tabSalCodigo,
       tabSalDescricao: candidato1.tabSalDescricao,
       faixaCodigo: candidato1.faixaCodigo,
@@ -126,7 +130,9 @@ describe('ImportarCargoRubiUseCase [ADR-045, US-132]', () => {
     const cargo = await useCase.execute({ tenantId: 't1', usuarioId: 'u1', cargoId: 'c1', candidato: candidato2 });
 
     // Todos os 5 campos vieram do candidato2 — nenhum resquício do candidato1.
-    expect(cargo.nomeCargoMercado).toBe(candidato2.nomeCargoMercado);
+    // "Nome do Cargo (Mercado)" continua intocado pela reimportação.
+    expect(cargo.nomeCargoMercado).toBe('Cargo Rascunho');
+    expect(cargo.nomeCargoCtcea).toBe(candidato2.nomeCargoMercado);
     expect(cargo.tabSalCodigo).toBe(candidato2.tabSalCodigo);
     expect(cargo.faixaCodigo).toBe(candidato2.faixaCodigo);
     expect(cargo.nivelCodigo).toBe(candidato2.nivelCodigo);
@@ -136,8 +142,8 @@ describe('ImportarCargoRubiUseCase [ADR-045, US-132]', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           dadosSerializados: expect.objectContaining({
-            anterior: expect.objectContaining({ nomeCargoMercado: candidato1.nomeCargoMercado, salarioReal: '5300' }),
-            novo: expect.objectContaining({ nomeCargoMercado: candidato2.nomeCargoMercado, salarioReal: '7200' }),
+            anterior: expect.objectContaining({ nomeCargoCtcea: candidato1.nomeCargoMercado, salarioReal: '5300' }),
+            novo: expect.objectContaining({ nomeCargoCtcea: candidato2.nomeCargoMercado, salarioReal: '7200' }),
           }),
         }),
       }),
