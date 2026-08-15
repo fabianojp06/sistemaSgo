@@ -807,6 +807,26 @@ Usuário pediu sugestões de reorganização de layout da tela de Cargo — gera
 
 **Próximo passo natural:** (1) usuário decidir qual das 3 opções de layout de Cargo implementar (ou nenhuma); (2) continuar recadastrando manualmente Propostas/Cargos/Empregados/Tabela Salarial/Rateios perdidos; (3) US-133 completar (`FonteAtivaSalario.TOTAL`) e US-134 (Snapshot de Oficialização) seguem como próximas peças do módulo de Cargos, agora desbloqueadas.
 
+## 2026-08-15 — registrada às 17:30 UTC — Ajustes de UX em Estrutura Funcional/Cargos: link Empregados, confirmação de gravação e cadastro de Cargo direto no modal de Tabela Salarial
+
+Sessão de ajustes incrementais de UX na tela "Estrutura Funcional e Cargos", todos fix pequeno/localizado (direto na `master`, sem migration nem mudança de contrato de use case), guiados por 2 prints do usuário e iteração de posicionamento.
+
+1. **Link "Empregados" na tela de Estrutura Funcional.** Pedido inicial vago ("ao lado do título") resultou em 3 iterações até acertar o local exato pedido pelo usuário: 1ª tentativa colocou o link dentro do painel do Organograma (`OrganogramaPanel.tsx`); usuário mandou print mostrando que queria na barra de abas mesmo (`EstruturaFuncionalPanel.tsx`), flutuando à direita; 2º print pediu a posição final: inline na sequência das abas, logo após "Estrutura Funcional (Organograma)" e antes de "Cargos". Commits `121da32` → `1254b41` → `b9e13bf`. Lição: quando o pedido de posicionamento de UI é ambíguo, pedir print antes de implementar economiza retrabalho — aqui não foi pedido de antemão e custou 2 rodadas extras.
+
+2. **Notificação de sucesso ao salvar Cargo — trocada de toast para modal.** Implementação original usou `sonner` (biblioteca nova no projeto, instalada para isso) com toast no canto superior direito. Usuário pediu explicitamente: centralizado na tela, com botão OK, só fecha no clique. `sonner` removida (não tinha mais uso) e substituída por modal local em `CargoPanel.tsx` (overlay + caixa central + botão OK), mesmo padrão visual dos outros modais do arquivo. Commit `ed38c3c`.
+
+3. **Falso alarme de toast não aparecendo.** Usuário reportou que a mensagem de sucesso não aparecia; build de produção local (`npm run build`) rodado para descartar erro — passou limpo. Causa provável: propagação de deploy no Vercel ou cache do navegador, não bug de código (o pedido seguinte, de trocar toast por modal, resolveu de qualquer forma).
+
+4. **Manual do usuário atualizado + bug de layout real corrigido.** Usuário descreveu a ordem correta de cadastro de um Cargo (Tabela Salarial cria o Cargo → Cargos completa o Rascunho, exige Vínculo Funcional para salvar → Empregados usa o Cargo disponível) e pediu para: (a) atualizar o artefato "Manual da Estrutura Funcional e Cargos" com esse fluxo — reordenado com um bloco visual novo "Ordem recomendada de cadastro de um Cargo"; (b) corrigir sobreposição de texto. Um agente em background investigou e achou a causa real: a `<nav>` de abas em `EstruturaFuncionalPanel.tsx` ganhou um 4º item (o link Empregados da tarefa 1) sem `flex-wrap`, podendo estourar em telas estreitas. Corrigido (`flex-wrap items-center`), commit `38f9dec`.
+
+5. **Cadastro de Cargo direto no modal de Tabela Salarial.** Pedido a partir de um 3º print: o modal `TabelaSalarialModal.tsx` (aberto pelo botão "Tabela Salarial" no formulário de Cargo) só existia com um Cargo já em edição (`cargoId` obrigatório) — servia só para Senioridade/Faixa Salarial. Usuário pediu para também poder cadastrar o Cargo em si por esse modal, além da tela já existente (aba Tabela Salarial em `EstruturaFuncionalPanel.tsx`), e já usá-lo no mesmo modal. Implementado: `cargoId` virou opcional; sem ele, o modal mostra primeiro um campo "Cadastrar Cargo" (chama a mesma action `cadastrarCargoRascunho` já usada na aba Tabela Salarial); ao salvar, o Cargo criado assume `cargoIdAtual` internamente, libera as seções de Senioridade/Faixa Salarial/"Usar esta faixa", e via callback `onCargoCriado` assume a edição no formulário por trás do modal (reaproveita `iniciarEdicao` já existente em `CargoPanel.tsx`). Botão "Tabela Salarial" que só aparecia com Cargo em edição passou a aparecer sempre. Commit `668e634`.
+
+### Estado ao final
+
+`master` em `668e634` (mais o commit deste registro). Nenhuma feature nova de negócio — só UX/UI na tela de Estrutura Funcional e Cargos, todas testadas com `tsc`/`eslint`/`next build` limpos antes de cada push. Artefato do manual atualizado no mesmo link (`85ee7951-a650-408e-aa61-c193033822d4`).
+
+**Próximo passo natural:** retomar os itens em aberto do fim de 2026-08-14 — decidir layout final de Cargo (3 opções propostas), continuar recadastro manual de dados perdidos no incidente, e US-133/US-134 como próximas peças do módulo de Cargos.
+
 ## Como usar este arquivo em sessões futuras
 
 No início de uma sessão, se o usuário perguntar "qual o contexto/status de X", leia este arquivo antes de assumir que a memória padrão (`~/.claude/.../memory/`) está atualizada — o ambiente deste projeto (Codespace) pode ter sido recriado desde a última sessão, apagando a memória padrão sem apagar o repositório.
