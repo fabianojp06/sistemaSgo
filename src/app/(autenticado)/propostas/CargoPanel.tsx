@@ -277,6 +277,9 @@ export function CargoPanel({
       insalubridadeValor: cargo.insalubridadeValor,
       contaInsalubridadeId: cargo.contaInsalubridadeId ?? '',
     });
+    if (unidadesAnaliticas.length === 0) {
+      setErro('Para completar o cadastro de um Cargo, primeiro cadastre ao menos uma Unidade Funcional Analítica na sub-aba Estrutura Funcional.');
+    }
   }
 
   function salvar() {
