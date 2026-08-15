@@ -10,8 +10,10 @@ import {
   cadastrarTabelaSalarial,
   editarTabelaSalarial,
   excluirTabelaSalarial,
+  cadastrarCargoRascunho,
   type SenioridadeResultado,
   type TabelaSalarialResultado,
+  type CargoResultado,
 } from './estrutura-actions';
 
 const formatadorMoeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -20,8 +22,11 @@ function formatarMoeda(valor: string): string {
 }
 
 type Props = {
-  cargoId: string;
+  /** Ausente quando o modal é aberto a partir de "Novo Cargo" — ainda não existe um Cargo persistido. */
+  cargoId?: string;
   cargoNome: string;
+  /** Obrigatório apenas quando `cargoId` está ausente, para permitir cadastrar o Cargo aqui mesmo. */
+  propostaId?: string;
   onFechar: () => void;
   /**
    * US-133 — quando informado, cada faixa ganha o botão "Usar esta faixa": copia Mín/Máx
@@ -29,6 +34,8 @@ type Props = {
    * nada aqui — o Cargo só grava ao usuário salvar o formulário normalmente.
    */
   onSelecionarFaixa?: (faixa: { senioridadeDescricao: string; salarioMinimo: string; salarioMaximo: string }) => void;
+  /** Disparado quando o Cargo é cadastrado (Rascunho) por este modal, sem `cargoId` prévio. */
+  onCargoCriado?: (cargo: CargoResultado) => void;
 };
 
 /**
@@ -36,13 +43,19 @@ type Props = {
  * "Tabela Salarial" na tela de Cargos. RN_TAB_03: exibe TODOS os registros do Cargo,
  * agrupados por Senioridade. Gerenciamento completo (todos os Cargos) fica na tela própria
  * /tabela-salarial — este modal continua útil para cadastrar/selecionar sem sair do Cargo.
+ *
+ * Quando aberto sem `cargoId` (formulário em "Novo Cargo"), permite cadastrar o próprio Cargo
+ * (Rascunho) aqui, e a partir daí liberar Senioridade/Faixa Salarial para ele, no mesmo modal.
  */
-export function TabelaSalarialModal({ cargoId, cargoNome, onFechar, onSelecionarFaixa }: Props) {
+export function TabelaSalarialModal({ cargoId, cargoNome, propostaId, onFechar, onSelecionarFaixa, onCargoCriado }: Props) {
+  const [cargoIdAtual, setCargoIdAtual] = useState<string | undefined>(cargoId);
+  const [nomeNovoCargo, setNomeNovoCargo] = useState(cargoId ? '' : cargoNome === 'Novo Cargo' ? '' : cargoNome);
   const [senioridades, setSenioridades] = useState<SenioridadeResultado[]>([]);
   const [registros, setRegistros] = useState<TabelaSalarialResultado[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, startCarregando] = useTransition();
   const [salvando, startSalvando] = useTransition();
+  const [salvandoCargo, startSalvandoCargo] = useTransition();
 
   const [novaSenioridade, setNovaSenioridade] = useState('');
   const [form, setForm] = useState({ senioridadeId: '', salarioMinimo: '', salarioMaximo: '' });
@@ -51,13 +64,18 @@ export function TabelaSalarialModal({ cargoId, cargoNome, onFechar, onSelecionar
 
   function carregar() {
     startCarregando(async () => {
-      const [respSenioridades, respRegistros] = await Promise.all([listarSenioridades(), listarTabelaSalarial(cargoId)]);
+      const respSenioridades = await listarSenioridades();
       if (respSenioridades.sucesso) {
         setSenioridades(respSenioridades.dados);
         setForm((f) => ({ ...f, senioridadeId: f.senioridadeId || respSenioridades.dados[0]?.id || '' }));
       } else {
         setErro(respSenioridades.mensagem);
       }
+      if (!cargoIdAtual) {
+        setRegistros([]);
+        return;
+      }
+      const respRegistros = await listarTabelaSalarial(cargoIdAtual);
       if (respRegistros.sucesso) {
         setRegistros(respRegistros.dados);
       } else {
@@ -69,7 +87,25 @@ export function TabelaSalarialModal({ cargoId, cargoNome, onFechar, onSelecionar
   useEffect(() => {
     carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cargoId]);
+  }, [cargoIdAtual]);
+
+  function handleCadastrarCargo() {
+    if (!nomeNovoCargo.trim()) {
+      setErro('Informe o nome do Cargo.');
+      return;
+    }
+    if (!propostaId) return;
+    setErro(null);
+    startSalvandoCargo(async () => {
+      const resposta = await cadastrarCargoRascunho({ propostaId, nomeCargoMercado: nomeNovoCargo.trim() });
+      if (!resposta.sucesso) {
+        setErro(resposta.mensagem);
+        return;
+      }
+      setCargoIdAtual(resposta.dados.id);
+      onCargoCriado?.(resposta.dados);
+    });
+  }
 
   function agrupadoPorSenioridade() {
     const grupos = new Map<string, TabelaSalarialResultado[]>();
@@ -108,13 +144,14 @@ export function TabelaSalarialModal({ cargoId, cargoNome, onFechar, onSelecionar
   }
 
   function handleCadastrarFaixa() {
+    if (!cargoIdAtual) return;
     if (!form.senioridadeId || !form.salarioMinimo || !form.salarioMaximo) {
       setErro('Preencha Senioridade, Salário Mínimo e Salário Máximo.');
       return;
     }
     setErro(null);
     startSalvando(async () => {
-      const resposta = await cadastrarTabelaSalarial({ cargoId, ...form });
+      const resposta = await cadastrarTabelaSalarial({ cargoId: cargoIdAtual, ...form });
       if (!resposta.sucesso) {
         setErro(resposta.mensagem);
         return;
@@ -160,7 +197,7 @@ export function TabelaSalarialModal({ cargoId, cargoNome, onFechar, onSelecionar
       <div className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-xl bg-white shadow-xl">
         <div className="flex items-center justify-between border-b px-5 py-3">
           <div>
-            <h3 className="text-sm font-semibold text-slate-800">Tabela Salarial — {cargoNome}</h3>
+            <h3 className="text-sm font-semibold text-slate-800">Tabela Salarial — {cargoIdAtual ? cargoNome : 'Novo Cargo'}</h3>
             <Link href="/tabela-salarial" target="_blank" className="text-xs text-blue-700 hover:underline">
               Gerenciar Tabela Salarial completa (todos os Cargos) →
             </Link>
@@ -172,6 +209,32 @@ export function TabelaSalarialModal({ cargoId, cargoNome, onFechar, onSelecionar
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
           {erro && <p className="mb-3 rounded bg-red-50 px-3 py-2 text-xs text-red-700">{erro}</p>}
+
+          {!cargoIdAtual && (
+            <section className="mb-4 rounded-lg border border-blue-100 bg-blue-50 p-3">
+              <p className="mb-2 text-xs font-medium text-gray-600">Cadastrar Cargo</p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={nomeNovoCargo}
+                  onChange={(e) => setNomeNovoCargo(e.target.value)}
+                  placeholder="Nome do Cargo (Mercado)"
+                  className="flex-1 rounded border px-2 py-1 text-sm"
+                />
+                <button
+                  type="button"
+                  disabled={salvandoCargo}
+                  onClick={handleCadastrarCargo}
+                  className="whitespace-nowrap rounded-md bg-blue-700 px-3 py-1 text-xs font-medium text-white hover:bg-blue-800 disabled:opacity-50"
+                >
+                  {salvandoCargo ? 'Cadastrando...' : 'Cadastrar Cargo'}
+                </button>
+              </div>
+              <p className="mt-2 text-[11px] text-gray-500">
+                Cadastre o Cargo aqui (fica como Rascunho) para já poder atribuir Senioridade e Faixa Salarial a ele, sem sair deste modal.
+              </p>
+            </section>
+          )}
 
           <section className="mb-4 rounded-lg border border-gray-100 bg-slate-50 p-3">
             <p className="mb-2 text-xs font-medium text-gray-600">Senioridade</p>
@@ -211,45 +274,54 @@ export function TabelaSalarialModal({ cargoId, cargoNome, onFechar, onSelecionar
             </div>
           </section>
 
-          <section className="mb-4 rounded-lg border border-gray-100 bg-slate-50 p-3">
-            <p className="mb-2 text-xs font-medium text-gray-600">Nova faixa de mercado</p>
-            <div className="grid grid-cols-3 gap-2">
-              <select
-                value={form.senioridadeId}
-                onChange={(e) => setForm((f) => ({ ...f, senioridadeId: e.target.value }))}
-                className="rounded border px-2 py-1 text-sm"
-              >
-                {senioridades.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.descricao}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="number"
-                placeholder="Salário Mínimo"
-                value={form.salarioMinimo}
-                onChange={(e) => setForm((f) => ({ ...f, salarioMinimo: e.target.value }))}
-                className="rounded border px-2 py-1 text-sm"
-              />
-              <input
-                type="number"
-                placeholder="Salário Máximo"
-                value={form.salarioMaximo}
-                onChange={(e) => setForm((f) => ({ ...f, salarioMaximo: e.target.value }))}
-                className="rounded border px-2 py-1 text-sm"
-              />
-            </div>
-            <button
-              type="button"
-              disabled={salvando}
-              onClick={handleCadastrarFaixa}
-              className="mt-2 rounded-md bg-blue-700 px-3 py-1 text-xs font-medium text-white hover:bg-blue-800 disabled:opacity-50"
-            >
-              Cadastrar faixa
-            </button>
-          </section>
+          {!cargoIdAtual && (
+            <p className="mb-4 rounded bg-slate-50 px-3 py-2 text-xs text-gray-500">
+              Cadastre o Cargo acima para liberar o cadastro de Faixa Salarial para ele.
+            </p>
+          )}
 
+          {cargoIdAtual && (
+            <section className="mb-4 rounded-lg border border-gray-100 bg-slate-50 p-3">
+              <p className="mb-2 text-xs font-medium text-gray-600">Nova faixa de mercado</p>
+              <div className="grid grid-cols-3 gap-2">
+                <select
+                  value={form.senioridadeId}
+                  onChange={(e) => setForm((f) => ({ ...f, senioridadeId: e.target.value }))}
+                  className="rounded border px-2 py-1 text-sm"
+                >
+                  {senioridades.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.descricao}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  placeholder="Salário Mínimo"
+                  value={form.salarioMinimo}
+                  onChange={(e) => setForm((f) => ({ ...f, salarioMinimo: e.target.value }))}
+                  className="rounded border px-2 py-1 text-sm"
+                />
+                <input
+                  type="number"
+                  placeholder="Salário Máximo"
+                  value={form.salarioMaximo}
+                  onChange={(e) => setForm((f) => ({ ...f, salarioMaximo: e.target.value }))}
+                  className="rounded border px-2 py-1 text-sm"
+                />
+              </div>
+              <button
+                type="button"
+                disabled={salvando}
+                onClick={handleCadastrarFaixa}
+                className="mt-2 rounded-md bg-blue-700 px-3 py-1 text-xs font-medium text-white hover:bg-blue-800 disabled:opacity-50"
+              >
+                Cadastrar faixa
+              </button>
+            </section>
+          )}
+
+          {cargoIdAtual && (
           <section>
             <p className="mb-2 text-xs font-medium text-gray-600">Faixas cadastradas</p>
             {carregando && <p className="text-xs text-gray-400">Carregando…</p>}
@@ -320,6 +392,7 @@ export function TabelaSalarialModal({ cargoId, cargoNome, onFechar, onSelecionar
               ))}
             </div>
           </section>
+          )}
         </div>
 
         <div className="flex justify-end border-t px-5 py-3">

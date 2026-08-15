@@ -649,16 +649,14 @@ export function CargoPanel({
                         onChange={(e) => setDados((d) => ({ ...d, salarioMercadoMaximo: e.target.value, origemSalarioMaximo: 'MANUAL' }))}
                         className="w-full rounded border px-2 py-1 text-sm"
                       />
-                      {cargoEmEdicaoId && (
-                        <button
-                          type="button"
-                          onClick={() => setTabelaSalarialAberta(true)}
-                          className="whitespace-nowrap rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                          title="Selecionar ou consultar Tabela Salarial de mercado (US-131/US-133)"
-                        >
-                          Tabela Salarial
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => setTabelaSalarialAberta(true)}
+                        className="whitespace-nowrap rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                        title="Cadastrar Cargo, Senioridade e Faixa Salarial, ou selecionar Tabela Salarial de mercado (US-131/US-133)"
+                      >
+                        Tabela Salarial
+                      </button>
                     </div>
                     <p className="mt-0.5 text-[11px] text-gray-400">
                       {dados.origemSalarioMaximo === 'TABELA_SALARIAL' ? 'Preenchido via Tabela Salarial' : 'Editado manualmente'}
@@ -962,11 +960,16 @@ export function CargoPanel({
         <ImportarCargoRubiModal cargoId={cargoEmEdicaoId} onFechar={() => setRubiModalAberta(false)} onImportado={handleImportadoRubi} />
       )}
 
-      {tabelaSalarialAberta && cargoEmEdicaoId && (
+      {tabelaSalarialAberta && (
         <TabelaSalarialModal
-          cargoId={cargoEmEdicaoId}
-          cargoNome={dados.nomeCargoMercado || 'Cargo'}
+          cargoId={cargoEmEdicaoId ?? undefined}
+          cargoNome={dados.nomeCargoMercado || 'Novo Cargo'}
+          propostaId={propostaId}
           onFechar={() => setTabelaSalarialAberta(false)}
+          onCargoCriado={(cargo) => {
+            setCargos((atual) => [...atual, cargo]);
+            iniciarEdicao(cargo);
+          }}
           onSelecionarFaixa={(faixa) => {
             setDados((d) => ({
               ...d,
