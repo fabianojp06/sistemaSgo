@@ -17,6 +17,7 @@ export function EstruturaFuncionalPanel({
   tabelaSalarialIniciais,
   senioridadesIniciais,
   podeGerenciarTabelaSalarial,
+  diasUteisPadrao,
   readOnly,
 }: {
   propostaId: string;
@@ -26,6 +27,7 @@ export function EstruturaFuncionalPanel({
   tabelaSalarialIniciais: TabelaSalarialResultado[];
   senioridadesIniciais: SenioridadeResultado[];
   podeGerenciarTabelaSalarial: boolean;
+  diasUteisPadrao: number;
   readOnly: boolean;
 }) {
   const [subAba, setSubAba] = useState<'organograma' | 'cargos' | 'tabela-salarial'>('organograma');
@@ -105,6 +107,7 @@ export function EstruturaFuncionalPanel({
           unidadesAnaliticas={unidadesAnaliticas}
           contasAnaliticas={contasAnaliticas}
           cargosIniciais={cargos}
+          diasUteisPadrao={diasUteisPadrao}
           readOnly={readOnly}
         />
       )}

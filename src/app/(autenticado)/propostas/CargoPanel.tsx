@@ -12,6 +12,8 @@ import {
 import { TabelaSalarialModal } from './TabelaSalarialModal';
 import { ImportarCargoRubiModal } from './ImportarCargoRubiModal';
 import { SeletorContaAnalitica } from './SeletorContaAnalitica';
+import { calcularSalarioTotalCargo } from '@/domain/plano-contas/calcularSalarioTotalCargo';
+import { calcularCustoTotalCargo } from '@/domain/plano-contas/calcularCustoTotalCargo';
 
 export type CargoComVinculo = CargoResultado;
 
@@ -182,12 +184,14 @@ export function CargoPanel({
   unidadesAnaliticas,
   contasAnaliticas,
   cargosIniciais,
+  diasUteisPadrao,
   readOnly,
 }: {
   propostaId: string;
   unidadesAnaliticas: UnidadeFuncionalResultado[];
   contasAnaliticas: { id: string; label: string }[];
   cargosIniciais: CargoComVinculo[];
+  diasUteisPadrao: number;
   readOnly?: boolean;
 }) {
   const [cargos, setCargos] = useState(cargosIniciais);
@@ -214,6 +218,18 @@ export function CargoPanel({
   // (espelha o que está persistido), não `dados` — eles nunca são editáveis no formulário.
   const cargoEmEdicao = cargoEmEdicaoId ? (cargos.find((c) => c.id === cargoEmEdicaoId) ?? null) : null;
   const importadoDoRubi = Boolean(cargoEmEdicao?.tabSalCodigo);
+
+  // Opção B (mockup 2026-08-14) — custo "ao vivo" no painel lateral, recalculado a cada
+  // alteração do formulário com as mesmas funções puras usadas no backend (calcularCustoTotalCargo.ts),
+  // em vez de mostrar só o valor da última gravação (cargoEmEdicao.custoTotalCargo).
+  const salarioTotalAoVivo = calcularSalarioTotalCargo({
+    fonteAtiva: dados.fonteAtiva,
+    salarioMercadoMinimo: dados.salarioMercadoMinimo || 0,
+    salarioMercadoMaximo: dados.salarioMercadoMaximo || 0,
+    salarioReal: cargoEmEdicao?.salarioReal ?? null,
+    funcaoGratificada: dados.funcaoGratificada || null,
+  });
+  const custoTotalAoVivo = calcularCustoTotalCargo(salarioTotalAoVivo, dados, diasUteisPadrao);
 
   function handleImportadoRubi(cargoAtualizado: CargoComVinculo) {
     // Pendência 2026-08-15 — "Nome do Cargo (Mercado)" nunca é tocado pela importação;
@@ -941,19 +957,18 @@ export function CargoPanel({
                 </select>
               </div>
 
-              {cargoEmEdicao && (
-                <div className="flex flex-col gap-2 rounded-lg border border-gray-100 bg-white p-3.5 text-xs">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Custo do Cargo (última gravação)</p>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Salário Total</span>
-                    <span className="tabular-nums">{formatarMoeda(cargoEmEdicao.salarioTotal)}</span>
-                  </div>
-                  <div className="flex justify-between border-t border-gray-200 pt-2 font-medium text-slate-800">
-                    <span>Custo Total</span>
-                    <span className="tabular-nums">{formatarMoeda(cargoEmEdicao.custoTotalCargo)}</span>
-                  </div>
+              <div className="flex flex-col gap-2 rounded-lg border border-gray-100 bg-white p-3.5 text-xs">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Custo do Cargo (ao vivo)</p>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Salário Total</span>
+                  <span className="tabular-nums">{formatarMoeda(salarioTotalAoVivo.toString())}</span>
                 </div>
-              )}
+                <div className="flex justify-between border-t border-gray-200 pt-2 font-medium text-slate-800">
+                  <span>Custo Total</span>
+                  <span className="tabular-nums">{formatarMoeda(custoTotalAoVivo.toString())}</span>
+                </div>
+                <p className="text-[11px] text-gray-400">Recalculado conforme você edita os campos — só é gravado ao clicar em &quot;Salvar Cargo&quot;.</p>
+              </div>
             </aside>
           </div>
         </div>

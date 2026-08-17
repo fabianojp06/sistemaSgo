@@ -26,7 +26,7 @@ export default async function EstruturaFuncionalPage({ params }: { params: Promi
 
   const podeGerenciar = await usuarioTemFuncionalidade(prisma, tenantId, usuario.id, 'propostas.gerenciar-estrutura');
 
-  const [unidadesDb, cargosDb, contasDb] = await Promise.all([
+  const [unidadesDb, cargosDb, contasDb, parametroSistema] = await Promise.all([
     prisma.unidadeFuncional.findMany({
       where: { tenantId, propostaId: id, ativa: true },
       orderBy: { nome: 'asc' },
@@ -41,7 +41,9 @@ export default async function EstruturaFuncionalPage({ params }: { params: Promi
       orderBy: { codigoErp: 'asc' },
       select: { id: true, codigoErp: true, nomeConta: true },
     }),
+    prisma.parametroSistema.findUnique({ where: { tenantId }, select: { diasUteisPadrao: true } }),
   ]);
+  const diasUteisPadrao = parametroSistema?.diasUteisPadrao ?? 22;
 
   const cargoIds = new Set(cargosDb.map((c) => c.id));
   const [resultadoTabelaSalarial, resultadoSenioridades] = await Promise.all([listarTodaTabelaSalarial(), listarSenioridades()]);
@@ -144,6 +146,7 @@ export default async function EstruturaFuncionalPage({ params }: { params: Promi
           tabelaSalarialIniciais={tabelaSalarial}
           senioridadesIniciais={senioridades}
           podeGerenciarTabelaSalarial={podeGerenciar}
+          diasUteisPadrao={diasUteisPadrao}
           readOnly={readOnly}
         />
       )}
