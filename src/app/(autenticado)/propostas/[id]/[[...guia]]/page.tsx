@@ -92,7 +92,9 @@ export default async function PropostaDetalhePage({
     }
     const [cargosDb, empregadosDb, qtdeDb] = await Promise.all([
       prisma.cargo.findMany({
-        where: { tenantId, propostaId: id, ativo: true },
+        // ADR-042 — Cargo Rascunho não pode receber Empregado (CadastrarEmpregadoUseCase bloqueia
+        // no backend); filtrado aqui para não listar no seletor uma opção que sempre falharia ao salvar.
+        where: { tenantId, propostaId: id, ativo: true, status: { not: 'RASCUNHO' } },
         orderBy: { codigoCargo: 'asc' },
         select: { id: true, codigoCargo: true, nomeCargoMercado: true },
       }),

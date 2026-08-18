@@ -200,7 +200,13 @@ function NovoEmpregadoForm({
   const [pending, startTransition] = useTransition();
 
   if (readOnly) return null;
-  if (cargos.length === 0) return <p className="text-sm text-gray-500">Nenhum Cargo cadastrado nesta Proposta ainda.</p>;
+  if (cargos.length === 0)
+    return (
+      <p className="text-sm text-gray-500">
+        Nenhum Cargo completo cadastrado nesta Proposta ainda. Cadastre e complete um Cargo na aba Estrutura Funcional e
+        Cargos (Vínculo Funcional, Conta, Salário) antes de cadastrar um Empregado.
+      </p>
+    );
 
   const temNome = nome.trim().length > 0;
 
