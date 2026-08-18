@@ -859,6 +859,32 @@ Pedido do usuário: alterar os salários de todas as Faixas/Níveis importados d
 
 **Próximo passo natural:** (1) decidir layout final de Cargo (3 opções propostas em 2026-08-14, ainda em aberto); (2) US-133 (`FonteAtivaSalario.TOTAL`)/US-134 (Snapshot de Oficialização); (3) se um caminho de "Novo Cargo" for adicionado à aba Cargos no futuro, retomar o alerta preventivo do item 2 acima.
 
+## 2026-08-18 — registrada às 00:22 UTC — Custo do Cargo ao vivo (opção 2 do layout), ordem correta de cadastro documentada, remoção de Cargo Rascunho do seletor de Empregado e fix de flakiness de fuso horário no CI
+
+Sessão curta, quatro entregas encadeadas, todas fix pequeno/localizado (direto na `master`).
+
+### 1. Layout de Cargo — opção 2 implementada (custo "ao vivo")
+
+Usuário revisitou o mockup de 3 opções de 2026-08-14 (artefato republicado) e escolheu a **opção 2** (coluna principal + painel lateral fixo). A estrutura de grid já existia desde a sessão de 08-15, mas o painel só mostrava o custo da *última gravação*. Completado por `fullstack-dev`: `CargoPanel.tsx` agora recalcula Salário Total e Custo Total a cada tecla, reusando as funções puras `calcularSalarioTotalCargo`/`calcularCustoTotalCargo` do domínio (evita duplicar a fórmula no client). `diasUteisPadrao` (antes só usado no backend) passou a ser buscado em `estrutura/page.tsx` e repassado via props (`EstruturaFuncionalPanel` → `CargoPanel`). Commit `2a25c8d`.
+
+### 2. Documentação da ordem correta de cadastro
+
+Usuário pediu para formalizar a ordem: **Estrutura Funcional (Organograma) → Tabela Salarial → Cargos → Empregados**. `redator-tecnico` atualizou `docs/MANUAL_USUARIO_CARGOS_EMPREGADOS_SEMAFORO.md` com nova seção "Ordem Correta de Cadastro" no topo, seções de Organograma/Tabela Salarial que faltavam, e corrigiu a seção de Cargos, que ainda descrevia o **Rateio Funcional por percentual antigo** (pré-ADR-043/US-135) em vez do Vínculo Funcional único atual — doc estava desatualizada há duas gerações de mudança. Commit `95de0da`. O artefato interativo "Manual da Estrutura Funcional e Cargos" (mesmo link desde 2026-08-15) foi republicado com uma 5ª etapa no fluxo visual (antes só tinha Tabela Salarial → Cargos → Empregados) e renumeração das seções.
+
+### 2b. Investigação de trava (sem gap de regra, só de UX)
+
+Usuário também pediu para criar travas/alertas "se necessário". `analista-negocios-po` investigou se o seletor de Cargo na tela Empregados permitia escolher um Cargo Rascunho — achado: **o backend já bloqueia isso** (ADR-042, `CargoRascunhoNaoPodeReceberEmpregadoError`, mensagem já clara). Não havia gap de regra de negócio. O gap real era só de UX: o seletor listava Cargos Rascunho, e o usuário só descobria o bloqueio ao tentar salvar. `fullstack-dev` corrigiu: filtro `status: { not: 'RASCUNHO' }` na query de `[id]/[[...guia]]/page.tsx`, mais mensagem de "sem Cargo disponível" mais orientativa em `EmpregadoPanel.tsx`. Commit `b8367ae`.
+
+### 3. Fix de flakiness de fuso horário no CI
+
+Ao dar `push`, o CI falhou (`32083657145`) em `CadastrarAliquotaImpostoUseCase.test.ts` — teste "bloqueia data de início retroativa" resolveu em vez de rejeitar. Causa raiz: o helper de teste `dataCalendarioUTC()` calculava "hoje" em **UTC puro**, mas a regra de produção `ehDataAnteriorAHoje`/`hojeNoFusoDoSistema` compara contra "hoje" no fuso **America/Sao_Paulo (UTC-3)** — os dois calendários divergem entre 21h e 23h59 UTC, exatamente a janela em que o CI rodou (00:14 UTC = 21:14 em Brasília do dia anterior). Não era código de produção quebrado, só o teste usando referência de fuso errada. Corrigido: helper passou a usar `hojeNoFusoDoSistema()` (mesma função do domínio) em vez de `Date.UTC` puro. Commit `2a7a797`, CI reexecutado e verde.
+
+### Estado ao final
+
+`master` em `2a7a797`, tudo enviado (`git push` confirmado, 4 commits). CI verde. 367/367 testes passando localmente e no CI.
+
+**Próximo passo natural:** US-133 (`FonteAtivaSalario.TOTAL`) / US-134 (Snapshot de Oficialização) seguem como próximas peças do módulo de Cargos, ainda não iniciadas.
+
 ## Como usar este arquivo em sessões futuras
 
 No início de uma sessão, se o usuário perguntar "qual o contexto/status de X", leia este arquivo antes de assumir que a memória padrão (`~/.claude/.../memory/`) está atualizada — o ambiente deste projeto (Codespace) pode ter sido recriado desde a última sessão, apagando a memória padrão sem apagar o repositório.
