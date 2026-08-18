@@ -1,53 +1,177 @@
-# Manual do Usuário — Cargos, Empregados e Semáforo Orçamentário
+# Manual do Usuário — Estrutura Funcional, Cargos, Empregados e Semáforo Orçamentário
 
-Este manual explica como usar as três telas de Recursos Humanos e acompanhamento orçamentário
-de uma Proposta: **Cargos**, **Empregados** e **Semáforo Orçamentário**.
+Este manual explica como usar as quatro telas de Recursos Humanos e acompanhamento orçamentário
+de uma Proposta: **Estrutura Funcional (Organograma)**, **Cargos**, **Empregados** e **Semáforo
+Orçamentário**.
 
 Todas ficam dentro de uma Proposta (Termo de Parceria/Contrato), nas abas:
 
-`Proposta > Estrutura` (Cargos) · `Proposta > Empregados` · `Proposta > Semáforo`
+`Proposta > Estrutura` (Organograma, Cargos e Tabela Salarial) · `Proposta > Empregados` ·
+`Proposta > Semáforo`
 
-> As três telas estão ligadas entre si: o custo de um Empregado vem do Cargo em que ele está
-> alocado, e o Semáforo mostra o quanto desse custo já está "realizado" (lançado) em cada conta
-> orçamentária, comparado ao valor orçado para ela.
+> As telas estão ligadas entre si: o Cargo precisa de uma Unidade Funcional para existir
+> completamente, o custo de um Empregado vem do Cargo em que ele está alocado, e o Semáforo
+> mostra o quanto desse custo já está "realizado" (lançado) em cada conta orçamentária, comparado
+> ao valor orçado para ela.
 
 ---
 
-## 1. Cargos
+## Ordem Correta de Cadastro
+
+Antes de detalhar cada tela, siga esta ordem — ela evita retrabalho e mensagens de bloqueio nas
+etapas seguintes:
+
+1. **Estrutura Funcional (Organograma)** — cadastre ao menos uma Unidade Funcional do tipo
+   Analítico (Assessoria, Coordenadoria ou Setor). Um Cargo só pode ser completado depois de
+   vinculado a uma dessas unidades.
+2. **Tabela Salarial** — cadastre o Cargo por aqui informando só o nome. Ele entra no sistema
+   como **Rascunho**.
+3. **Cargos** — encontre o Cargo criado (marcado com a etiqueta "Rascunho") e complete o
+   cadastro: Vínculo Funcional, Conta Contábil, Salário e, se for o caso, Benefícios e Encargos.
+4. **Empregados** — só depois do Cargo estar completo (sem a etiqueta "Rascunho") é possível
+   alocar Empregados nele, porque cada Empregado herda o custo já calculado do Cargo.
+
+**Isso é uma recomendação de uso, não um bloqueio rígido do sistema em todas as etapas** — hoje
+existem alertas que ajudam a não pular passos, mas nem toda etapa fora de ordem é impedida
+tecnicamente:
+
+- Se você tentar **completar/editar** um Cargo na aba Cargos sem nenhuma Unidade Funcional
+  Analítica cadastrada, o sistema mostra um aviso pedindo para cadastrar a Unidade primeiro (na
+  sub-aba Organograma) antes de salvar.
+- Um Cargo criado só pela Tabela Salarial fica visível na lista de Cargos com a etiqueta
+  **"Rascunho"**, sinalizando que o cadastro ainda precisa ser completado na aba Cargos.
+
+---
+
+## 0. Estrutura Funcional (Organograma)
+
+### O que é
+
+O organograma da Proposta: a árvore de Unidades Funcionais (Diretorias, Gerências,
+Assessorias, Coordenadorias e Setores) onde os Cargos são alocados.
+
+### Onde encontrar
+
+`Proposta > Estrutura`, sub-aba **"Estrutura Funcional (Organograma)"** (aberta por padrão).
+
+### Tipos de unidade
+
+| Tipo | Categoria | Pode ter Cargo vinculado? |
+|---|---|---|
+| Diretoria | Sintético | Não — serve só para organizar a árvore |
+| Gerência | Sintético | Não — serve só para organizar a árvore |
+| Assessoria | Analítico | Sim |
+| Coordenadoria | Analítico | Sim |
+| Setor | Analítico | Sim |
+
+Só unidades do tipo **Analítico** (Assessoria, Coordenadoria, Setor) podem receber um Cargo. As
+unidades Sintéticas (Diretoria, Gerência) existem apenas para organizar a hierarquia.
+
+### Cadastrar uma Unidade Funcional
+
+1. Preencha **Nome** e escolha o **Tipo**.
+2. Se o tipo escolhido exigir uma unidade "pai" (toda unidade Analítica precisa estar dentro de
+   uma Sintética), escolha-a na lista — só aparecem as unidades compatíveis com o tipo
+   selecionado. Diretorias e Gerências não têm pai (são raiz da árvore).
+3. Clique em **Cadastrar** (ou equivalente).
+
+### Importar de outra Proposta
+
+Se outra Proposta já tem a estrutura pronta, clique em **"Importar de outra Proposta"**, escolha
+a Proposta de origem e confirme. A importação **substitui** a estrutura toda da Proposta atual
+pela da origem — não é uma mesclagem.
+
+### Inativar uma Unidade
+
+Cada unidade da árvore pode ser inativada individualmente quando não for mais usada.
+
+---
+
+## 1. Tabela Salarial
+
+### O que é
+
+Tela para consultar as faixas salariais de mercado por Senioridade, e também o atalho mais rápido
+para **criar um novo Cargo** (como Rascunho) sem sair do modal.
+
+### Onde encontrar
+
+`Proposta > Estrutura`, sub-aba **"Tabela Salarial"**.
+
+### Cadastrar um Cargo por aqui
+
+1. No campo **"Cadastrar Cargo"**, digite o **Nome do Cargo (Mercado)**.
+2. Clique em **Cadastrar Cargo**.
+
+O Cargo é criado com esse nome apenas — ele aparece na aba **Cargos** com a etiqueta
+**"Rascunho"** até que o cadastro seja completado lá (Vínculo Funcional, Conta, Salário).
+
+### Atribuir Senioridade e Faixa Salarial
+
+Depois de cadastrado (ou selecionando um Cargo já existente), você pode:
+
+- Cadastrar uma nova **Senioridade** (ex: "Especialista"), se a que você precisa ainda não
+  existir.
+- Cadastrar a **Faixa Salarial** (Salário Mínimo e Salário Máximo) daquele Cargo para a
+  Senioridade escolhida.
+
+Essas faixas ficam disponíveis para consulta e podem ser usadas para preencher o Salário Mercado
+Mínimo/Máximo do Cargo na aba Cargos.
+
+---
+
+## 2. Cargos
 
 ### O que é
 
 Um Cargo representa uma função de mercado (ex: "Analista de Requisitos") com seu salário, os
 benefícios que a Proposta paga para quem ocupa esse Cargo (vale-alimentação, plano de saúde
-etc.) e em quais Unidades Funcionais (setores/coordenadorias) o custo dele é distribuído.
+etc.) e a Unidade Funcional (setor/coordenadoria) onde o custo dele é lançado.
 
 ### Onde encontrar
 
-`Proposta > Estrutura` (link "Estrutura Funcional e Cargos" no topo da tela da Proposta).
+`Proposta > Estrutura`, sub-aba **"Cargos"**.
 
 No topo da tela aparece um resumo com o **Total de Cargos**, o **Custo Total Mensal** e o
 **Salário Total Mensal** de todos os Cargos cadastrados.
 
-### Cadastrar um novo Cargo
+Na lista, um Cargo criado só pela Tabela Salarial (sem Vínculo Funcional/Conta/Salário ainda
+completados) aparece com a etiqueta **"Rascunho"** ao lado do nome.
 
-1. Preencha o formulário na parte de baixo da tela ("Novo Cargo"):
+### Completar ou cadastrar um Cargo
+
+1. Se o Cargo já existe como Rascunho, clique em **Editar** na linha dele. Caso contrário,
+   preencha o formulário **"Novo Cargo"** na parte de baixo da tela.
+2. Em **Identificação e Mercado**, preencha:
    - **Nome do Cargo (Mercado)** — obrigatório.
-   - **Conta Contábil** — a conta orçamentária onde o custo desse Cargo será lançado. Obrigatória.
+   - **Conta Contábil (natureza da despesa)** — a conta orçamentária onde o custo desse Cargo
+     será lançado. Obrigatória.
    - **Período Início** — obrigatório.
-   - **Salário Mercado Mínimo** e **Salário Mercado Máximo** — obrigatórios.
+   - **Salário Mercado Mínimo** e **Salário Mercado Máximo** — obrigatórios. Podem ser digitados
+     manualmente ou preenchidos a partir da Tabela Salarial (botão "Tabela Salarial" ao lado do
+     campo Salário Máximo).
    - **Função Gratificada** (opcional) e a conta correspondente, se houver gratificação.
-   - **Fonte Ativa** — de onde vem o salário usado no cálculo (Mercado Mínimo, Mercado Máximo
-     ou Rubi/Salário Real).
-2. Em **Rateio Funcional**, clique em "+ Adicionar unidade" e escolha para quais Unidades
-   Funcionais o custo desse Cargo é distribuído, com o percentual de cada uma. **A soma dos
-   percentuais precisa ser exatamente 100%** — o botão "Salvar Cargo" fica desabilitado até isso
-   ser verdade (o percentual atual aparece ao lado do título "Rateio Funcional").
-3. Em **Benefícios e Encargos**, marque cada benefício que esse Cargo tem direito (Vale
-   Alimentação, Vale Refeição, Vale Transporte, Plano de Saúde, Plano Odontológico, Seguro de
-   Vida, Auxílio Creche) e informe o valor de cada um. Para cada benefício marcado, escolha
-   também a **conta orçamentária** onde aquele custo específico deve ser lançado — se não
-   escolher uma conta própria, o valor cai na mesma conta do salário do Cargo.
-4. Clique em **Salvar Cargo**.
+3. Em **Vínculo Funcional**, escolha a Unidade Funcional Analítica onde o custo desse Cargo é
+   lançado integralmente. Se nenhuma Unidade Analítica estiver cadastrada ainda, um aviso pede
+   para cadastrá-la primeiro na sub-aba Organograma.
+4. Em **Benefícios e Encargos**, informe o percentual de **Encargos Sociais** e marque cada
+   benefício que esse Cargo tem direito (Vale Alimentação, Vale Refeição, Vale Transporte, Plano
+   de Saúde, Plano Odontológico, Seguro de Vida, Auxílio Creche) e os adicionais de
+   **Periculosidade**/**Insalubridade** (cada um como percentual sobre o salário ou valor fixo,
+   nunca os dois ao mesmo tempo), informando o valor de cada um. Para cada item marcado, escolha
+   também a **conta orçamentária** onde aquele custo específico deve ser lançado.
+5. No painel lateral, escolha a **Fonte Ativa** (de onde vem o salário usado no cálculo: Mercado
+   Mínimo, Mercado Máximo ou Rubi/Salário Real) e acompanhe o **Custo do Cargo (ao vivo)** —
+   Salário Total e Custo Total são recalculados a cada campo alterado, antes mesmo de salvar.
+6. Clique em **Salvar Cargo**.
+
+### Importar do Rubi
+
+Se o Cargo corresponde a um cargo já cadastrado no sistema Rubi/CTCEA, use o botão **"Importar do
+Rubi"** (ou "Reimportar do Rubi", se já importado) no painel lateral para trazer Faixa, Nível e
+Salário Real automaticamente. O nome que você digitou em "Nome do Cargo (Mercado)" não é alterado
+pela importação — o nome vindo do Rubi fica visível separadamente como "Nome Cargo CTCEA" no
+painel.
 
 ### Editar um Cargo existente
 
@@ -94,17 +218,19 @@ Também não é possível excluir Cargos de uma Proposta que já foi oficializad
 
 | Campo | Obrigatório | Regra |
 |---|---|---|
-| Nome do Cargo (Mercado) | Sim | — |
+| Nome do Cargo (Mercado) | Sim | Nunca sobrescrito pela importação do Rubi |
 | Conta Contábil | Sim | Onde o salário do Cargo é lançado |
 | Período Início | Sim | — |
 | Salário Mercado Mínimo/Máximo | Sim | — |
 | Função Gratificada | Não | Se preenchido, exige conta própria |
-| Rateio Funcional | Sim (ao menos 1 unidade) | Soma dos percentuais deve ser 100% |
+| Vínculo Funcional | Sim (1 Unidade Analítica) | Exige ao menos uma Unidade Funcional Analítica cadastrada no Organograma |
+| Encargos Sociais (%) | Não (padrão 0%) | Calculado sobre o Salário Total |
 | Benefícios (VA, VR, VT, Saúde, Odonto, Seguro de Vida, Auxílio Creche) | Não | Cada um tem valor e conta próprios |
+| Periculosidade / Insalubridade | Não | Percentual sobre o salário OU valor fixo, nunca os dois juntos |
 
 ---
 
-## 2. Empregados
+## 3. Empregados
 
 ### O que é
 
@@ -170,7 +296,7 @@ documento, clique em **Excluir** na linha dele.
 
 ---
 
-## 3. Semáforo Orçamentário
+## 4. Semáforo Orçamentário
 
 ### O que é
 
@@ -217,8 +343,8 @@ Duas causas possíveis:
 
 1. **O Cargo já tinha Empregados cadastrados antes da mudança.** O custo de um Empregado é
    fixado no momento em que ele é cadastrado — mudar os benefícios do Cargo depois não atualiza
-   sozinho quem já estava lá. Vá em `Estrutura > Editar` o Cargo e clique em **Ressincronizar
-   Empregados**.
+   sozinho quem já estava lá. Vá em `Estrutura > Cargos`, edite o Cargo e clique em
+   **Ressincronizar Empregados**.
 2. **Ainda não existe nenhum Empregado cadastrado nesse Cargo.** Só o cadastro de Cargo com
    benefícios, sem nenhum Empregado alocado nele, não gera valor nenhum no Semáforo — é o
    Empregado que "puxa" o custo do Cargo para as contas. Cadastre um Empregado nesse Cargo (aba
@@ -246,3 +372,16 @@ por essas telas.
 
 Não. Significa apenas que ninguém ainda informou quanto deveria ser gasto naquela conta (o Valor
 Orçado). O Valor Realizado mostrado ao lado está correto e não depende disso.
+
+**O que significa a etiqueta "Rascunho" na lista de Cargos?**
+
+Que esse Cargo foi criado só com o nome (normalmente pela tela Tabela Salarial) e ainda não teve
+Vínculo Funcional, Conta Contábil e Salário preenchidos. Clique em **Editar** nesse Cargo para
+completar o cadastro — enquanto ele estiver como Rascunho, não é possível alocar Empregados nele.
+
+**Ao tentar editar um Cargo, aparece um aviso pedindo para cadastrar Unidade Funcional. O que
+fazer?**
+
+Vá até a sub-aba **Estrutura Funcional (Organograma)**, na mesma tela, e cadastre ao menos uma
+Unidade do tipo Analítico (Assessoria, Coordenadoria ou Setor). Depois volte para a aba Cargos —
+o Vínculo Funcional já vai listar a unidade cadastrada.
