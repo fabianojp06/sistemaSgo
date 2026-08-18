@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { CadastrarAliquotaImpostoUseCase } from './CadastrarAliquotaImpostoUseCase';
+import { hojeNoFusoDoSistema } from '@/domain/shared/dataCalendario';
 import {
   AliquotaImpostoNomeDuplicadoError,
   AliquotaImpostoForaDaFaixaError,
@@ -41,9 +42,11 @@ function criarPrismaMock(existentes: AliquotaMock[] = [], contas: ContaMock[] = 
 
 // Simula exatamente como o input chega do formulário: <input type="date"> -> "YYYY-MM-DD" ->
 // z.coerce.date() -> Date constructor, que interpreta string date-only como meia-noite UTC.
+// Offset calculado a partir do "hoje" no fuso America/Sao_Paulo (mesma referência usada por
+// ehDataAnteriorAHoje) — não em UTC puro, que diverge do fuso do sistema entre 21h e 23h59 UTC.
 function dataCalendarioUTC(offsetDias: number): Date {
-  const hoje = new Date();
-  const isoHoje = new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth(), hoje.getUTCDate()));
+  const [ano, mes, dia] = hojeNoFusoDoSistema().split('-').map(Number);
+  const isoHoje = new Date(Date.UTC(ano, mes - 1, dia));
   isoHoje.setUTCDate(isoHoje.getUTCDate() + offsetDias);
   return new Date(isoHoje.toISOString().slice(0, 10));
 }
