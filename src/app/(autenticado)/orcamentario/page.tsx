@@ -95,6 +95,31 @@ export default async function OrcamentarioPage() {
         </div>
       )}
 
+      {/* [LAYOUT — placeholder] Acompanhamento (baseado em MODELO.xlsx aba "ACOMP") —
+          ainda sem Funcionalidade/permissão definida (regra de negócio virá depois),
+          por isso sem checagem de acesso aqui, diferente dos cards acima. */}
+      <div className="max-w-lg rounded-[10px] border border-[#DDE2EA] bg-white p-4 shadow-[0_1px_2px_rgba(20,24,33,0.05),0_1px_1px_rgba(20,24,33,0.04)] dark:border-[#2B303C] dark:bg-[#191D26]">
+        <p className="text-sm font-semibold text-[#1A1F29] dark:text-[#EBEDF2]">Acompanhamento</p>
+        <p className="mt-1 text-sm text-[#5B6270] dark:text-[#A4AAB6]">
+          Demonstrativo de Receitas e Despesas Sintético — Fluxo de Caixa Consolidado. Layout em construção, ainda sem regras de negócio.
+        </p>
+        <Link href="/orcamentario/acompanhamento" className="mt-3 inline-block text-sm font-medium text-[#2B5FD9] dark:text-[#6D93F0]">
+          Abrir relatório &rarr;
+        </Link>
+      </div>
+
+      {/* [LAYOUT — placeholder] Orçado (baseado em MODELO.xlsx aba "ORÇADO") — mesma
+          observação do card Acompanhamento acima: sem Funcionalidade/permissão ainda. */}
+      <div className="max-w-lg rounded-[10px] border border-[#DDE2EA] bg-white p-4 shadow-[0_1px_2px_rgba(20,24,33,0.05),0_1px_1px_rgba(20,24,33,0.04)] dark:border-[#2B303C] dark:bg-[#191D26]">
+        <p className="text-sm font-semibold text-[#1A1F29] dark:text-[#EBEDF2]">Orçado</p>
+        <p className="mt-1 text-sm text-[#5B6270] dark:text-[#A4AAB6]">
+          Árvore de contas de despesa por mês, com quadro de pessoal. Layout em construção, ainda sem regras de negócio.
+        </p>
+        <Link href="/orcamentario/orcado" className="mt-3 inline-block text-sm font-medium text-[#2B5FD9] dark:text-[#6D93F0]">
+          Abrir relatório &rarr;
+        </Link>
+      </div>
+
       <div id="premissas-reajustes" className="max-w-lg scroll-mt-6 rounded-[10px] border border-[#DDE2EA] bg-white shadow-[0_1px_2px_rgba(20,24,33,0.05),0_1px_1px_rgba(20,24,33,0.04)] dark:border-[#2B303C] dark:bg-[#191D26]">
         <div className="border-b border-[#DDE2EA] px-4 py-3 dark:border-[#2B303C]">
           <p className="text-sm font-semibold text-[#1A1F29] dark:text-[#EBEDF2]">Premissas e Reajustes — escolha a Proposta</p>
