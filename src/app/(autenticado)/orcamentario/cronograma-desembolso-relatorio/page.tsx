@@ -41,13 +41,14 @@ export default async function CronogramaDesembolsoRelatorioPage({
   const { propostaId, termoAditivoId, ano } = await searchParams;
   const anoExercicio = ano ? Number(ano) : null;
 
-  // RN_REL_002 — regra original é "só OFICIALIZADO", mas [decisão do usuário
-  // 2026-08-20] ampliou temporariamente também para EM_ELABORACAO: hoje não
+  // RN_REL_002 — regra original do documento era "só OFICIALIZADO"; ampliada
+  // em 2026-08-20 (decisão do usuário) para EM_ELABORACAO e, agora, para
+  // TODOS os status (RASCUNHO/EM_ELABORACAO/OFICIALIZADO/ENCERRADO): hoje não
   // existe, em nenhum lugar do sistema, um caminho que transicione Proposta
   // para OFICIALIZADO (gap pré-existente, fora do escopo desta US) — sem essa
   // ampliação a tela ficaria inacessível com qualquer dado real.
-  const propostasOficializadas = await prisma.proposta.findMany({
-    where: { tenantId, status: { in: ['OFICIALIZADO', 'EM_ELABORACAO'] } },
+  const propostasDisponiveis = await prisma.proposta.findMany({
+    where: { tenantId },
     orderBy: { codigo: 'desc' },
     select: { id: true, codigo: true, nome: true },
   });
@@ -60,7 +61,7 @@ export default async function CronogramaDesembolsoRelatorioPage({
 
   if (propostaId) {
     const proposta = await prisma.proposta.findFirst({
-      where: { tenantId, id: propostaId, status: { in: ['OFICIALIZADO', 'EM_ELABORACAO'] } },
+      where: { tenantId, id: propostaId },
       select: { id: true, codigo: true, nome: true, dataInicio: true, dataFim: true },
     });
 
@@ -168,7 +169,7 @@ export default async function CronogramaDesembolsoRelatorioPage({
             }`}
           >
             <option value="">Selecione...</option>
-            {propostasOficializadas.map((p) => (
+            {propostasDisponiveis.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.codigo} — {p.nome}
               </option>
@@ -232,7 +233,7 @@ export default async function CronogramaDesembolsoRelatorioPage({
 
       {propostaId && !propostaSelecionada && (
         <p className="text-sm text-[#C43D3D] dark:text-[#E0716B]">
-          Termo de Parceria não encontrado ou não está Oficializado.
+          Termo de Parceria não encontrado.
         </p>
       )}
 
