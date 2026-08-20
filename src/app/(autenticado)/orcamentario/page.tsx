@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { prisma } from '@/infrastructure/db/prisma';
 import { getTenantId } from '@/infrastructure/tenant';
+import { usuarioTemFuncionalidade } from '@/application/use-cases/plano-contas/verificarPermissao';
 
 /**
  * [EP48/26] Módulo Orçamentário — landing parcial. A maioria das UC04 ainda
@@ -18,6 +19,11 @@ export default async function OrcamentarioPage() {
   if (!userId) redirect('/login');
 
   const tenantId = await getTenantId();
+  const usuario = await prisma.usuario.findFirst({ where: { tenantId, clerkUserId: userId }, select: { id: true } });
+  const podeVerRelatorioCronograma = usuario
+    ? await usuarioTemFuncionalidade(prisma, tenantId, usuario.id, 'orcamentario.cronograma-desembolso-relatorio.visualizar')
+    : false;
+
   const propostas = await prisma.proposta.findMany({
     where: { tenantId },
     orderBy: { codigo: 'desc' },
@@ -70,6 +76,24 @@ export default async function OrcamentarioPage() {
           </ul>
         )}
       </div>
+
+      {/* US-138 — relatório formal, distinto da aba US-122 acima: seleção de Termo de
+          Parceria (só Oficializado), filtro por Termo Aditivo/Exercício, Linha de
+          Totais Finais e exportação auditada. */}
+      {podeVerRelatorioCronograma && (
+        <div className="max-w-lg rounded-[10px] border border-[#DDE2EA] bg-white p-4 shadow-[0_1px_2px_rgba(20,24,33,0.05),0_1px_1px_rgba(20,24,33,0.04)] dark:border-[#2B303C] dark:bg-[#191D26]">
+          <p className="text-sm font-semibold text-[#1A1F29] dark:text-[#EBEDF2]">Relatório de Cronograma de Desembolso</p>
+          <p className="mt-1 text-sm text-[#5B6270] dark:text-[#A4AAB6]">
+            Relatório formal com filtro por Termo Aditivo e Exercício, Linha de Totais Finais e exportação com trilha de auditoria.
+          </p>
+          <Link
+            href="/orcamentario/cronograma-desembolso-relatorio"
+            className="mt-3 inline-block text-sm font-medium text-[#2B5FD9] dark:text-[#6D93F0]"
+          >
+            Abrir relatório &rarr;
+          </Link>
+        </div>
+      )}
 
       <div id="premissas-reajustes" className="max-w-lg scroll-mt-6 rounded-[10px] border border-[#DDE2EA] bg-white shadow-[0_1px_2px_rgba(20,24,33,0.05),0_1px_1px_rgba(20,24,33,0.04)] dark:border-[#2B303C] dark:bg-[#191D26]">
         <div className="border-b border-[#DDE2EA] px-4 py-3 dark:border-[#2B303C]">
