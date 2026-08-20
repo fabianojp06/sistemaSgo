@@ -4,6 +4,7 @@ import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/infrastructure/db/prisma';
 import { getTenantId } from '@/infrastructure/tenant';
 import { getRegistrarExportacaoRelatorioCronogramaUseCase } from '@/application/use-cases/plano-contas/container';
+import { usuarioTemFuncionalidade } from '@/application/use-cases/plano-contas/verificarPermissao';
 
 type ActionResult = { sucesso: true } | { sucesso: false; mensagem: string };
 
@@ -25,6 +26,16 @@ export async function registrarExportacaoCronogramaAction(input: {
   const tenantId = await getTenantId();
   const usuario = await prisma.usuario.findFirst({ where: { tenantId, clerkUserId: userId }, select: { id: true } });
   if (!usuario) return { sucesso: false, mensagem: 'Sessão expirada. Faça login novamente.' };
+
+  // [code-review 2026-08-20] Server Actions são endpoints chamáveis diretamente,
+  // não só pelo botão da UI — a checagem de permissão da página não basta.
+  const podeExportar = await usuarioTemFuncionalidade(
+    prisma,
+    tenantId,
+    usuario.id,
+    'orcamentario.cronograma-desembolso-relatorio.visualizar',
+  );
+  if (!podeExportar) return { sucesso: false, mensagem: 'Sem permissão para exportar o Relatório de Cronograma de Desembolso.' };
 
   try {
     await getRegistrarExportacaoRelatorioCronogramaUseCase().execute({

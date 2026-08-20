@@ -61,7 +61,16 @@ Ver a íntegra dos 9 cenários na conversa original de refinamento (2026-08-20) 
 
 ## Pendências antes do merge
 
-- [ ] `/code-review` da branch `feature/us-138-relatorio-cronograma-desembolso`
-- [ ] Aplicar a migration em produção (`prisma migrate deploy`) — **decisão explícita do usuário sobre quando**, conforme regra permanente de cautela com o banco de produção
-- [ ] Rodar `prisma db seed` (ou aplicar manualmente) para a nova `Funcionalidade` chegar aos perfis
+- [x] Migration aplicada em produção (`prisma migrate deploy`, 2026-08-20, autorizado pelo usuário)
+- [x] Seed rodada (2026-08-20, autorizado pelo usuário) — `Funcionalidade` vinculada ao perfil Administrador
+- [x] `/code-review` (high) rodado na branch — 2 achados de alta severidade corrigidos (ver abaixo), 1 médio e 4 menores registrados para depois
 - [ ] Validação manual em tela (screenshot autenticado) antes de considerar concluída
+
+## Achados do `/code-review` (2026-08-20) e resolução
+
+| Severidade | Achado | Resolução |
+|---|---|---|
+| Alta | `registrarExportacaoCronogramaAction` não checava permissão antes de gravar auditoria — qualquer usuário do tenant podia forjar entrada na trilha | **Corrigido** — action agora chama `usuarioTemFuncionalidade` antes do use case |
+| Alta | Filtro `status: 'OFICIALIZADO'` torna a tela inacessível, pois nenhum caminho do sistema hoje transiciona Proposta para esse status (gap pré-existente, fora do escopo desta US) | **Mitigado por decisão do usuário (2026-08-20):** filtro ampliado para `{ in: ['OFICIALIZADO', 'EM_ELABORACAO'] }`, nas duas queries (listagem do combo e busca da Proposta selecionada). **Débito técnico registrado:** quando existir a funcionalidade de "Oficializar Proposta", reavaliar se `EM_ELABORACAO` deve continuar aceito aqui ou se volta a ser só `OFICIALIZADO` |
+| Média | Cenário 7 (proposta sem dados financeiros) não dispara quando a Proposta não tem `VersaoProposta` vigente/ativa — tela fica em branco | **Não corrigido ainda** — pendente |
+| Baixa (4) | Duplicação de código entre os dois painéis de Cronograma; `termoAditivoId` grava `""` em vez de `null` na auditoria quando "Todos"; classe de erro `RelatorioCronogramaDesembolsoSemPropostaError` morta; prop `propostaId` não usada no painel; query sequencial em vez de `Promise.all` na landing | **Não corrigidos ainda** — pendentes, sem risco de segurança/correção crítica |

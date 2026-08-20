@@ -41,9 +41,13 @@ export default async function CronogramaDesembolsoRelatorioPage({
   const { propostaId, termoAditivoId, ano } = await searchParams;
   const anoExercicio = ano ? Number(ano) : null;
 
-  // RN_REL_002 — só Proposta OFICIALIZADO pode ser consultada no relatório formal.
+  // RN_REL_002 — regra original é "só OFICIALIZADO", mas [decisão do usuário
+  // 2026-08-20] ampliou temporariamente também para EM_ELABORACAO: hoje não
+  // existe, em nenhum lugar do sistema, um caminho que transicione Proposta
+  // para OFICIALIZADO (gap pré-existente, fora do escopo desta US) — sem essa
+  // ampliação a tela ficaria inacessível com qualquer dado real.
   const propostasOficializadas = await prisma.proposta.findMany({
-    where: { tenantId, status: 'OFICIALIZADO' },
+    where: { tenantId, status: { in: ['OFICIALIZADO', 'EM_ELABORACAO'] } },
     orderBy: { codigo: 'desc' },
     select: { id: true, codigo: true, nome: true },
   });
@@ -56,7 +60,7 @@ export default async function CronogramaDesembolsoRelatorioPage({
 
   if (propostaId) {
     const proposta = await prisma.proposta.findFirst({
-      where: { tenantId, id: propostaId, status: 'OFICIALIZADO' },
+      where: { tenantId, id: propostaId, status: { in: ['OFICIALIZADO', 'EM_ELABORACAO'] } },
       select: { id: true, codigo: true, nome: true, dataInicio: true, dataFim: true },
     });
 
