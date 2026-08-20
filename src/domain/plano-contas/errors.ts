@@ -878,3 +878,22 @@ export class CargoRascunhoNaoPodeReceberEmpregadoError extends Error {
     this.name = 'CargoRascunhoNaoPodeReceberEmpregadoError';
   }
 }
+
+// US-138 (relatório de Cronograma de Desembolso) Cenário 8 — trava de erro: falha ao
+// gravar a trilha de auditoria bloqueia a geração/liberação do arquivo exportado.
+export class FalhaAuditoriaExportacaoRelatorioError extends Error {
+  constructor() {
+    super(
+      'Ação Abortada: Falha crítica na geração da trilha de auditoria compulsória. A extração de dados foi suspensa para garantir a conformidade de auditoria.',
+    );
+    this.name = 'FalhaAuditoriaExportacaoRelatorioError';
+  }
+}
+
+// US-138 Cenário 6 — trava de erro: Termo de Parceria/Proposta não selecionado.
+export class RelatorioCronogramaDesembolsoSemPropostaError extends Error {
+  constructor() {
+    super('Operação Rejeitada: A seleção de um Termo de Parceria Oficializado é obrigatória para a abertura do cronograma de desembolso.');
+    this.name = 'RelatorioCronogramaDesembolsoSemPropostaError';
+  }
+}

@@ -217,6 +217,20 @@ async function seedModuloOrcamentario() {
       tipo: 'CONTEXTUAL',
     },
   });
+
+  // US-138 (UC04.01, relatório formal) — distinta da aba de Cronograma de
+  // Desembolso já existente dentro da Proposta (orcamentario.visualizar):
+  // consulta com filtros (Termo Aditivo/Exercício), Linha de Totais Finais e
+  // exportação PDF/XLSX auditada. NAVEGAVEL — aponta pro seletor de Proposta.
+  await prisma.funcionalidade.upsert({
+    where: { moduloId_chave: { moduloId: modulo.id, chave: 'orcamentario.cronograma-desembolso-relatorio.visualizar' } },
+    update: {},
+    create: {
+      moduloId: modulo.id,
+      chave: 'orcamentario.cronograma-desembolso-relatorio.visualizar',
+      nome: 'Relatório de Cronograma de Desembolso',
+    },
+  });
 }
 
 // US-111 (ADR-025) — "Gestor Master" nasce como uma linha de Perfil por tenant, sem

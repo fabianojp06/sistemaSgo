@@ -7,6 +7,7 @@ import { GradeSalarialCtceaArquivoProvider } from '@/infrastructure/integrations
 import { GradeSalarialCtceaBulkLoader } from '@/infrastructure/plano-contas/GradeSalarialCtceaBulkLoader';
 import { SincronismoGradeSalarialCtceaLockRepository } from '@/infrastructure/plano-contas/SincronismoGradeSalarialCtceaLockRepository';
 import { SincronizarGradeSalarialCtceaUseCase } from './SincronizarGradeSalarialCtceaUseCase';
+import { RegistrarExportacaoRelatorioCronogramaUseCase } from './RegistrarExportacaoRelatorioCronogramaUseCase';
 import { CriarAgrupadorUseCase } from './CriarAgrupadorUseCase';
 import { EditarAgrupadorUseCase } from './EditarAgrupadorUseCase';
 import { ExcluirAgrupadorUseCase } from './ExcluirAgrupadorUseCase';
@@ -183,6 +184,10 @@ export function getSincronizarGradeSalarialCtceaUseCase(): SincronizarGradeSalar
     new GradeSalarialCtceaBulkLoader(prisma),
     new SincronismoGradeSalarialCtceaLockRepository(prisma),
   );
+}
+
+export function getRegistrarExportacaoRelatorioCronogramaUseCase(): RegistrarExportacaoRelatorioCronogramaUseCase {
+  return new RegistrarExportacaoRelatorioCronogramaUseCase(prisma);
 }
 
 export function getCadastrarMetaUseCase(): CadastrarMetaUseCase {

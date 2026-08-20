@@ -21,6 +21,7 @@ enum StatusUsuario {
 }
 
 enum TipoOperacao {
+  RELATORIO_CRONOGRAMA_DESEMBOLSO_EXPORTADO
   LOGIN_SUCESSO
   LOGIN_FALHA
   LOGOFF
