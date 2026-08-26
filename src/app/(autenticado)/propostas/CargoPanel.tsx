@@ -12,6 +12,7 @@ import {
 import { TabelaSalarialModal } from './TabelaSalarialModal';
 import { ImportarCargoRubiModal } from './ImportarCargoRubiModal';
 import { SeletorContaAnalitica } from './SeletorContaAnalitica';
+import { AutocompleteCargoMercado } from './AutocompleteCargoMercado';
 import { calcularSalarioTotalCargo } from '@/domain/plano-contas/calcularSalarioTotalCargo';
 import { calcularCustoTotalCargo } from '@/domain/plano-contas/calcularCustoTotalCargo';
 
@@ -615,11 +616,9 @@ export function CargoPanel({
                 <div className="grid grid-cols-1 items-start gap-x-4 gap-y-3 md:grid-cols-3">
                   <div>
                     <label className="mb-1 block text-xs font-medium text-gray-600">Nome do Cargo (Mercado)</label>
-                    <input
-                      type="text"
+                    <AutocompleteCargoMercado
                       value={dados.nomeCargoMercado}
-                      onChange={(e) => setDados((d) => ({ ...d, nomeCargoMercado: e.target.value }))}
-                      className="w-full rounded border px-2 py-1 text-sm"
+                      onChange={(valor) => setDados((d) => ({ ...d, nomeCargoMercado: valor }))}
                     />
                   </div>
                   <div>

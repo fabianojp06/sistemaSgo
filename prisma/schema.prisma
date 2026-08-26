@@ -86,6 +86,7 @@ enum TipoOperacao {
   CARGO_RASCUNHO_CRIADO
   CARGO_IMPORTADO_RUBI
   SYNC_GRADE_SALARIAL_CTCEA
+  SYNC_CARGO_MERCADO_CATALOGO
 }
 
 model Usuario {
@@ -318,6 +319,35 @@ model GradeSalarialCtcea {
 // bloqueada pela do Plano de Contas sem necessidade real, já que são fontes
 // independentes [ADR-046].
 model SincronismoGradeSalarialCtceaLock {
+  tenantId    String    @id
+  emAndamento Boolean   @default(false)
+  iniciadoEm  DateTime?
+  iniciadoPor String?
+}
+
+// ADR-047 (US-139) — catálogo de Cargo de Mercado (RH), fonte independente da
+// importação Rubi/CTCEA (nomeCargoCtcea). Lista PLANA (código+nome), sem
+// hierarquia e sem faixa/nível — usada só para preencher, por importação
+// opcional, o campo Cargo.nomeCargoMercado já existente (nunca sobrescreve
+// digitação manual sem clique explícito do usuário).
+model CargoMercadoCatalogo {
+  id       String @id @default(uuid())
+  tenantId String
+
+  codigoOrigem String
+  nome         String
+
+  syncedAt DateTime @default(now())
+
+  @@unique([tenantId, codigoOrigem])
+  @@index([tenantId])
+}
+
+// Lock pessimista de sincronismo do Catálogo de Cargo de Mercado por tenant,
+// mesmo padrão de SincronismoGradeSalarialCtceaLock — tabela própria, pois é
+// fonte independente (não deve bloquear nem ser bloqueada pela sincronização
+// da Grade Salarial CTCEA) [ADR-047].
+model SincronismoCargoMercadoCatalogoLock {
   tenantId    String    @id
   emAndamento Boolean   @default(false)
   iniciadoEm  DateTime?

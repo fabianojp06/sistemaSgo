@@ -6,6 +6,7 @@ import { usuarioTemFuncionalidade } from '@/application/use-cases/plano-contas/v
 import { getListarAgrupadoresUseCase } from '@/application/use-cases/plano-contas/container';
 import { BotaoSincronizar } from './BotaoSincronizar';
 import { BotaoSincronizarGradeSalarialCtcea } from './BotaoSincronizarGradeSalarialCtcea';
+import { BotaoSincronizarCargoMercadoCatalogo } from './BotaoSincronizarCargoMercadoCatalogo';
 import { AgrupadorPanel } from './AgrupadorPanel';
 import { ArvoreContas, type NoContaContabil } from './ArvoreContas';
 
@@ -35,7 +36,16 @@ export default async function PlanoContasPage() {
   const usuario = await prisma.usuario.findFirst({ where: { tenantId, clerkUserId: userId }, select: { id: true } });
   if (!usuario) redirect('/login');
 
-  const [podeSincronizar, podeClassificarNatureza, contas, agrupadores, podeSincronizarGradeSalarialCtcea, totalGradeSalarialCtcea] = await Promise.all([
+  const [
+    podeSincronizar,
+    podeClassificarNatureza,
+    contas,
+    agrupadores,
+    podeSincronizarGradeSalarialCtcea,
+    totalGradeSalarialCtcea,
+    podeSincronizarCargoMercadoCatalogo,
+    totalCargoMercadoCatalogo,
+  ] = await Promise.all([
     usuarioTemFuncionalidade(prisma, tenantId, usuario.id, 'plano-contas.sincronizar'),
     usuarioTemFuncionalidade(prisma, tenantId, usuario.id, 'plano-contas.classificar-natureza'),
     prisma.contaContabil.findMany({
@@ -46,6 +56,8 @@ export default async function PlanoContasPage() {
     getListarAgrupadoresUseCase().execute(tenantId),
     usuarioTemFuncionalidade(prisma, tenantId, usuario.id, 'grade-salarial-ctcea.sincronizar'),
     prisma.gradeSalarialCtcea.count({ where: { tenantId } }),
+    usuarioTemFuncionalidade(prisma, tenantId, usuario.id, 'cargo-mercado-catalogo.sincronizar'),
+    prisma.cargoMercadoCatalogo.count({ where: { tenantId } }),
   ]);
 
   const contasAnaliticas = contas.filter((c) => c.isAnalitica);
@@ -86,6 +98,18 @@ export default async function PlanoContasPage() {
           {totalGradeSalarialCtcea === 0
             ? 'Nenhuma linha sincronizada ainda. Clique em "Sincronizar Grade Salarial CTCEA" para importar a grade Faixa x Nível x Salário.'
             : `${totalGradeSalarialCtcea} linha(s) sincronizada(s) (Faixa F1-F7 x Nível N1-N20). Usada na busca "Importar do Rubi" ao cadastrar um Cargo.`}
+        </p>
+      </section>
+
+      <section>
+        <header className="mb-2 flex items-center justify-between">
+          <h2 className="text-sm font-medium text-gray-500">Catálogo de Cargo de Mercado (RH)</h2>
+          {podeSincronizarCargoMercadoCatalogo && <BotaoSincronizarCargoMercadoCatalogo />}
+        </header>
+        <p className="text-sm text-gray-500">
+          {totalCargoMercadoCatalogo === 0
+            ? 'Nenhum cargo sincronizado ainda. Clique em "Sincronizar Catálogo de Cargo de Mercado" para importar a lista fornecida pelo RH.'
+            : `${totalCargoMercadoCatalogo} cargo(s) sincronizado(s). Fonte independente da Grade Salarial CTCEA acima — usada para sugerir o "Nome do Cargo (Mercado)" ao cadastrar um Cargo.`}
         </p>
       </section>
     </main>

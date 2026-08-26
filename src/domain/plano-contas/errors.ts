@@ -28,6 +28,21 @@ export class SincronismoGradeSalarialCtceaEmAndamentoError extends Error {
   }
 }
 
+// ADR-047 (US-139) — mesma família de erros, aplicada ao Catálogo de Cargo de Mercado.
+export class AcessoNegadoSincronismoCargoMercadoCatalogoError extends Error {
+  constructor() {
+    super('Perfil sem permissão para disparar sincronismo do Catálogo de Cargo de Mercado.');
+    this.name = 'AcessoNegadoSincronismoCargoMercadoCatalogoError';
+  }
+}
+
+export class SincronismoCargoMercadoCatalogoEmAndamentoError extends Error {
+  constructor() {
+    super('Já existe um sincronismo do Catálogo de Cargo de Mercado em andamento para este tenant.');
+    this.name = 'SincronismoCargoMercadoCatalogoEmAndamentoError';
+  }
+}
+
 // RN_PLA_002 / cenário E2 — lote abortado por conta analítica sem sintética pai.
 export class ContasOrfasError extends Error {
   constructor(public readonly codigosOrfaos: string[]) {

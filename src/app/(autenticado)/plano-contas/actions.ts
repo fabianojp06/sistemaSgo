@@ -47,6 +47,7 @@ import {
   getSimularReajusteUseCase,
   getAplicarReajusteUseCase,
   getSincronizarGradeSalarialCtceaUseCase,
+  getSincronizarCargoMercadoCatalogoUseCase,
 } from '@/application/use-cases/plano-contas/container';
 import type { EscopoReajuste } from '@/application/use-cases/plano-contas/reajusteLoteTipos';
 import type { PlanoReajusteLote } from '@/application/use-cases/plano-contas/prepararPlanoReajuste';
@@ -100,6 +101,27 @@ export async function sincronizarGradeSalarialCtcea(): Promise<ActionResult> {
 
   try {
     await getSincronizarGradeSalarialCtceaUseCase().execute({ ...contexto, temPermissaoAdministrativa });
+    revalidatePath('/', 'layout');
+    return { sucesso: true };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+/** ADR-047 (US-139) — dispara a sincronização do Catálogo de Cargo de Mercado, mesmo fluxo de sincronizarGradeSalarialCtcea. */
+export async function sincronizarCargoMercadoCatalogo(): Promise<ActionResult> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const temPermissaoAdministrativa = await usuarioTemFuncionalidade(
+    prisma,
+    contexto.tenantId,
+    contexto.usuarioId,
+    'cargo-mercado-catalogo.sincronizar',
+  );
+
+  try {
+    await getSincronizarCargoMercadoCatalogoUseCase().execute({ ...contexto, temPermissaoAdministrativa });
     revalidatePath('/', 'layout');
     return { sucesso: true };
   } catch (erro) {
