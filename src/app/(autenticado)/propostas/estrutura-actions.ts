@@ -27,6 +27,7 @@ import {
   getCadastrarTabelaSalarialUseCase,
   getEditarTabelaSalarialUseCase,
   getExcluirTabelaSalarialUseCase,
+  getBuscarCargoMercadoCatalogoUseCase,
 } from '@/application/use-cases/plano-contas/container';
 import type { RessincronizacaoEmpregadoResultado } from '@/application/use-cases/plano-contas/RessincronizarSnapshotEmpregadosCargoUseCase';
 import type { CandidatoCargoRubi } from '@/infrastructure/integrations/rubi/types';
@@ -493,6 +494,31 @@ export async function buscarCargosRubi(
   try {
     const candidatos = await getCargoRubiProvider().buscarCandidatos({ tenantId: contexto.tenantId, ...entrada.data });
     return { sucesso: true, dados: candidatos.map(serializarCandidatoRubi) };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+export type CandidatoCargoMercadoResultado = {
+  codigoOrigem: string;
+  nome: string;
+};
+
+/**
+ * ADR-047 (US-139) — busca por substring no Catálogo de Cargo de Mercado
+ * (fonte independente da importação Rubi/CTCEA acima). Operação de leitura,
+ * não persiste nada; a importação só preenche o campo `nomeCargoMercado` no
+ * client, sem chamar esta action de novo.
+ */
+export async function buscarCargoMercadoCatalogo(
+  termo: string,
+): Promise<ActionResultComDados<CandidatoCargoMercadoResultado[]>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  try {
+    const candidatos = await getBuscarCargoMercadoCatalogoUseCase().execute(contexto.tenantId, termo);
+    return { sucesso: true, dados: candidatos };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
   }

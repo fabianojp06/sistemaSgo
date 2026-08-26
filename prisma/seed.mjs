@@ -51,6 +51,21 @@ async function seedModuloPlanoContas() {
     },
   });
 
+  // ADR-047 (US-139) — CONTEXTUAL: 3ª fonte sincronizável de /plano-contas, mesmo
+  // padrão de grade-salarial-ctcea.sincronizar (ativação em produção é decisão
+  // separada, fora do escopo desta US).
+  await prisma.funcionalidade.upsert({
+    where: { moduloId_chave: { moduloId: modulo.id, chave: 'cargo-mercado-catalogo.sincronizar' } },
+    update: { ativo: false },
+    create: {
+      moduloId: modulo.id,
+      chave: 'cargo-mercado-catalogo.sincronizar',
+      nome: 'Sincronizar Catálogo de Cargo de Mercado',
+      tipo: 'CONTEXTUAL',
+      ativo: false,
+    },
+  });
+
   // US-007 — Configurar Valor Orçado por Conta Analítica e Exercício. [ADR-021] CONTEXTUAL.
   await prisma.funcionalidade.upsert({
     where: { moduloId_chave: { moduloId: modulo.id, chave: 'plano-contas.configurar-valor-orcado' } },

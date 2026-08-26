@@ -885,6 +885,124 @@ Ao dar `push`, o CI falhou (`32083657145`) em `CadastrarAliquotaImpostoUseCase.t
 
 **Próximo passo natural:** US-133 (`FonteAtivaSalario.TOTAL`) / US-134 (Snapshot de Oficialização) seguem como próximas peças do módulo de Cargos, ainda não iniciadas.
 
+## 2026-08-26 — registrada antes de reiniciar a sessão (MCP do Supabase) — US-139/ADR-047 em implementação, PAUSADA aguardando reconexão MCP
+
+Sessão que cobriu: leitura de memória de sessões anteriores (última era 2026-08-18; gap identificado
+entre 2026-08-18 e o `git log` atual — commits `dd34ee5`/`b20b927`/`13dd8a4` do módulo Orçamentário
+(US-138 Cronograma de Desembolso + landing de Acompanhamento/Orçado) não têm registro correspondente
+neste arquivo, investigação ainda não feita); depois, uma feature nova completa, do refinamento até
+quase o fim da implementação.
+
+### US-139/ADR-047 — Importar Nome do Cargo (Mercado) do catálogo de RH
+
+Pedido do usuário: campo "Nome do Cargo (Mercado)" (já existe em `Cargo`, digitação livre) deve também
+poder ser importado de um catálogo de cargos de mercado do RH. Sem integração HTTP com o ERP de RH
+ainda — fonte usada agora: `docs/Cargo de Mercado.xls` fornecido pelo usuário (184 linhas, 4 delas
+lixo tipo "xxxxxxxxxxxxxxxxxxx" nos códigos 122/151/117/137, confirmadas como excluíveis pelo usuário
+via `AskUserQuestion` — total real: 180 cargos).
+
+Fluxo completo pelas skills: `analista-negocios-po` refinou **US-139** (opcional/não-bloqueante,
+nunca sobrescreve digitação manual sem clique explícito — lição do bug `nomeCargoCtcea` de
+2026-08-15) → `techlead-fsg` produziu **ADR-047**: tabela dedicada `CargoMercadoCatalogo`
+(codigoOrigem+nome+syncedAt, sem FK pra `Cargo`), autocomplete leve embutido no campo (não modal
+pesado tipo `ImportarCargoRubiModal` — não haveria Faixa/Nível pra filtrar aqui), nomenclatura
+deliberadamente distinta da importação Rubi/CTCEA (`nomeCargoCtcea`) já existente, botão
+"Sincronizar Catálogo de Cargo de Mercado" dedicado (mesmo padrão ADR-046/Grade Salarial CTCEA).
+
+**Implementado por mim (chapéu `fullstack-dev`), nesta ordem, na branch `feature/us-139-cargo-mercado-catalogo`:**
+- Schema: enum `TipoOperacao` +`SYNC_CARGO_MERCADO_CATALOGO`; models `CargoMercadoCatalogo` +
+  `SincronismoCargoMercadoCatalogoLock` (mesmo padrão de `GradeSalarialCtcea`/lock, sem FK não
+  relacionada — achado de code-review já visto 2x antes, evitado desta vez de propósito).
+- `src/infrastructure/integrations/cargo-mercado/` (types, `cargo-mercado-raw.ts` com os 180
+  registros transcritos do xls via `xlrd` em Python, `CargoMercadoArquivoProvider`).
+- `CargoMercadoCatalogoBulkLoader` (upsert em lote chunked, mesmo padrão do loader CTCEA, com
+  teste cobrindo o chunking em >2000 linhas — achado de code-review do ADR-046 não repetido).
+- `SincronismoCargoMercadoCatalogoLockRepository`, 2 erros de domínio novos em `errors.ts`.
+- Use cases `SincronizarCargoMercadoCatalogoUseCase` / `BuscarCargoMercadoCatalogoUseCase`
+  (busca por substring, `ILIKE`, limite 20 resultados), registrados em `container.ts`.
+- Server Actions: `sincronizarCargoMercadoCatalogo` (`plano-contas/actions.ts`),
+  `buscarCargoMercadoCatalogo` (`propostas/estrutura-actions.ts`).
+- Funcionalidade nova no seed (`cargo-mercado-catalogo.sincronizar`, `ativo: false` por padrão,
+  mesmo padrão de `grade-salarial-ctcea.sincronizar`).
+- UI: `BotaoSincronizarCargoMercadoCatalogo.tsx` em `/plano-contas` (nova seção "Catálogo de Cargo
+  de Mercado (RH)"); `AutocompleteCargoMercado.tsx` embutido no campo em `CargoPanel.tsx`
+  (debounce, nunca sobrescreve sem clique).
+- Testes novos (`CargoMercadoCatalogoBulkLoader`, `SincronizarCargoMercadoCatalogoUseCase`,
+  `BuscarCargoMercadoCatalogoUseCase`): 10 testes, todos passando. Suíte completa: **379/379
+  passando**, `tsc --noEmit` limpo, `eslint` limpo nos arquivos tocados.
+
+**Achado não relacionado, descoberto ao validar `next build`:** a página `/orcamentario/acompanhamento`
+(dos commits `b20b927`/`13dd8a4`, não documentados aqui antes) quebra o build de produção com
+"Missing publishableKey" do Clerk — **confirmado que é pré-existente em `master`** (reproduzido com
+`git stash` + build limpo, mesmo erro sem nenhuma mudança desta sessão). Não investigado a fundo
+ainda — possivelmente falta algum guard de renderização dinâmica nessa página nova, diferente das
+demais páginas autenticadas que não quebram o build sem `.env`. **Registrar como pendência para a
+próxima sessão, fora do escopo de US-139.**
+
+### Migration da US-139: BLOQUEADA, sessão pausada para reiniciar (MCP do Supabase)
+
+Ao chegar na etapa de migration, descobri que **este Codespace não tem `.env` configurado** — sem
+`DATABASE_URL` nem `SHADOW_DATABASE_URL` no ambiente (Codespace foi recriado desde a última sessão,
+mesma causa já suspeitada para a memória padrão vazia no início desta sessão). Não tentei adivinhar
+nem construir a URL — parei e perguntei ao usuário, seguindo a regra permanente de cautela com banco
+de produção do CLAUDE.md.
+
+Usuário optou por instalar o MCP do Supabase para aplicar a migration sem precisar do `.env` local
+(eu escrevo o SQL à mão, sem `prisma migrate dev`/`migrate diff` — que exigem shadow database e
+foram a causa do incidente de 2026-08-14 —, mostro pra aprovação, aplico via MCP, registro no
+histórico do Prisma). Comando rodado pelo usuário:
+```
+claude mcp add --scope project --transport http supabase "https://mcp.supabase.com/mcp?project_ref=gfmsuodfvdzbkahjjpbr&features=docs%2Caccount%2Cdatabase%2Cdebugging%2Cdevelopment%2Cfunctions%2Cbranching"
+```
+Registrado em `.mcp.json` (arquivo novo, ainda não commitado — decidir se entra no commit da feature
+ou fica só local/gitignored, não decidido ainda). As ferramentas do MCP não apareceram nesta sessão
+mesmo após tentativas de busca — provavelmente precisa reiniciar a sessão do Claude Code (mudança em
+`.mcp.json` só é lida na inicialização) e possivelmente autorizar via OAuth no navegador na primeira
+conexão. **Sessão pausada aqui, a pedido do usuário, para reiniciar e reconectar o MCP.**
+
+### Estado exato ao pausar
+
+Branch `feature/us-139-cargo-mercado-catalogo`, **nada commitado ainda** — todas as mudanças listadas
+acima estão só no working tree (`git status` mostra 8 arquivos modificados + 12 novos, incluindo
+`docs/Cargo de Mercado.xls` ainda não versionado). `.mcp.json` também não commitado. Reiniciar a
+sessão do Claude Code (processo) não apaga esses arquivos — só reinicia a sessão de conversa; os
+arquivos em disco permanecem. **Não rodar `git checkout`/`git clean`/`git reset` em nada nesta
+branch antes de retomar.**
+
+**Próximo passo combinado, na ordem:** (1) confirmar que as ferramentas do MCP do Supabase apareceram
+após o reinício; (2) escrever a migration SQL à mão (2 tabelas + 1 valor de enum) e mostrar para
+aprovação antes de aplicar; (3) aplicar via MCP + registrar no histórico do Prisma
+(`prisma migrate resolve --applied`); (4) rodar `next build` completo de novo (já validado antes da
+migration, só as 2 tabelas novas faltam); (5) commit(s) na branch, push, abrir PR, `/code-review`;
+(6) decidir separadamente o achado do item "/orcamentario/acompanhamento" (fora do escopo desta US).
+
+## 2026-08-26 (cont.) — migration da US-139 aplicada manualmente (rede local não permitiu instalar o MCP do Supabase)
+
+Ao retomar, o MCP do Supabase não conseguiu ser instalado no ambiente do usuário (rede local com restrição). Decisão: abandonar o caminho do MCP e aplicar a migration inteiramente na mão, seguindo o mesmo cuidado (SQL mostrado para aprovação antes de rodar, nunca `prisma migrate dev`/`migrate diff` contra produção).
+
+**O que foi feito, em ordem:**
+1. `dba-data-engineer` (via skill) gerou `prisma/migrations/20260826132733_add_cargo_mercado_catalogo/migration.sql`, no mesmo molde exato da migration `20260814135855_add_grade_salarial_ctcea` (2 `CREATE TABLE` + 2 `CREATE INDEX` + 1 `ALTER TYPE ... ADD VALUE`). Risco classificado como LOW — só cria tabelas novas vazias, não toca em dado/coluna existente.
+2. Usuário aplicou o SQL manualmente via **SQL Editor do Supabase** (não pelo MCP, não pelo Prisma CLI) — "Success. No rows returned".
+3. Registro no histórico do Prisma (`prisma migrate resolve --applied ...`) travou 2x por causa da rede: (a) 1ª tentativa sem `DATABASE_URL` no ambiente (Codespace não tem `.env`, mesmo problema já documentado antes); (b) 2ª tentativa com a connection string **direta** (`db.<ref>.supabase.co:5432`) deu `P1001: Can't reach database server` — IPv6, incompatível com a rede local do usuário; (c) 3ª tentativa com o **Transaction pooler** (`aws-0-sa-east-1.pooler.supabase.com:6543`) ficou pendurada (>2min sem resposta, sem erro) — o modo transaction do pooler não sustenta o lock de sessão que `prisma migrate resolve` precisa; **funcionou** na 4ª tentativa trocando só a porta para o **Session pooler** (mesmo host, `:5432`, usuário `postgres.<project_ref>`). **Lição para o futuro:** neste projeto, para comandos `prisma migrate` contra o Supabase a partir de uma rede sem suporte a IPv6, usar sempre a connection string do Session Pooler (porta 5432 no host `pooler.supabase.com`), nunca a direta nem o Transaction pooler (porta 6543).
+4. ⚠️ **Nota de segurança:** durante o processo, o usuário colou a senha do Postgres de produção em texto puro no chat (via comando `export DATABASE_URL=...`). Foi recomendado a ele trocar a senha em `Supabase → Project Settings → Database → Reset database password` depois de concluída a sessão — **confirmar se isso foi feito**; se não, é uma pendência de segurança em aberto.
+5. `next build` de produção rodado de novo — o erro pré-existente em `/orcamentario/acompanhamento` ("Missing publishableKey" do Clerk) se repetiu, confirmando (de novo) que não tem relação com a US-139.
+6. `npx tsc --noEmit` limpo, `npx vitest run` 379/379 passando, `eslint` limpo nos arquivos tocados.
+7. Falta apenas: commit(s) na branch `feature/us-139-cargo-mercado-catalogo`, push, abrir PR, rodar `/code-review`.
+
+**Pendência não relacionada, ainda em aberto (herdada, não é escopo da US-139):** erro de build em `/orcamentario/acompanhamento` por falta de `publishableKey` do Clerk — investigar em sessão futura.
+
+**Decisão pendente:** se `.mcp.json` (aponta pro MCP do Supabase, que acabou não sendo usado nesta sessão por limitação de rede) entra no commit desta feature ou fica de fora/local. Como a instalação nunca chegou a funcionar, tende a fazer mais sentido não commitar por ora — decidir no momento do commit.
+
+## 2026-08-26 (cont. 2) — `/code-review high` no PR #12: 2 achados corrigidos, 1 registrado como dívida técnica (não corrigido de propósito)
+
+`/code-review high` rodado na branch `feature/us-139-cargo-mercado-catalogo` (PR #12) achou 3 pontos:
+
+1. **[Corrigido]** `AutocompleteCargoMercado.tsx` — resposta de busca fora de ordem (debounce) podia sobrescrever sugestão mais recente com resultado desatualizado, inclusive reabrindo a lista já com o campo abaixo do mínimo de caracteres. Corrigido com um ref (`ultimoTermoBuscadoRef`) que guarda o termo da busca em voo e descarta a resposta se o termo mudou nesse meio-tempo (inclusive invalidando a ref quando o campo é limpo abaixo do mínimo).
+2. **[Corrigido]** `CargoMercadoCatalogoBulkLoader.ts` — `INSERT ... ON CONFLICT` em lote sem deduplicar `codigoOrigem` antes de montar o statement; Postgres rejeita o lote inteiro se o mesmo código aparecer 2x no mesmo INSERT (`cannot affect row a second time`). Corrigido com `Map` deduplicando por `codigoOrigem` (mantendo a última ocorrência) antes de fatiar em lotes de 2000. Teste novo cobrindo o cenário.
+3. **[Registrado, não corrigido — decisão do usuário]** 3ª cópia quase idêntica do padrão de lock por tenant (Plano de Contas → CTCEA → Cargo Mercado) e do bulk loader chunked (CTCEA → Cargo Mercado). Não é bug, é dívida técnica de duplicação — decisão consciente de não extrair abstração genérica (`TenantSyncLockRepository`/`BulkUpsertLoader<T>`) agora. **Revisitar na próxima vez que esse padrão se repetir de novo** (4ª ocorrência seria o gatilho natural para extrair).
+
+380/380 testes passando (1 novo), `tsc --noEmit` e `eslint` limpos nos arquivos tocados. Falta: commit do fix, push, atualizar PR #12.
+
 ## Como usar este arquivo em sessões futuras
 
 No início de uma sessão, se o usuário perguntar "qual o contexto/status de X", leia este arquivo antes de assumir que a memória padrão (`~/.claude/.../memory/`) está atualizada — o ambiente deste projeto (Codespace) pode ter sido recriado desde a última sessão, apagando a memória padrão sem apagar o repositório.

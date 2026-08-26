@@ -7,6 +7,11 @@ import { GradeSalarialCtceaArquivoProvider } from '@/infrastructure/integrations
 import { GradeSalarialCtceaBulkLoader } from '@/infrastructure/plano-contas/GradeSalarialCtceaBulkLoader';
 import { SincronismoGradeSalarialCtceaLockRepository } from '@/infrastructure/plano-contas/SincronismoGradeSalarialCtceaLockRepository';
 import { SincronizarGradeSalarialCtceaUseCase } from './SincronizarGradeSalarialCtceaUseCase';
+import { CargoMercadoArquivoProvider } from '@/infrastructure/integrations/cargo-mercado/CargoMercadoArquivoProvider';
+import { CargoMercadoCatalogoBulkLoader } from '@/infrastructure/plano-contas/CargoMercadoCatalogoBulkLoader';
+import { SincronismoCargoMercadoCatalogoLockRepository } from '@/infrastructure/plano-contas/SincronismoCargoMercadoCatalogoLockRepository';
+import { SincronizarCargoMercadoCatalogoUseCase } from './SincronizarCargoMercadoCatalogoUseCase';
+import { BuscarCargoMercadoCatalogoUseCase } from './BuscarCargoMercadoCatalogoUseCase';
 import { RegistrarExportacaoRelatorioCronogramaUseCase } from './RegistrarExportacaoRelatorioCronogramaUseCase';
 import { CriarAgrupadorUseCase } from './CriarAgrupadorUseCase';
 import { EditarAgrupadorUseCase } from './EditarAgrupadorUseCase';
@@ -184,6 +189,19 @@ export function getSincronizarGradeSalarialCtceaUseCase(): SincronizarGradeSalar
     new GradeSalarialCtceaBulkLoader(prisma),
     new SincronismoGradeSalarialCtceaLockRepository(prisma),
   );
+}
+
+export function getSincronizarCargoMercadoCatalogoUseCase(): SincronizarCargoMercadoCatalogoUseCase {
+  return new SincronizarCargoMercadoCatalogoUseCase(
+    prisma,
+    new CargoMercadoArquivoProvider(),
+    new CargoMercadoCatalogoBulkLoader(prisma),
+    new SincronismoCargoMercadoCatalogoLockRepository(prisma),
+  );
+}
+
+export function getBuscarCargoMercadoCatalogoUseCase(): BuscarCargoMercadoCatalogoUseCase {
+  return new BuscarCargoMercadoCatalogoUseCase(prisma);
 }
 
 export function getRegistrarExportacaoRelatorioCronogramaUseCase(): RegistrarExportacaoRelatorioCronogramaUseCase {
