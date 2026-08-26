@@ -63,4 +63,30 @@ describe('CargoMercadoCatalogoBulkLoader [ADR-047/US-139]', () => {
     expect(resultado.linhasProcessadas).toBe(2001);
     expect(prisma.$executeRawUnsafe).toHaveBeenCalledTimes(2);
   });
+
+  it('deduplica por codigoOrigem repetido no mesmo payload, mantendo a última ocorrência (achado de code-review)', async () => {
+    const prisma = criarPrismaMock();
+    const loader = new CargoMercadoCatalogoBulkLoader(prisma as never);
+
+    const payload: CargoMercadoPayload[] = [
+      { codigoOrigem: '1', nome: 'NOME ANTIGO' },
+      { codigoOrigem: '2', nome: 'ADMINISTRADOR DE REDES' },
+      { codigoOrigem: '1', nome: 'NOME CORRIGIDO' },
+    ];
+
+    const resultado = await loader.sincronizar('tenant-1', payload);
+
+    expect(resultado.linhasProcessadas).toBe(2);
+    expect(prisma.$executeRawUnsafe).toHaveBeenCalledTimes(1);
+
+    const [, ...parametros] = prisma.$executeRawUnsafe.mock.calls[0];
+    expect(parametros).toEqual([
+      'tenant-1',
+      '1',
+      'NOME CORRIGIDO',
+      'tenant-1',
+      '2',
+      'ADMINISTRADOR DE REDES',
+    ]);
+  });
 });

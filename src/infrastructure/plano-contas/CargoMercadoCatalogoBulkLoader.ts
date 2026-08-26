@@ -12,7 +12,10 @@ export type ResultadoSincronismoCargoMercadoCatalogo = {
  * parâmetros por statement do Postgres.
  *
  * O `DO UPDATE` só toca `nome`/`syncedAt` — a chave de conflito é
- * (tenantId, codigoOrigem).
+ * (tenantId, codigoOrigem). Deduplica por codigoOrigem antes de montar os
+ * lotes (achado de code-review: um mesmo código repetido no payload — dado
+ * transcrito à mão hoje, futura integração HTTP real amanhã — quebraria o
+ * INSERT em lote inteiro).
  */
 const LINHAS_POR_LOTE = 2000;
 
@@ -27,8 +30,18 @@ export class CargoMercadoCatalogoBulkLoader {
       return { linhasProcessadas: 0 };
     }
 
-    for (let inicio = 0; inicio < payload.length; inicio += LINHAS_POR_LOTE) {
-      const lote = payload.slice(inicio, inicio + LINHAS_POR_LOTE);
+    // Deduplica por codigoOrigem (chave de conflito do upsert) antes de montar os
+    // lotes: um mesmo codigoOrigem repetido no mesmo statement faz o Postgres
+    // rejeitar o INSERT inteiro ("ON CONFLICT DO UPDATE command cannot affect row
+    // a second time"). Mantém a última ocorrência, tratando-a como a mais recente.
+    const porCodigoOrigem = new Map<string, CargoMercadoPayload>();
+    for (const linha of payload) {
+      porCodigoOrigem.set(linha.codigoOrigem, linha);
+    }
+    const linhasDeduplicadas = [...porCodigoOrigem.values()];
+
+    for (let inicio = 0; inicio < linhasDeduplicadas.length; inicio += LINHAS_POR_LOTE) {
+      const lote = linhasDeduplicadas.slice(inicio, inicio + LINHAS_POR_LOTE);
 
       const valores: string[] = [];
       const parametros: unknown[] = [];
@@ -49,6 +62,6 @@ export class CargoMercadoCatalogoBulkLoader {
       await this.prisma.$executeRawUnsafe(sql, ...parametros);
     }
 
-    return { linhasProcessadas: payload.length };
+    return { linhasProcessadas: linhasDeduplicadas.length };
   }
 }

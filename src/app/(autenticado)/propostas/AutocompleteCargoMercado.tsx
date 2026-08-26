@@ -23,6 +23,7 @@ export function AutocompleteCargoMercado({ value, onChange }: Props) {
   const [aberto, setAberto] = useState(false);
   const [buscando, setBuscando] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ultimoTermoBuscadoRef = useRef<string | null>(null);
 
   useEffect(() => {
     return () => {
@@ -37,16 +38,19 @@ export function AutocompleteCargoMercado({ value, onChange }: Props) {
 
     const termo = novoValor.trim();
     if (termo.length < TAMANHO_MINIMO_TERMO) {
+      ultimoTermoBuscadoRef.current = null;
       setSugestoes(null);
       setAberto(false);
       return;
     }
 
     debounceRef.current = setTimeout(async () => {
+      ultimoTermoBuscadoRef.current = termo;
       setBuscando(true);
       const resposta = await buscarCargoMercadoCatalogo(termo);
+      const aindaEhABuscaAtual = ultimoTermoBuscadoRef.current === termo;
       setBuscando(false);
-      if (resposta.sucesso) {
+      if (resposta.sucesso && aindaEhABuscaAtual) {
         setSugestoes(resposta.dados);
         setAberto(true);
       }

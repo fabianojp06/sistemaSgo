@@ -993,6 +993,16 @@ Ao retomar, o MCP do Supabase não conseguiu ser instalado no ambiente do usuár
 
 **Decisão pendente:** se `.mcp.json` (aponta pro MCP do Supabase, que acabou não sendo usado nesta sessão por limitação de rede) entra no commit desta feature ou fica de fora/local. Como a instalação nunca chegou a funcionar, tende a fazer mais sentido não commitar por ora — decidir no momento do commit.
 
+## 2026-08-26 (cont. 2) — `/code-review high` no PR #12: 2 achados corrigidos, 1 registrado como dívida técnica (não corrigido de propósito)
+
+`/code-review high` rodado na branch `feature/us-139-cargo-mercado-catalogo` (PR #12) achou 3 pontos:
+
+1. **[Corrigido]** `AutocompleteCargoMercado.tsx` — resposta de busca fora de ordem (debounce) podia sobrescrever sugestão mais recente com resultado desatualizado, inclusive reabrindo a lista já com o campo abaixo do mínimo de caracteres. Corrigido com um ref (`ultimoTermoBuscadoRef`) que guarda o termo da busca em voo e descarta a resposta se o termo mudou nesse meio-tempo (inclusive invalidando a ref quando o campo é limpo abaixo do mínimo).
+2. **[Corrigido]** `CargoMercadoCatalogoBulkLoader.ts` — `INSERT ... ON CONFLICT` em lote sem deduplicar `codigoOrigem` antes de montar o statement; Postgres rejeita o lote inteiro se o mesmo código aparecer 2x no mesmo INSERT (`cannot affect row a second time`). Corrigido com `Map` deduplicando por `codigoOrigem` (mantendo a última ocorrência) antes de fatiar em lotes de 2000. Teste novo cobrindo o cenário.
+3. **[Registrado, não corrigido — decisão do usuário]** 3ª cópia quase idêntica do padrão de lock por tenant (Plano de Contas → CTCEA → Cargo Mercado) e do bulk loader chunked (CTCEA → Cargo Mercado). Não é bug, é dívida técnica de duplicação — decisão consciente de não extrair abstração genérica (`TenantSyncLockRepository`/`BulkUpsertLoader<T>`) agora. **Revisitar na próxima vez que esse padrão se repetir de novo** (4ª ocorrência seria o gatilho natural para extrair).
+
+380/380 testes passando (1 novo), `tsc --noEmit` e `eslint` limpos nos arquivos tocados. Falta: commit do fix, push, atualizar PR #12.
+
 ## Como usar este arquivo em sessões futuras
 
 No início de uma sessão, se o usuário perguntar "qual o contexto/status de X", leia este arquivo antes de assumir que a memória padrão (`~/.claude/.../memory/`) está atualizada — o ambiente deste projeto (Codespace) pode ter sido recriado desde a última sessão, apagando a memória padrão sem apagar o repositório.
