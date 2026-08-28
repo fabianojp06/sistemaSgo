@@ -64,7 +64,7 @@ Pré-requisitos: Node.js 20+, uma instância PostgreSQL (recomendado: [Supabase]
 ```bash
 # 1. Configurar variáveis de ambiente
 cp .env.example .env
-# preencha DATABASE_URL, credenciais do Clerk, etc.
+# preencha POSTGRES_PRISMA_URL, POSTGRES_URL_NON_POOLING, credenciais do Clerk, etc.
 
 # 2. Instalar dependências (gera o Prisma Client automaticamente via postinstall)
 npm install
