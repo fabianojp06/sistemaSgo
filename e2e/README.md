@@ -4,7 +4,7 @@ Suíte Playwright cobrindo os cenários P0 definidos pela QA (ver `docs/CONTEXTO
 
 ## Pré-requisitos
 
-1. `.env` preenchido com `DATABASE_URL`, `CLERK_SECRET_KEY` e `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` reais
+1. `.env` preenchido com `POSTGRES_PRISMA_URL`, `POSTGRES_URL_NON_POOLING`, `CLERK_SECRET_KEY` e `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` reais
    (instância de teste/free do Clerk e banco de teste — nunca produção).
 2. Dois usuários de teste criados no Clerk **e** sincronizados na tabela `Usuario` (via seed ou webhook):
    - Usuário "feliz", usado em CT-001, CT-002, CT-006 — nunca deixe-o ser bloqueado.

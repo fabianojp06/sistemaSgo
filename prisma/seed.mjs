@@ -303,7 +303,9 @@ async function seedAliquotasImposto(tenantId) {
 }
 
 async function main() {
-  const url = new URL(process.env.DATABASE_URL);
+  const url = new URL(
+    process.env.POSTGRES_PRISMA_URL ?? process.env.DATABASE_URL,
+  );
   console.log(`conectando em host=${url.host} user=${url.username} db=${url.pathname}`);
 
   await seedModuloPlanoContas();

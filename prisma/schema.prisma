@@ -3,8 +3,14 @@ generator client {
 }
 
 datasource db {
-  provider          = "postgresql"
-  url               = env("DATABASE_URL")
+  provider = "postgresql"
+  // 2026-08-27: trocado de DATABASE_URL (manual, ficou com senha velha após
+  // rotação e derrubou o login em produção) para o par gerado e mantido
+  // sincronizado pela integração Supabase↔Vercel a cada rotação de senha.
+  // `url` é o pooler (pgbouncer, porta 6543) usado em runtime serverless;
+  // `directUrl` é a conexão direta (porta 5432) usada por `migrate`/introspect.
+  url       = env("POSTGRES_PRISMA_URL")
+  directUrl = env("POSTGRES_URL_NON_POOLING")
   // Incidente 2026-08-14: um `prisma migrate diff --shadow-database-url` apontado
   // por engano para a própria URL de produção apagou todos os dados (schema
   // preservado, tabelas zeradas). shadowDatabaseUrl SEMPRE aponta para um Postgres
