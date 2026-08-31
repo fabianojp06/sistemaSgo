@@ -1,48 +1,62 @@
 import { describe, expect, it, vi } from 'vitest';
 import { BuscarCargoMercadoCatalogoUseCase } from './BuscarCargoMercadoCatalogoUseCase';
+import type { CargoMercadoProvider } from '@/infrastructure/integrations/cargo-mercado/types';
 
-function criarPrismaMock() {
-  return {
-    cargoMercadoCatalogo: {
-      findMany: vi.fn().mockResolvedValue([]),
-    },
-  };
+function criarProviderMock(catalogo: Array<{ codigoOrigem: string; nome: string }>): {
+  provider: CargoMercadoProvider;
+  buscarCatalogoAtivo: ReturnType<typeof vi.fn>;
+} {
+  const buscarCatalogoAtivo = vi.fn().mockResolvedValue(catalogo);
+  return { provider: { buscarCatalogoAtivo }, buscarCatalogoAtivo };
 }
 
 describe('BuscarCargoMercadoCatalogoUseCase [ADR-047/US-139]', () => {
-  it('retorna vazio sem consultar o banco quando o termo tem menos de 2 caracteres (Cenário 5)', async () => {
-    const prisma = criarPrismaMock();
-    const useCase = new BuscarCargoMercadoCatalogoUseCase(prisma as never);
+  it('retorna vazio sem consultar o catálogo quando o termo tem menos de 2 caracteres (Cenário 5)', async () => {
+    const { provider, buscarCatalogoAtivo } = criarProviderMock([]);
+    const useCase = new BuscarCargoMercadoCatalogoUseCase(provider);
 
-    const resultado = await useCase.execute('t1', 'a');
+    const resultado = await useCase.execute('a');
 
     expect(resultado).toEqual([]);
-    expect(prisma.cargoMercadoCatalogo.findMany).not.toHaveBeenCalled();
+    expect(buscarCatalogoAtivo).not.toHaveBeenCalled();
   });
 
-  it('busca por substring case-insensitive, filtrando por tenant e limitando a 20 resultados', async () => {
-    const prisma = criarPrismaMock();
-    prisma.cargoMercadoCatalogo.findMany.mockResolvedValue([
+  it('busca por substring case-insensitive, ordena por nome e limita a 20 resultados', async () => {
+    const catalogo = [
+      { codigoOrigem: '2', nome: 'ADMINISTRADOR DE REDES' },
       { codigoOrigem: '1', nome: 'ADMINISTRADOR DE BANCO DE DADOS' },
+      { codigoOrigem: '3', nome: 'ENFERMEIRO' },
+    ];
+    const { provider } = criarProviderMock(catalogo);
+    const useCase = new BuscarCargoMercadoCatalogoUseCase(provider);
+
+    const resultado = await useCase.execute(' administrador ');
+
+    // Só os que casam, ordenados alfabeticamente.
+    expect(resultado).toEqual([
+      { codigoOrigem: '1', nome: 'ADMINISTRADOR DE BANCO DE DADOS' },
+      { codigoOrigem: '2', nome: 'ADMINISTRADOR DE REDES' },
     ]);
-    const useCase = new BuscarCargoMercadoCatalogoUseCase(prisma as never);
+  });
 
-    const resultado = await useCase.execute('t1', ' administrador ');
+  it('limita a 20 resultados mesmo quando o termo casa com mais linhas', async () => {
+    const catalogo = Array.from({ length: 25 }, (_, i) => ({
+      codigoOrigem: String(i),
+      nome: `ANALISTA ${String(i).padStart(2, '0')}`,
+    }));
+    const { provider } = criarProviderMock(catalogo);
+    const useCase = new BuscarCargoMercadoCatalogoUseCase(provider);
 
-    expect(resultado).toEqual([{ codigoOrigem: '1', nome: 'ADMINISTRADOR DE BANCO DE DADOS' }]);
-    expect(prisma.cargoMercadoCatalogo.findMany).toHaveBeenCalledWith({
-      where: { tenantId: 't1', nome: { contains: 'administrador', mode: 'insensitive' } },
-      orderBy: { nome: 'asc' },
-      take: 20,
-      select: { codigoOrigem: true, nome: true },
-    });
+    const resultado = await useCase.execute('analista');
+
+    expect(resultado).toHaveLength(20);
   });
 
   it('retorna lista vazia quando nenhum cargo corresponde ao termo', async () => {
-    const prisma = criarPrismaMock();
-    const useCase = new BuscarCargoMercadoCatalogoUseCase(prisma as never);
+    const { provider } = criarProviderMock([{ codigoOrigem: '1', nome: 'ENFERMEIRO' }]);
+    const useCase = new BuscarCargoMercadoCatalogoUseCase(provider);
 
-    const resultado = await useCase.execute('t1', 'termo-inexistente');
+    const resultado = await useCase.execute('termo-inexistente');
 
     expect(resultado).toEqual([]);
   });

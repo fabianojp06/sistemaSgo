@@ -517,7 +517,7 @@ export async function buscarCargoMercadoCatalogo(
   if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
 
   try {
-    const candidatos = await getBuscarCargoMercadoCatalogoUseCase().execute(contexto.tenantId, termo);
+    const candidatos = await getBuscarCargoMercadoCatalogoUseCase().execute(termo);
     return { sucesso: true, dados: candidatos };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };

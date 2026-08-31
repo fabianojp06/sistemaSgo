@@ -201,7 +201,9 @@ export function getSincronizarCargoMercadoCatalogoUseCase(): SincronizarCargoMer
 }
 
 export function getBuscarCargoMercadoCatalogoUseCase(): BuscarCargoMercadoCatalogoUseCase {
-  return new BuscarCargoMercadoCatalogoUseCase(prisma);
+  // Lê do catálogo embutido (provider), não da tabela sincronizada — a busca
+  // funciona sem sincronismo prévio (ADR-047, paridade com a importação do Rubi).
+  return new BuscarCargoMercadoCatalogoUseCase(new CargoMercadoArquivoProvider());
 }
 
 export function getRegistrarExportacaoRelatorioCronogramaUseCase(): RegistrarExportacaoRelatorioCronogramaUseCase {
