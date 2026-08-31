@@ -1,6 +1,7 @@
-import type { PrismaClient } from '@prisma/client';
+import type { CargoMercadoProvider } from '@/infrastructure/integrations/cargo-mercado/types';
 
 const LIMITE_RESULTADOS = 20;
+const TAMANHO_MINIMO_TERMO = 2;
 
 export type CandidatoCargoMercado = {
   codigoOrigem: string;
@@ -9,28 +10,31 @@ export type CandidatoCargoMercado = {
 
 /**
  * ADR-047 (US-139) — busca por substring (case-insensitive) no Catálogo de
- * Cargo de Mercado. Sem paginação (catálogo pequeno, ~180 linhas) — limitado
- * a 20 resultados só para não estourar a UI com um termo muito genérico.
+ * Cargo de Mercado.
+ *
+ * Lê direto do provider (catálogo embutido em código, ~180 linhas), NÃO da
+ * tabela `CargoMercadoCatalogo`: assim a importação funciona sempre, sem
+ * depender de um sincronismo prévio nem de permissão — mesma experiência de
+ * "só usar" da importação do Rubi. O sincronismo/tabela seguem existindo para
+ * uma futura fonte HTTP real (basta trocar a implementação do provider), mas
+ * não são mais pré-requisito da busca. Operação de leitura, não persiste nada.
  */
 export class BuscarCargoMercadoCatalogoUseCase {
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(private readonly provider: CargoMercadoProvider) {}
 
-  async execute(tenantId: string, termo: string): Promise<CandidatoCargoMercado[]> {
+  async execute(termo: string): Promise<CandidatoCargoMercado[]> {
     const termoNormalizado = termo.trim();
-    if (termoNormalizado.length < 2) {
+    if (termoNormalizado.length < TAMANHO_MINIMO_TERMO) {
       return [];
     }
 
-    const registros = await this.prisma.cargoMercadoCatalogo.findMany({
-      where: {
-        tenantId,
-        nome: { contains: termoNormalizado, mode: 'insensitive' },
-      },
-      orderBy: { nome: 'asc' },
-      take: LIMITE_RESULTADOS,
-      select: { codigoOrigem: true, nome: true },
-    });
+    const alvo = termoNormalizado.toLowerCase();
+    const catalogo = await this.provider.buscarCatalogoAtivo();
 
-    return registros;
+    return catalogo
+      .filter((linha) => linha.nome.toLowerCase().includes(alvo))
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+      .slice(0, LIMITE_RESULTADOS)
+      .map((linha) => ({ codigoOrigem: linha.codigoOrigem, nome: linha.nome }));
   }
 }

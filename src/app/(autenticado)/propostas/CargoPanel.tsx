@@ -13,6 +13,7 @@ import { TabelaSalarialModal } from './TabelaSalarialModal';
 import { ImportarCargoRubiModal } from './ImportarCargoRubiModal';
 import { SeletorContaAnalitica } from './SeletorContaAnalitica';
 import { AutocompleteCargoMercado } from './AutocompleteCargoMercado';
+import { BotaoImportarCargoMercado } from './BotaoImportarCargoMercado';
 import { calcularSalarioTotalCargo } from '@/domain/plano-contas/calcularSalarioTotalCargo';
 import { calcularCustoTotalCargo } from '@/domain/plano-contas/calcularCustoTotalCargo';
 
@@ -615,7 +616,13 @@ export function CargoPanel({
                 <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Identificação e Mercado</p>
                 <div className="grid grid-cols-1 items-start gap-x-4 gap-y-3 md:grid-cols-3">
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-600">Nome do Cargo (Mercado)</label>
+                    <div className="mb-1 flex items-center justify-between gap-2">
+                      <label className="block text-xs font-medium text-gray-600">Nome do Cargo (Mercado)</label>
+                      <BotaoImportarCargoMercado
+                        onSelecionar={(nome) => setDados((d) => ({ ...d, nomeCargoMercado: nome }))}
+                        className="whitespace-nowrap rounded-md border border-slate-300 px-1.5 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-50"
+                      />
+                    </div>
                     <AutocompleteCargoMercado
                       value={dados.nomeCargoMercado}
                       onChange={(valor) => setDados((d) => ({ ...d, nomeCargoMercado: valor }))}

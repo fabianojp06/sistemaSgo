@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from 'react';
 import Link from 'next/link';
+import { BotaoImportarCargoMercado } from './BotaoImportarCargoMercado';
 import {
   listarSenioridades,
   cadastrarSenioridade,
@@ -212,7 +213,10 @@ export function TabelaSalarialModal({ cargoId, cargoNome, propostaId, onFechar, 
 
           {!cargoIdAtual && (
             <section className="mb-4 rounded-lg border border-blue-100 bg-blue-50 p-3">
-              <p className="mb-2 text-xs font-medium text-gray-600">Cadastrar Cargo</p>
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="text-xs font-medium text-gray-600">Cadastrar Cargo</p>
+                <BotaoImportarCargoMercado onSelecionar={(nome) => setNomeNovoCargo(nome)} />
+              </div>
               <div className="flex gap-2">
                 <input
                   type="text"

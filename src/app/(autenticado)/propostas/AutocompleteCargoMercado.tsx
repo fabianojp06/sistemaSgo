@@ -1,10 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { buscarCargoMercadoCatalogo, type CandidatoCargoMercadoResultado } from './estrutura-actions';
-
-const DEBOUNCE_MS = 300;
-const TAMANHO_MINIMO_TERMO = 2;
+import { useState } from 'react';
+import { TAMANHO_MINIMO_TERMO, useBuscaCargoMercadoCatalogo } from './useBuscaCargoMercadoCatalogo';
 
 type Props = {
   value: string;
@@ -17,48 +14,22 @@ type Props = {
  * importação Rubi/CTCEA. Nunca sobrescreve o campo sozinho: só sugere, e só
  * preenche no clique explícito do usuário — o campo continua sempre editável
  * livremente antes e depois (mesma lição do bug de nomeCargoCtcea, 2026-08-15).
+ *
+ * A busca debounced + o guard de resposta fora de ordem vivem em
+ * useBuscaCargoMercadoCatalogo, compartilhados com BotaoImportarCargoMercado.
  */
 export function AutocompleteCargoMercado({ value, onChange }: Props) {
-  const [sugestoes, setSugestoes] = useState<CandidatoCargoMercadoResultado[] | null>(null);
+  const { sugestoes, buscando, buscar } = useBuscaCargoMercadoCatalogo();
   const [aberto, setAberto] = useState(false);
-  const [buscando, setBuscando] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const ultimoTermoBuscadoRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, []);
 
   function handleChange(novoValor: string) {
     onChange(novoValor);
-
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-
-    const termo = novoValor.trim();
-    if (termo.length < TAMANHO_MINIMO_TERMO) {
-      ultimoTermoBuscadoRef.current = null;
-      setSugestoes(null);
-      setAberto(false);
-      return;
-    }
-
-    debounceRef.current = setTimeout(async () => {
-      ultimoTermoBuscadoRef.current = termo;
-      setBuscando(true);
-      const resposta = await buscarCargoMercadoCatalogo(termo);
-      const aindaEhABuscaAtual = ultimoTermoBuscadoRef.current === termo;
-      setBuscando(false);
-      if (resposta.sucesso && aindaEhABuscaAtual) {
-        setSugestoes(resposta.dados);
-        setAberto(true);
-      }
-    }, DEBOUNCE_MS);
+    buscar(novoValor);
+    setAberto(novoValor.trim().length >= TAMANHO_MINIMO_TERMO);
   }
 
-  function selecionar(candidato: CandidatoCargoMercadoResultado) {
-    onChange(candidato.nome);
+  function selecionar(nome: string) {
+    onChange(nome);
     setAberto(false);
   }
 
@@ -86,7 +57,7 @@ export function AutocompleteCargoMercado({ value, onChange }: Props) {
                 key={candidato.codigoOrigem}
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
-                onClick={() => selecionar(candidato)}
+                onClick={() => selecionar(candidato.nome)}
                 className="block w-full px-2 py-1.5 text-left text-xs hover:bg-blue-50"
               >
                 {candidato.nome}
