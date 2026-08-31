@@ -8,7 +8,11 @@ export default defineConfig({
     },
   },
   test: {
+    // Ambiente padrão `node` para os testes de lógica/use case; testes de
+    // componente React (.test.tsx) rodam em jsdom via environmentMatchGlobs.
     environment: 'node',
+    environmentMatchGlobs: [['**/*.test.tsx', 'jsdom']],
+    setupFiles: ['./vitest.setup.ts'],
     exclude: ['**/node_modules/**', 'e2e/**'],
   },
 });
