@@ -1025,6 +1025,27 @@ Sessão de QA/automação conduzida pela skill `analista-testes-qa`. Ambiente no
 - **Dívida técnica:** 3ª cópia do padrão lock-por-tenant + bulk loader chunked (Plano de Contas → CTCEA → Cargo Mercado); extrair abstração genérica só na 4ª ocorrência.
 - **Gaps de teste não automatizados** da US-139: CT-139-05 (isolamento de tenant end-to-end — candidato a E2E Playwright) permanece só manual.
 
+## 2026-08-31 (cont.) — Botão "Importar Cargo" nas duas telas + busca sem exigir sync — PR #15 mergeado
+
+Continuação da sessão anterior, mesma US-139. O usuário/PO relatou que "continua sem ver a funcionalidade para importar o cargo" — deveria estar na tela de Cargo E na de Tabela Salarial. Investigação (via `fullstack-dev`) revelou dois problemas distintos:
+
+**Diagnóstico:**
+1. A US-139 tinha entregue a importação só como um **autocomplete discreto** no campo `nomeCargoMercado` do formulário de Cargo (CargoPanel), e **nada** na tela de Tabela Salarial.
+2. Mesmo o autocomplete não retornava nada em produção: ele buscava na tabela `CargoMercadoCatalogo`, que só é populada pelo botão "Sincronizar" da tela de Plano de Contas — e esse botão está **oculto** porque a funcionalidade `cargo-mercado-catalogo.sincronizar` é semeada com `ativo:false` (decisão deixada em aberto pela própria US-139; a Grade Salarial CTCEA está no mesmo estado). A checagem `verificarPermissao.ts` exige `ativo:true`, então ninguém vê o botão. A "Importar do Rubi" funciona porque lê da tabela `GradeSalarialCtcea`, que **já foi populada** em produção — mesma arquitetura, só que com dado.
+
+**Decisão do usuário (PO):** quer que a importação "simplesmente funcione, como a Importar do Rubi", sem fricção de sincronizar/permissão.
+
+**O que foi feito (PR #15, mergeado — merge commit `fb8e489`):**
+1. **Botão explícito "Importar Cargo"** — novo componente reutilizável `BotaoImportarCargoMercado` (botão + modal de busca), encaixado no formulário de Cargo (CargoPanel) e na seção "Cadastrar Cargo" do modal de Tabela Salarial (TabelaSalarialModal).
+2. **Busca passou a ler o catálogo embutido, não a tabela sincronizada** — `BuscarCargoMercadoCatalogoUseCase` agora lê direto do `CargoMercadoArquivoProvider` (os ~180 cargos de `cargo-mercado-raw.ts`), filtrando por substring/ordenando/limitando a 20. Elimina a dependência de sync e de permissão para USAR a importação (paridade com o Rubi). O sincronismo/tabela/permissão seguem existindo para uma futura fonte HTTP real (basta trocar o provider). A action `buscarCargoMercadoCatalogo` deixou de passar `tenantId` (catálogo é referência global, não dado por tenant), mantendo a checagem de sessão. **Sem migration, sem escrita em produção.**
+3. **`/code-review high` → 3 achados, todos corrigidos:** (a) duplicação do debounce+guard de resposta fora de ordem entre os dois componentes → extraído hook compartilhado `useBuscaCargoMercadoCatalogo` (fonte única, evita drift do bug que CT-139-11 cobre); (b) early-return da resposta obsoleta pulava `setBuscando(false)` (podia deixar "Buscando…" preso) → hook sempre reseta antes do guard; (c) modal sem fechar por Esc/clique no fundo → adicionados.
+
+**Nota de arquitetura:** a mudança (2) é um pequeno desvio consciente da ADR-047 (que previa busca na tabela sincronizada). Reversível, documentada no código; `techlead-fsg` pode formalizar depois se quiser.
+
+**Verificação:** `tsc`/`eslint` limpos, **386/386** testes, CI (Actions) + Vercel verdes. Merge autorizado pelo usuário e executado.
+
+**Pendências herdadas (seguem em aberto, não tratadas):** build de `/orcamentario/acompanhamento` (Clerk publishableKey), reset da senha de produção de 2026-08-26, dívida técnica do padrão lock/bulk-loader, gap E2E de isolamento de tenant da US-139. E, agora explícito: a **ativação em produção** da funcionalidade `cargo-mercado-catalogo.sincronizar` (e `grade-salarial-ctcea.sincronizar`) segue como decisão em aberto — não é mais necessária para a importação funcionar, mas se um dia quiserem expor o botão "Sincronizar", isso exige ativar a funcionalidade no banco (com a cautela do CLAUDE.md).
+
 ## Como usar este arquivo em sessões futuras
 
 No início de uma sessão, se o usuário perguntar "qual o contexto/status de X", leia este arquivo antes de assumir que a memória padrão (`~/.claude/.../memory/`) está atualizada — o ambiente deste projeto (Codespace) pode ter sido recriado desde a última sessão, apagando a memória padrão sem apagar o repositório.
