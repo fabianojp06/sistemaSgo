@@ -1,10 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { buscarCargoMercadoCatalogo, type CandidatoCargoMercadoResultado } from './estrutura-actions';
-
-const DEBOUNCE_MS = 300;
-const TAMANHO_MINIMO_TERMO = 2;
+import { useEffect, useState } from 'react';
+import { TAMANHO_MINIMO_TERMO, useBuscaCargoMercadoCatalogo } from './useBuscaCargoMercadoCatalogo';
 
 type Props = {
   /** Chamado com o nome do cargo escolhido no catálogo. */
@@ -18,9 +15,8 @@ type Props = {
  * ADR-047 (US-139) — botão explícito "Importar Cargo" que abre um modal de
  * busca no Catálogo de Cargo de Mercado (RH) e devolve o nome escolhido via
  * `onSelecionar`. Alternativa mais visível ao autocomplete embutido
- * (AutocompleteCargoMercado): mesma fonte, mesma Server Action de leitura
- * (`buscarCargoMercadoCatalogo`), nenhuma escrita — quem persiste é o
- * formulário/modal chamador, ao salvar o Cargo.
+ * (AutocompleteCargoMercado): mesma fonte, mesma busca (useBuscaCargoMercadoCatalogo),
+ * nenhuma escrita — quem persiste é o formulário/modal chamador, ao salvar.
  *
  * Reutilizável em qualquer tela: hoje no formulário de Cargo (CargoPanel) e
  * na seção "Cadastrar Cargo" do modal de Tabela Salarial (TabelaSalarialModal).
@@ -62,47 +58,30 @@ function ImportarCargoMercadoModal({
   onSelecionar: (nome: string) => void;
 }) {
   const [termo, setTermo] = useState('');
-  const [resultados, setResultados] = useState<CandidatoCargoMercadoResultado[] | null>(null);
-  const [buscando, setBuscando] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const ultimoTermoBuscadoRef = useRef<string | null>(null);
+  const { sugestoes, buscando, buscar } = useBuscaCargoMercadoCatalogo();
 
+  // Fecha com Esc (mesmo contrato dos demais modais desta tela).
   useEffect(() => {
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, []);
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onFechar();
+    }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onFechar]);
 
   function handleChange(novoValor: string) {
     setTermo(novoValor);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-
-    const termoNormalizado = novoValor.trim();
-    if (termoNormalizado.length < TAMANHO_MINIMO_TERMO) {
-      ultimoTermoBuscadoRef.current = null;
-      setResultados(null);
-      setBuscando(false);
-      return;
-    }
-
-    debounceRef.current = setTimeout(async () => {
-      ultimoTermoBuscadoRef.current = termoNormalizado;
-      setBuscando(true);
-      const resposta = await buscarCargoMercadoCatalogo(termoNormalizado);
-      // Descarta resposta fora de ordem: só aplica se ainda é a busca atual
-      // (mesma lição do bug de debounce da US-139).
-      const aindaEhABuscaAtual = ultimoTermoBuscadoRef.current === termoNormalizado;
-      if (!aindaEhABuscaAtual) return;
-      setBuscando(false);
-      setResultados(resposta.sucesso ? resposta.dados : []);
-    }, DEBOUNCE_MS);
+    buscar(novoValor);
   }
 
   const termoCurto = termo.trim().length < TAMANHO_MINIMO_TERMO;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
-      <div className="flex max-h-[80vh] w-full max-w-md flex-col rounded-xl bg-white shadow-xl">
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4"
+      onClick={onFechar}
+    >
+      <div className="flex max-h-[80vh] w-full max-w-md flex-col rounded-xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b px-5 py-3">
           <h3 className="text-sm font-semibold text-slate-800">Importar Cargo do catálogo</h3>
           <button type="button" onClick={onFechar} className="text-gray-400 hover:text-gray-600">
@@ -127,15 +106,12 @@ function ImportarCargoMercadoModal({
               <p className="px-3 py-2 text-xs text-gray-400">Digite ao menos 2 caracteres para buscar.</p>
             )}
             {!termoCurto && buscando && <p className="px-3 py-2 text-xs text-gray-400">Buscando…</p>}
-            {!termoCurto && !buscando && resultados && resultados.length === 0 && (
-              <p className="px-3 py-2 text-xs text-gray-500">
-                Nenhum cargo encontrado no catálogo. Se o catálogo ainda não foi carregado, sincronize o
-                Catálogo de Cargo de Mercado na tela de <span className="font-medium">Plano de Contas</span>.
-              </p>
+            {!termoCurto && !buscando && sugestoes && sugestoes.length === 0 && (
+              <p className="px-3 py-2 text-xs text-gray-500">Nenhum cargo encontrado no catálogo para este termo.</p>
             )}
             {!termoCurto &&
               !buscando &&
-              resultados?.map((candidato) => (
+              sugestoes?.map((candidato) => (
                 <button
                   key={candidato.codigoOrigem}
                   type="button"
