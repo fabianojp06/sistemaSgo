@@ -1,94 +1,88 @@
-# Backlog / Kanban —    EP118/24 Módulo de Ca   dastros
+# Backlog do Produto — SGO 2.0
 
-**Fonte:** Minuta da Especificação do Módulo de Cadastros V5 (UC03.01 a UC03.38) + US-001 a US-008a (Plano de Contas, especificadas separadamente).
-**Elaborado por:** AN/PO, com base no histórico de implementação e nas descobertas de qualidade documental levantadas durante o refinamento (2026-07-31).
-**Como ler:** cada coluna é um estágio do kanban. Dentro de cada coluna, os itens já estão em ordem de prioridade (topo = mais prioritário). "UC" refere-se à numeração da Minuta V5; "US" é a história de usuário formalizada e (quando marcada ✅) implementada neste repositório.
+**Atualizado em:** 2026-08-31 (AN/PO), com base no estado real do repositório (US-001 a US-139 mergeadas na `master`) e nas pendências levantadas nas sessões de agosto/2026.
+**Escopo:** este arquivo era originalmente o Kanban do EP118/24 (Módulo de Cadastros); a partir de 2026-08-31 passa a ser o **backlog único do produto**, cobrindo também Plano de Contas, Alíquotas de Impostos e o novo Módulo Orçamentário (EP48/26).
+**Como ler:** dentro de cada seção, itens em ordem de prioridade (topo = mais prioritário). "US" = história de usuário formalizada; "UC" = numeração da Minuta V5.
 
----
+## Critério de priorização (score ponderado)
 
-## ✅ Concluído
-
-| US/UC | Título | Nota |
-|---|---|---|
-| US-001 a US-006 | Plano de Contas — sincronismo, agrupadores, natureza de conta | Base do módulo, pré-existente a esta sessão |
-| US-007 | Configurar Valor Orçado por Conta Analítica e Exercício | `ValorOrcadoConta`; motor de totalização recursivo |
-| US-008 | Configurar Semáforo Orçamentário por Conta Analítica | Limiares opcionais em `ContaContabil`, CHECK constraint |
-| US-101 (UC03.01/03.03) | Parametrizar Impostos em Proposta (Aba Imposto / Rateio-ISS) | `AliquotaImpostoParametro`, `RateioImpostoGrade`; RN_PRO_010 (imunidade TP) |
-| US-102 (UC03.05) | Cadastrar Proposta | Cria Proposta + Versão 1 atomicamente; código auto-gerado `PROP-{ano}-{seq}` |
-| US-103 (UC03.07 = UC03.11) | Excluir Versão da Proposta | Soft delete; UC03.07 e UC03.11 são a mesma especificação duplicada na Minuta |
-| US-104 (UC03.08) | Duplicar Proposta | Sempre nasce RASCUNHO/Versão 1, mesmo duplicando origem Oficializada |
-| US-105 (UC03.10) | Controle de Concorrência (Optimistic Locking) | Completo — estendido (2026-08-06) de `ValorOrcadoConta`/`RateioImpostoGrade`/`TermoAjuste` para `Meta`/`Viagem`/`ItemPatrimonial`/`EmpregadoHeadcount`/`QtdeEmpregado`; todas as guias analíticas agora cobertas |
-| US-106 (UC03.18) | Estrutura Funcional (Organograma) | Completo — `UnidadeFuncional` escopada por Proposta (ADR-015); RN_EST_03 fechada via ADR-026 (2026-08-06): `Cargo`→`UnidadeFuncional` virou N:M com rateio percentual (`CargoAlocacaoPercentual`), somando 100%; RN_EST_01 já era satisfeita por construção; RN_EST_05 (saneamento na importação Rubi) fica para quando existir integração real (mesmo padrão do sincronismo do Plano de Contas) |
-| US-107 (UC03.19, blocos A/B) | Cargos e Salários | `Cargo` (ADR-016), vínculo com `UnidadeFuncional` Analítica — originalmente 1:1, migrado para N:M com rateio percentual via ADR-026 (`CargoAlocacaoPercentual`, RN_EST_03, 2026-08-06); `CargoRubiFixtureProvider`; Server Action + migration aplicada |
-| US-112 (UC03.14-17) | Manter Meta | `Meta` 1:1 opcional por `VersaoProposta` (ADR-017, revisado); valorGlobal sempre espelhado de SUM(ValorOrcadoConta); migration aplicada |
-| US-108 (UC03.24-27, blocos CRUD) | Empregados | `EmpregadoHeadcount` (ADR-018), só Proposta CONSOLIDADA; snapshot congelado de custo/vínculo do Cargo; migration aplicada |
-| US-107a (bloco C sem numeração do UC03.19) | Tabela Mestre de Benefícios e Encargos do Cargo | `Cargo.custoTotalCargo` (ADR-019); `diasUteisPadrao` em `ParametroSistema`; `EmpregadoHeadcount` agora herda `custoTotalCargo`; migration aplicada |
-| US-108a (UC03.28) | Elegibilidade de Benefícios do Empregado | `EmpregadoBeneficioElegibilidade` (ADR-020), 1 linha por Empregado×Benefício; Vale Transporte adicionado a `Cargo`; `EmpregadoHeadcount.numeroDependentes` deprecated; migration aplicada |
-| US-109 (UC03.29-33) | Viagens | Exclusiva de Proposta POR_META, 3 subcontas analíticas, `custoEstimado` calculado (ADR-022); migration aplicada |
-| US-110 (UC03.34-36) | Bens, Serviços e Equipamentos | `ItemPatrimonial` (ADR-023), `metaId` opcional (diferente de Viagem); migration aplicada |
-| US-113 (UC03.20-23) | Qtde. Empregado | `EmpregadoHeadcount` ganhou `metaId`, `Empregado` liberado p/ POR_META, model `QtdeEmpregado` (ADR-024); migration aplicada |
-| US-111 (UC03.13) | Criar Termo de Ajuste entre Contas Analíticas | Desbloqueada via ADR-025; nova tabela `TermoAjuste` com aprovação em 2 etapas (N1 → Gestor Master), débito/crédito atômico em `ValorOrcadoConta`, optimistic locking (padrão US-105); Perfil "Gestor Master" + 2 `Funcionalidade` seedadas; migration aplicada |
-| ADR-027 | Todo custo vinculado a uma ContaContabil | Regra de negócio do usuário (2026-08-06): `Cargo.contaId` obrigatória (natureza da despesa, ex: Despesa com Pessoal), `EmpregadoHeadcount.contaId` herdado por snapshot, `RateioImpostoGrade.contaId` obrigatória; migration `NOT NULL` direto (0 registros em produção); `CalcularValorRealizadoUseCase` deixou de ter `parcial=true` fixo |
-| US-008a (UC03.02) | Badge do Semáforo Orçamentário | `CalcularValorRealizadoUseCase` soma Viagem/ItemPatrimonial/Empregado/RateioImpostoGrade por conta (agregação recursiva p/ contas sintéticas, mesmo padrão de `ValorOrcadoTotalizerService`); `BadgeSemaforoPanel.tsx` em `/plano-contas/[versaoId]` |
-| US-101a | Server Action/UI de Rateio de Impostos | `configurarRateioImposto` Server Action + `RateioImpostoPanel.tsx`; permissão `plano-contas.configurar-rateio-imposto` já seedada |
-| US-114 | Gerenciar Propostas (Listar, Cadastrar, Duplicar, Excluir Versão) | Novo módulo de menu "Propostas" (`propostas.visualizar` NAVEGAVEL + `propostas.criar`/`duplicar`/`excluir-versao` CONTEXTUAL, seed aplicado); tela `/propostas` |
-| US-115 (UC03.06) | Tela de Proposta com Guias Analíticas | `/propostas/{id}/[[...guia]]` — capa Read-only + 8 abas (Valor Orçado, Semáforo, Meta, Empregados+Qtde.Empregado, Viagens, Bens, Rateio de Impostos, Termo de Ajuste), deep-link por URL; `podeEditarVersao()` centraliza o enforcement client-side de read-only; Cargo/UnidadeFuncional ficam fora (ciclo de vida por Proposta, não por Versão) |
-| ADR-032 | Valor Realizado do Semáforo = total do prazo do contrato | Empregado (único custo mensal recorrente) multiplicado pelos meses de sobreposição com o período da Proposta; `calcularMesesSobreposicao` corrigido (contrato de 1 ano contava 13 meses, não 12) |
-| US-118 | Guia Valor Orçado vira dashboard-resumo da Proposta | Valor Global + árvore de contas sintéticas expansível vêm do custo REALIZADO (Empregados+Viagens+Bens+Rateio, `ValorRealizadoService`, mesmo cálculo do Semáforo) — não do lançamento manual, que virou guia própria "Lançar Valor Orçado"; nº de Empregados; enfeitado com gráfico de ranking e ícones |
-| ADR-038 | AliquotaImpostoParametro ganha contaSinteticaId opcional | Sugestão de UX (default no rateio, US-101), nunca obrigatória; `RateioImpostoGrade.contaId` (analítica, ADR-027) continua sendo o único vínculo de fato obrigatório |
-| US-123 (UC03.39) | Manter Alíquotas de Impostos (listagem/filtros/exportação) | Nova rota `/aliquotas-impostos`, `ListarAliquotasImpostoUseCase`; status "Expirada" calculado em runtime (RN_IMP_003); exportação PDF/XLSX via `exportarRelatorio.ts` (ADR-037) |
-| US-124 (UC03.40) | Cadastrar Alíquota de Imposto | `CadastrarAliquotaImpostoUseCase`; migration com `ativo`, `dataFimVigencia`, `limiteMinimoPct`/`limiteMaximoPct`, `observacao`, `contaSinteticaId`, `version`; faixa legal de ISS (2-5%) e não-retroatividade validadas [TRAVA O ERRO] |
-| US-125 (UC03.41) | Alterar Alíquota de Imposto | `EditarAliquotaImpostoUseCase`; Optimistic Locking via `version` (mesmo padrão de US-105); edição nunca recalcula `RateioImpostoGrade.aliquotaAplicadaSnapshot` de Propostas já Oficializadas (RN_TAX_03/06) |
-| US-126 (UC03.42) | Excluir (Soft Delete) Alíquota de Imposto | `ExcluirAliquotaImpostoUseCase`; bloqueado por referência ativa em Proposta RASCUNHO/EM_ELABORACAO (RN_IMP_009), referência só em Proposta Oficializada não bloqueia (snapshot já é imutável) |
-| US-116/US-117 (UC03.18/03.19) | Estrutura Funcional (Organograma) + Cargos — UI | Tela `/propostas/{id}/estrutura` (`EstruturaFuncionalPanel.tsx`/`OrganogramaPanel.tsx`/`CargoPanel.tsx`), permissão `propostas.gerenciar-estrutura`; implementadas nos commits `347b7ef`/`830e6bf`/`5e7c3c8` (2026-08-08) — **este item ficou fora do backlog por engano; corrigido em 2026-08-11 ao refinar US-130**, que assumia (incorretamente) que ainda estavam pendentes |
-| US-130 (novo, refinado e implementado 2026-08-11) | Importar Estrutura Organizacional entre Propostas | `ImportarEstruturaOrganizacionalUseCase` (ADR-041): cópia congelada, substitui organograma existente na destino, remapeamento de hierarquia em 2 passos (Sintéticas→Analíticas), trava em lote se destino tem Cargo vinculado; botão em `OrganogramaPanel.tsx`; migration (`TipoOperacao.ESTRUTURA_ORGANIZACIONAL_IMPORTADA`); testado manualmente pelo usuário; PR #3 mergeado (`6132be4`) |
+`Score = (legal × 3) + (financeiro × 2) + (bloqueio × 2) + (frequência × 1) − (complexidade × 1)`, cada fator de 1 a 5.
+Regras de corte adicionais: **bug que quebra build/produção vem antes de feature nova**; **pendência de segurança vem antes de tudo**; **nenhuma US é escrita antes de sua fundação existir** (daí a seção Bloqueado).
 
 ---
 
-## 🔜 Próximo da Fila (priorizado)
+## 🔒 Ação imediata — Segurança (fora do fluxo de US)
 
-| Ordem | Item | Por que é o próximo | Esforço estimado |
+| # | Item | Por quê | Ação |
 |---|---|---|---|
-| 1 | **US-127 (UC03.01, Fluxo C) — Cadastro Rápido de Imposto no Rateio** | Atalho `[+ Novo Imposto]` inline em `RateioImpostoPanel.tsx`, reaproveitando `CadastrarAliquotaImpostoUseCase` (US-124) — evita sair da tela da Proposta para cadastrar um tributo ainda não existente. Prioridade baixa; bloqueada até o refinamento decidir se o modal usa todos os campos do cadastro completo ou um subconjunto reduzido (ver US doc). | P |
+| S1 | **Resetar a senha do Postgres de produção** | A senha foi colada em texto puro no chat em 2026-08-26 (aplicação manual de migration). Exposição de credencial de produção. | Supabase → Project Settings → Database → Reset database password. Depois, atualizar a env var na Vercel se aplicável. **Confirmar se já foi feito.** |
 
 ---
 
-## 📋 Backlog Não Refinado (identificados na Minuta, ainda não lidos/avaliados em detalhe)
+## 🐞 Bugs (priorizados — vêm antes de feature nova)
 
-| UC | Título | Observação |
-|---|---|---|
+| Ordem | Item | Score | Impacto | Esforço |
+|---|---|---|---|---|
+| B1 | **Build de produção quebra em `/orcamentario/acompanhamento` — "Missing publishableKey" do Clerk** | 19 | Pré-existente na `master`. Bloqueia o `next build` completo e trava a evolução de todo o Módulo Orçamentário (não dá para validar build com ele vermelho). Provável falta de guard de renderização dinâmica na página nova, diferente das demais páginas autenticadas. | P |
 
 ---
 
-## 🔴 Bloqueado
+## 🔜 Próximo da Fila (features priorizadas)
+
+| Ordem | Item | Score | Por que nesta posição | Esforço |
+|---|---|---|---|---|
+| 1 | **EP48/26 — Módulo Orçamentário: telas "Acompanhamento" e "Orçado" (regras reais)** | 17 | Hoje só existe **layout mock** (commits `b20b927`/`13dd8a4`): sem Server Action, sem regra de negócio, sem persistência, sem checagem de permissão. É a maior aposta de produto em aberto (alta frequência de uso, impacto financeiro direto na execução orçamentária). **Bloqueado por B1** e precisa de refinamento antes de dev: decompor em US a partir da Minuta do Módulo Orçamentário V2 + planilha MODELO.xlsx (abas ACOMP/ORÇADO). | XG → decompor |
+| 2 | **US-127 (UC03.01, Fluxo C) — Cadastro Rápido de Imposto no Rateio** | 10 | Atalho `[+ Novo Imposto]` inline em `RateioImpostoPanel.tsx`, reaproveitando `CadastrarAliquotaImpostoUseCase` (US-124) — evita sair da tela da Proposta para cadastrar um tributo inexistente. Baixo esforço, mas baixo impacto: só conveniência. Refinar se o modal usa todos os campos do cadastro completo ou subconjunto reduzido. | P |
+
+---
+
+## 🧹 Dívida técnica / Qualidade (priorizada)
+
+| Ordem | Item | Por quê | Gatilho / Esforço |
+|---|---|---|---|
+| D1 | **Automatizar E2E de isolamento multi-tenant (CT-139-05)** | Isolamento de tenant é P0 do sistema (nunca um tenant ver dado de outro), mas hoje só há verificação **manual**. Vale uma rede de segurança automatizada (Playwright) que cubra o caminho crítico. | M — quando houver ambiente E2E com 2 tenants |
+| D2 | **Extrair abstração do padrão lock-por-tenant + bulk loader chunked** | 3ª cópia quase idêntica (Plano de Contas → CTCEA → Cargo Mercado). Decisão consciente de **não** abstrair ainda. | Gatilho: 4ª ocorrência do padrão → extrair `TenantSyncLockRepository` / `BulkUpsertLoader<T>` |
+
+---
+
+## ⏸️ Decisões em aberto (não são dev, dependem do usuário/PO)
+
+| # | Item | Contexto | Decisão pendente |
+|---|---|---|---|
+| A1 | **Ativar em produção as funcionalidades de sincronização** (`cargo-mercado-catalogo.sincronizar` e `grade-salarial-ctcea.sincronizar`) | Ambas semeadas `ativo:false` → botões "Sincronizar" ocultos na tela de Plano de Contas. **Não é mais necessário** para a importação de Cargo funcionar (a busca lê o catálogo embutido desde o PR #15). | Decidir se/quando expor os botões de sincronização; se sim, exige ativar a funcionalidade no banco com a cautela do CLAUDE.md. |
+
+---
+
+## 🔴 Bloqueado (sem fundação — não formalizar como US ainda)
 
 | US/UC | Bloqueio | Condição de desbloqueio |
 |---|---|---|
-| UC03.38 — Emitir Pré-Visualização (Demonstrativo de Provisões Trabalhistas) | Investigado em 2026-08-08 (lido o texto completo da Minuta, não só o título): **não é** exportação da árvore de Totalizadores como se supunha antes — é um relatório read-only de provisão/resgate/rendimento de riscos trabalhistas por Termo de Parceria. Depende de (1) entidades `ProvisaoRiscos`/`ProvisaoPassivo`, inexistentes no schema e não mencionadas em nenhum outro UC; (2) seletor de "Termo Aditivo", mesma dependência que já bloqueia UC03.12; (3) o corpo da especificação mistura dois agrupamentos de dados (Empregados vs. Conta Sintética/Analítica) sem relação clara com o tema de provisões trabalhistas — possível corrupção de documento, mesmo padrão já visto em UC03.09. | Esclarecer com o autor da Minuta se o corpo do UC está correto ou corrompido; se correto, modelar `ProvisaoRiscos`/`ProvisaoPassivo` do zero (não deriva de nada existente); em qualquer caso, só desbloqueia depois de Termo Aditivo ter fundação (mesma condição de UC03.12) |
+| **UC03.12 — Criar Termo Aditivo** | Wizard de 4 fases (Cronograma, Premissas, Recursos, Pessoal) sobre Proposta Oficializada, ator "Gestor Master", integração `RubiIntegrationController` e tabela `SolicitacaoAditivo` — nenhuma das 7 peças existe hoje. Não é US bloqueada, é um módulo sem fundação. | Ter Recursos (tetos por exercício, próximo de `ValorOrcadoConta`) + Empregados; ADR de RBAC hierárquico para "Gestor Master". |
+| **UC03.38 — Demonstrativo de Provisões Trabalhistas** | Relatório read-only de provisão/resgate/rendimento de riscos trabalhistas por Termo de Parceria. Depende de entidades `ProvisaoRiscos`/`ProvisaoPassivo` (inexistentes) e de seletor de "Termo Aditivo" (mesma dependência de UC03.12). Corpo do UC possivelmente corrompido (mistura agrupamentos sem relação com o tema). | Esclarecer com o autor da Minuta se o corpo está correto; se sim, modelar as entidades do zero; depende de Termo Aditivo. |
+| **UC03.09 — Workflow de homologação de RH/Viagens** | Título "Criar Nova Versão" não corresponde ao corpo (workflow Operador → Validador → Disponibilizado/Rejeitado). `CriarVersaoPropostaUseCase` (US-119/ADR-033) já resolve "criar versão". O workflow real depende de Empregados/Viagens (já existem) mas nunca foi refinado como UC próprio de homologação. | Refinar como UC novo de homologação (não "criar versão"); priorizar junto do Módulo Orçamentário se o fluxo de aprovação virar requisito. |
 
 ---
 
-## ⚪ Fora de Escopo / Nota de Roadmap (não formalizar como US ainda)
+## ✅ Concluído (resumo por bloco)
 
-| UC | Título | Por que não vira US agora |
+> Detalhe histórico de cada US (ADRs, tabelas, migrations) preservado no histórico do git e nas sessões anteriores deste arquivo. Resumo por bloco funcional:
+
+| Bloco | US | Estado |
 |---|---|---|
-| UC03.09 | "Criar Nova Versão da Proposta" (título) | **Corpo do texto não corresponde ao título** — o conteúdo real é um workflow de validação/homologação de lançamentos de RH e Viagens (Operador → Validador → Disponibilizado/Rejeitado), não criação de versão. `CriarVersaoPropostaUseCase` (US-007) já resolve "criar versão" por necessidade própria, sem se basear neste UC. O workflow de validação real deste UC depende de Empregados/Viagens existirem — revisitar junto com o item 1/2 da fila, tratando-o como um UC novo de homologação, não como "criar versão". |
-| UC03.12 | Criar Termo Aditivo | Wizard de 4 fases (Cronograma de Desembolso, Premissas, Recursos, Pessoal) sobre Proposta Oficializada, com aprovação por um ator "Gestor Master" inexistente no sistema de perfis atual, integração externa `RubiIntegrationController` nunca mencionada em outro lugar, e tabela de custódia `SolicitacaoAditivo` inexistente. Nenhuma das 7 peças que este UC orquestra existe hoje — não é uma US "bloqueada com cenários prontos", é um módulo inteiro sem fundação. Revisitar somente depois que Recursos (tetos financeiros por exercício, mais próximo de `ValorOrcadoConta` já existente) e ao menos Empregados existirem; papel "Gestor Master" exige uma ADR própria de RBAC hierárquico antes de qualquer código. |
+| **Plano de Contas** | US-001 a US-006 (sincronismo, agrupadores, natureza), US-007 (valor orçado), US-008/008a (semáforo + badge) | ✅ |
+| **Propostas e Versões** | US-102 (cadastrar), US-103 (excluir versão), US-104 (duplicar), US-105 (optimistic locking, todas as guias), US-114 (gerenciar), US-115 (tela com guias), US-118 (dashboard-resumo), US-119 (criar versão/ADR-033), US-120 (restaurar/ADR-034) | ✅ |
+| **Estrutura Funcional e Cargos** | US-106 (organograma), US-107/107a (cargos, benefícios), US-116/117 (telas), US-130 (importar estrutura entre propostas), US-131/132/133 (tabela salarial, integração Rubi, fonte ativa), US-134 (snapshot de oficialização), US-135 (reverter vínculo 1-1), US-136 (periculosidade/insalubridade), US-137 (catálogo CTCEA), US-139 (catálogo Cargo de Mercado + importação) | ✅ |
+| **Empregados / Metas / Viagens / Bens** | US-108/108a (empregados, elegibilidade), US-112 (metas), US-113 (qtde. empregado), US-109 (viagens), US-110 (bens) | ✅ |
+| **Impostos** | US-101/101a (parametrizar/rateio), US-123 a US-126 (manter/cadastrar/alterar/excluir alíquotas), US-128 (relatório premissas/reajuste), US-129 (simular/aplicar reajuste em lote) | ✅ |
+| **Termo de Ajuste** | US-111 (criar termo de ajuste, aprovação 2 etapas) | ✅ |
+| **Módulo Orçamentário** | US-138 (Relatório de Cronograma de Desembolso) | ✅ (demais telas do módulo ainda mock — ver fila) |
 
 ---
 
 ## Achados de qualidade documental (para não reabrir investigação)
 
-- **UC03.01, UC03.04**: nomenclatura snake_case/Java (`tb_proposta`, `@Version JPA`) — traduzida para as entidades reais do projeto ao refinar US-101/102.
-- **UC03.07 vs UC03.11**: duas cópias da mesma especificação de "excluir versão", com títulos diferentes e pequenas variações de texto de erro. Implementado uma vez (US-103); mensagens mantidas como já escritas, não sincronizadas com o texto exato do UC03.11 (decisão do usuário).
-- **UC03.09**: título e corpo completamente descolados — o corpo pertence a um UC de homologação de RH/Viagens, não a "criar versão". Não confundir com US-007.
-- **UC03.10**: seção "Regras de Negócio" colada por engano com as regras do UC03.09 (RN_VAL_*) — ignoradas; usado apenas Objetivo/Fluxos/RF/RNF, que batem com o título.
-- **"CTCEA"**: confirmado como nome da organização/cliente dona do sistema (glossário da Minuta), não um sistema de origem diferente colado por engano.
-
----
-
-## Convenção de prioridade usada
-
-1. **Desbloqueia outras US** (ex: Empregados desbloqueia US-008a) pesa mais que "está no papel há mais tempo".
-2. **Reaproveita padrão já validado** (ex: lançamento por conta analítica, já testado em US-007/101) pesa a favor de ir antes de algo mais novo.
-3. **Nenhuma US é escrita antes de sua fundação existir** — daí "Fora de Escopo" para UC03.06, UC03.09 (workflow real) e UC03.12.
+- **UC03.07 vs UC03.11**: duas cópias da mesma spec de "excluir versão". Implementado uma vez (US-103).
+- **UC03.09**: título e corpo descolados — corpo pertence a um UC de homologação, não a "criar versão".
+- **UC03.10**: seção "Regras de Negócio" colada por engano com as do UC03.09 (RN_VAL_*) — ignoradas.
+- **UC03.38**: corpo possivelmente corrompido (mistura Empregados vs. Conta Sintética/Analítica sem relação com provisões).
+- **"CTCEA"**: nome da organização/cliente dona do sistema (glossário da Minuta), não um sistema de origem.
