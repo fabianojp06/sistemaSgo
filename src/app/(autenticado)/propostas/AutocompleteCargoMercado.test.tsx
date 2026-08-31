@@ -38,7 +38,6 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
-  vi.useRealTimers();
 });
 
 describe('AutocompleteCargoMercado [ADR-047/US-139]', () => {
@@ -90,8 +89,10 @@ describe('AutocompleteCargoMercado [ADR-047/US-139]', () => {
     render(<Harness />);
 
     await user.type(screen.getByRole('textbox'), 'a');
-    // Nada deve ser buscado abaixo do mínimo.
-    await new Promise((r) => setTimeout(r, 400));
+    // 1 caractere cai no early-return (< TAMANHO_MINIMO_TERMO): o debounce nem
+    // chega a ser agendado. A espera (bem acima dos 300ms de debounce) garante
+    // que, se a busca fosse agendada, ela já teria disparado — e não disparou.
+    await new Promise((r) => setTimeout(r, 500));
     expect(buscarMock).not.toHaveBeenCalled();
     expect(screen.queryByText(/nenhum cargo|buscando/i)).not.toBeInTheDocument();
   });
@@ -124,9 +125,15 @@ describe('AutocompleteCargoMercado [ADR-047/US-139]', () => {
     render(<Harness />);
     const input = screen.getByRole('textbox');
 
-    // Digita "ana" (busca pendente) e continua até "analista" (resolve na hora).
+    // Digita "ana" e ESPERA o debounce disparar de fato a busca (senão o timer de
+    // "ana" seria cancelado pela digitação seguinte e o cenário nunca ocorreria).
     await user.type(input, 'ana');
+    await waitFor(() => expect(buscarMock).toHaveBeenCalledWith('ana'));
+
+    // Agora a busca de "ana" está pendente (respostaAntiga). Continua até
+    // "analista", cuja busca resolve na hora.
     await user.type(input, 'lista');
+    await waitFor(() => expect(buscarMock).toHaveBeenCalledWith('analista'));
 
     const opcaoAtual = await screen.findByRole('button', { name: 'Analista Pleno' });
     expect(opcaoAtual).toBeInTheDocument();
