@@ -1003,6 +1003,28 @@ Ao retomar, o MCP do Supabase não conseguiu ser instalado no ambiente do usuár
 
 380/380 testes passando (1 novo), `tsc --noEmit` e `eslint` limpos nos arquivos tocados. Falta: commit do fix, push, atualizar PR #12.
 
+## 2026-08-31 — Testes de componente do autocomplete de Cargo de Mercado (US-139) — PR #14 mergeado
+
+Sessão de QA/automação conduzida pela skill `analista-testes-qa`. Ambiente novo (container efêmero recriado), sem `.env` — a memória padrão do `~/.claude` estava vazia, como esperado; o contexto foi reconstruído a partir deste arquivo + histórico do git.
+
+**Ponto de partida (onde havíamos parado):** US-139/ADR-047 (importar Nome do Cargo de Mercado do catálogo de RH) já entregue e mergeada no PR #12 (`37a0145`), e o PR #13 (`fix/login-prod-datasource`) também mergeado. Trabalho desta sessão foi fechar um gap de cobertura de teste da US-139.
+
+**O que foi feito, em ordem:**
+1. **Roteiro de teste manual da US-139** (via `analista-testes-qa`): 11 casos (CT-139-01 a 11) cobrindo as 2 partes — (Parte 1) botão "Sincronizar" do Catálogo de Cargo de Mercado na tela de Plano de Contas (permissão administrativa, lock por tenant, auditoria `SYNC_CARGO_MERCADO_CATALOGO`, 180 linhas do `docs/Cargo de Mercado.xls`, idempotência, isolamento multi-tenant P0); (Parte 2) autocomplete no campo `nomeCargoMercado` (mínimo 2 chars, debounce 300ms, teto 20, nunca sobrescreve sem clique).
+2. **Automação dos gaps de UI** — o projeto **não tinha nenhum teste de componente React** até então. Habilitada a infra: devDeps `jsdom`, `@testing-library/react`, `@testing-library/user-event`, `@testing-library/jest-dom`; `vitest.config.ts` com `environmentMatchGlobs` (jsdom só para `*.test.tsx`, `node` no resto); `vitest.setup.ts` registrando os matchers do jest-dom.
+3. **Teste novo** `src/app/(autenticado)/propostas/AutocompleteCargoMercado.test.tsx` (5 casos): CT-139-06 (seleção preenche nome exato), CT-139-07 (**nunca sobrescreve digitação sem clique** — regra central da US), CT-139-08 (não busca <2 chars), CT-139-09 (estado vazio), CT-139-11 (resposta de busca fora de ordem descartada).
+4. **PR #14 aberto** e rodado `/code-review high`. Achado substantivo: o CT-139-11 original era um **no-op** — "ana" e "lista" digitados dentro da mesma janela de debounce faziam o timer de "ana" ser cancelado, então a busca antiga nunca disparava e o teste passaria mesmo sem o guard `ultimoTermoBuscadoRef`. **Corrigido** (2º commit `dc3818f`): o teste agora espera `toHaveBeenCalledWith('ana')` antes de digitar o resto, garantindo que a resposta obsoleta chegue depois e seja de fato descartada. Também removido `vi.useRealTimers()` morto e esclarecido o CT-139-08.
+5. Verificação: suíte **385/385** passando (era 380; +5), `tsc --noEmit` e `eslint` limpos. CI (Actions) verde na head + Vercel verde.
+6. **PR #14 mergeado** na `master` (merge commit `5d0e383`). Monitoramento via `subscribe_pr_activity` encerrado e check-in agendado cancelado após o merge.
+
+**Nota de fluxo Git:** houve um bloqueio de 403 no `git push` por falta de acesso do GitHub App; resolvido após o usuário reconectar o GitHub nas configurações do claude.ai. Fica como lição: 403 no push é problema de autorização do App (reconectar/instalar), não erro de rede — repetir não resolve.
+
+**Pendências herdadas ainda em aberto (NÃO tratadas nesta sessão):**
+- **Build quebrado em `/orcamentario/acompanhamento`** — `"Missing publishableKey"` do Clerk, pré-existente na `master` (confirmado, sem relação com US-139). Candidato natural para a próxima sessão — provável falta de guard de renderização dinâmica nessa página nova.
+- **Segurança:** confirmar se a senha do Postgres de produção (colada em texto puro no chat em 2026-08-26) foi resetada em Supabase → Project Settings → Database.
+- **Dívida técnica:** 3ª cópia do padrão lock-por-tenant + bulk loader chunked (Plano de Contas → CTCEA → Cargo Mercado); extrair abstração genérica só na 4ª ocorrência.
+- **Gaps de teste não automatizados** da US-139: CT-139-05 (isolamento de tenant end-to-end — candidato a E2E Playwright) permanece só manual.
+
 ## Como usar este arquivo em sessões futuras
 
 No início de uma sessão, se o usuário perguntar "qual o contexto/status de X", leia este arquivo antes de assumir que a memória padrão (`~/.claude/.../memory/`) está atualizada — o ambiente deste projeto (Codespace) pode ter sido recriado desde a última sessão, apagando a memória padrão sem apagar o repositório.
