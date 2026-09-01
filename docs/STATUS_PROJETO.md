@@ -14,18 +14,21 @@
 > **Regra:** ao encerrar uma sessão com mudança relevante de estado, atualize este arquivo E
 > `CONTEXTO_SESSOES.md`, e faça commit (fluxo Git híbrido do `CLAUDE.md`).
 
-**Última atualização:** 2026-09-01
+**Última atualização:** 2026-09-01 (sessão da tela de Viagens)
 
 ---
 
 ## Onde estamos
 
-- **Branch:** `master` limpa. Sem branch de feature ativa.
-- **Suíte de testes:** 385/385 passando (`npx vitest run`) na última verificação (2026-08-31).
-  `tsc --noEmit` e `eslint` limpos.
-- **Ambiente atual:** container efêmero sem `.env` (sem `DATABASE_URL`). Migrations são escritas
-  à mão e aplicadas pelo usuário via SQL Editor do Supabase — **nunca** `prisma migrate dev`/
-  `migrate diff` contra produção (ver incidente 2026-08-14 no `CLAUDE.md`).
+- **Branch:** `master` limpa e sincronizada com `origin/master` (`c8c6ba0`). Sem branch de feature ativa.
+- **Suíte de testes:** 385/385 na última verificação com ambiente completo (2026-08-31). As
+  mudanças de 2026-09-01 na tela de Viagens **não foram validadas localmente** (npm bloqueado por
+  self-signed cert nesta rede) — passaram só pelo CI do GitHub Actions no PR #16.
+- **Ambiente atual:** container efêmero sem `.env` e **sem `node_modules`**; `npm install` falha
+  com `SELF_SIGNED_CERT_IN_CHAIN` (mesma restrição de rede do MCP do Supabase). Não dá para rodar
+  `tsc`/`eslint`/`vitest`/`next` aqui — depende do CI. Migrations são escritas à mão e aplicadas
+  pelo usuário via SQL Editor do Supabase — **nunca** `prisma migrate dev`/`migrate diff` contra
+  produção (ver incidente 2026-08-14 no `CLAUDE.md`).
 
 ## Módulos e frentes
 
@@ -35,6 +38,7 @@
 | **Módulo de Cadastros (EP118-24)** | US-001 a US-118 concluídas; US-123 a US-139 concluídas. Ver kanban. Fila priorizada quase vazia (só US-127 — cadastro rápido de imposto no rateio, prioridade baixa). |
 | **Cargos / Tabela Salarial** | US-131 a US-139 entregues (Tabela Salarial, integração Rubi, Grade Salarial CTCEA persistida, Periculosidade/Insalubridade, Catálogo de Cargo de Mercado). PRs #5–#15 mergeados. |
 | **Módulo Orçamentário (`/orcamentario`)** | Frente nova. US-138 (Relatório de Cronograma de Desembolso) entregue. Landing em grade de tiles + telas iniciais de Acompanhamento e Orçado (`b20b927`/`13dd8a4`). |
+| **Tela de Viagens (US-109)** | 2026-09-01: rótulos renomeados (LOCALIDADE (PAÍS) etc.) + faixa agregada TOTAL DE PASSAGENS/DIÁRIAS/GERAL (`4484882`, direto na master); **editar Viagem pela tela** — botão "Editar" por linha reaproveitando `editarViagem`/`EditarViagemUseCase` já existentes (PR #16, `c8c6ba0`). Sem mudança de backend/contrato/schema. Pendência derivada: US-140 (bloqueada, abaixo). |
 | **Tradução EN-US da documentação** | 19/43 arquivos. Última: US-106, US-107, US-107a (`55cabfa`). Tarefa de menor esforço sempre disponível. |
 
 ## Pendências herdadas em aberto (não perder de vista)
@@ -58,7 +62,12 @@
 
 Nenhum item priorizado forte na fila. Candidatos: (a) corrigir o build de
 `/orcamentario/acompanhamento` (pendência #1); (b) continuar tradução EN-US; (c) avançar o
-Módulo Orçamentário; (d) US-127 (baixa prioridade).
+Módulo Orçamentário; (d) US-127 (baixa prioridade); (e) desbloquear US-140 (o usuário definir a
+fonte do realizado histórico por conta).
+
+> Observação da sessão de 2026-09-01: PR #16 (editar Viagem) foi mergeado pelo usuário **sem
+> rodar `/code-review`** — decisão consciente, mudança só de UI. Se aparecer regressão na tela
+> de Viagens, é candidato a revisar.
 
 ## Convenções operacionais rápidas
 

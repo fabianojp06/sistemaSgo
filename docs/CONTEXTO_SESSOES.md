@@ -1025,6 +1025,64 @@ Sessão de QA/automação conduzida pela skill `analista-testes-qa`. Ambiente no
 - **Dívida técnica:** 3ª cópia do padrão lock-por-tenant + bulk loader chunked (Plano de Contas → CTCEA → Cargo Mercado); extrair abstração genérica só na 4ª ocorrência.
 - **Gaps de teste não automatizados** da US-139: CT-139-05 (isolamento de tenant end-to-end — candidato a E2E Playwright) permanece só manual.
 
+## 2026-09-01 — Sincronização da memória (STATUS_PROJETO.md + hook) e tela de Viagens
+
+Ambiente novo (container efêmero): memória `~/.claude` vazia, **sem `.env` e sem `node_modules`**;
+`npm install` falha com `SELF_SIGNED_CERT_IN_CHAIN` (mesma restrição de rede local do MCP do
+Supabase). Nenhuma verificação `tsc`/`eslint`/`vitest`/`next` pôde rodar nesta sessão — tudo
+dependeu do CI do GitHub Actions.
+
+**1. Mecanismo de memória sincronizada (commit `5433c72`, direto na master):**
+- `docs/STATUS_PROJETO.md` — snapshot conciso e rotativo do estado do projeto, versionado no git
+  (a "sincronização": sobrevive à recriação do container, que zera `~/.claude`).
+- `.claude/settings.json` + `.claude/hooks/session-status.ps1` — hook de **SessionStart** que
+  injeta o `STATUS_PROJETO.md` no contexto no início de cada sessão. Script em ASCII puro
+  (PowerShell 5.1 lê `.ps1` como ANSI; acento em literal vira mojibake) e força saída UTF-8.
+- `~/.claude/.../memory/`: `MEMORY.md` + memórias finas (`fonte-verdade-status`,
+  `incidente-perda-dados-producao`) apontando para os arquivos do repo como fonte de verdade.
+  Não é versionado — é cache efêmero.
+
+**2. Tela de Viagens — rótulos + faixa de totais (commit `4484882`, direto na master):**
+Mudança só de apresentação em `src/app/(autenticado)/propostas/ViagemPanel.tsx`:
+- Rótulos do form: "Descrição" → "LOCALIDADE (PAÍS)", "Média de Dias" → "MÉDIAS DE DIAS",
+  "Custo Unit. Passagem" → "CUSTO UNIT. PASSAGEM (IDA/VOLTA)", "Custo Unit. Diária" →
+  "CUSTO DE DIÁRIAS (POR PESSOA)". Só o texto do `<label>`.
+- Faixa agregada `FaixaTotaisViagens`: TOTAL DE PASSAGENS, TOTAL DE DIÁRIAS, TOTAL GERAL
+  (= passagens + diárias + transporte = Custo Total Estimado). Reaproveita
+  `calcularComponentesCustoViagem`; `totaisPorComponente` extraído para useMemo próprio.
+- Confirmado com o usuário (AskUserQuestion): fórmulas de Passagens (Qtd × unit) e Diárias
+  (Qtd × dias × unit) **já eram as atuais** — nada a mudar no domínio. O card "Nº de Viagens"
+  fica como está (o card "Total de Pessoas-Viagem" já soma `quantidadePessoas`).
+
+**3. Tela de Viagens — editar Viagem (PR #16, merge `c8c6ba0`):**
+`editarViagem` (Server Action) e `EditarViagemUseCase` **já existiam** (US-109 Cenário 4) — só
+faltava a UI. Branch `feature/us-109-editar-viagem-ui` (`97bb01c`):
+- Botão "Editar" por linha (só `!readOnly`), ao lado de Copiar/Excluir; realça a linha em edição.
+- `NovaViagemForm` → `ViagemForm`: form único em 2 modos (criação/edição). Em edição: título
+  "Editar Viagem", botão "Salvar alterações", botão "Cancelar". Submit chama
+  `editarViagem({ viagemId, ...campos })` **sem `tokenConcorrencia`** (opcional; o use case já
+  protege concorrência lendo o `updatedAt` atual antes do `updateMany`).
+- `aoSalvar` unifica: id já no state → substitui; senão → anexa.
+- Sem mudança de backend/contrato/schema. **O usuário mergeou o PR #16 sem rodar `/code-review`**
+  (decisão consciente, mudança só de UI).
+
+**4. US-140 (BLOQUEADA) — Total de Transporte da Viagem por média histórica da conta (commit `574acfd`, doc):**
+Pedido do usuário: "Total com transporte = valor informado pelo GFIN => médias da conta dos
+últimos anos". Confirmado (AskUserQuestion): é **cálculo automático** do sistema e **só
+exibição** — NÃO altera `Viagem.custoEstimado` (que segue alimentando Semáforo/Cronograma/
+dashboard como hoje). **Bloqueio real:** o SGO não tem série histórica de realizado por conta
+multi-ano (só `ValorOrcadoConta` orçado + realizado da proposta corrente). Sem fonte desse dado
+não há o que calcular. `docs/US-140 ...md` lista 7 bloqueios (B1–B7: origem do dado, janela/
+método da média, qual conta, o que fazer com o campo atual, borda sem histórico, multi-tenant).
+Adicionada ao kanban em 🔴 Bloqueado. Menor incremento futuro: US-140a (carga de realizado
+histórico por conta via planilha) → depois US-140 (exibir a média).
+
+**Estado ao final:** `origin/master` em `c8c6ba0`, local sincronizado. Todos os commits desta
+sessão publicados. Pendências herdadas seguem abertas (build `/orcamentario/acompanhamento`,
+reset de senha do Postgres, dívida do lock-por-tenant, `.mcp.json`) + US-140 nova.
+
+---
+
 ## Como usar este arquivo em sessões futuras
 
 No início de uma sessão, se o usuário perguntar "qual o contexto/status de X", leia este arquivo antes de assumir que a memória padrão (`~/.claude/.../memory/`) está atualizada — o ambiente deste projeto (Codespace) pode ter sido recriado desde a última sessão, apagando a memória padrão sem apagar o repositório.
