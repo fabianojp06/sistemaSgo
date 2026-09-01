@@ -78,6 +78,29 @@ function ResumoExecutivoViagens({ totalViagens, custoTotalEstimado, totalPessoas
   );
 }
 
+/** Faixa de resumo agregada: TOTAL DE PASSAGENS / DIÁRIAS / GERAL somando todas as viagens da
+ * versão. TOTAL GERAL = passagens + diárias + transporte (idêntico ao Custo Total Estimado). */
+function FaixaTotaisViagens({ totalPassagens, totalDiarias, totalGeral }: { totalPassagens: number; totalDiarias: number; totalGeral: number }) {
+  const itens = [
+    { label: 'TOTAL DE PASSAGENS', valor: formatarMoeda(totalPassagens) },
+    { label: 'TOTAL DE DIÁRIAS', valor: formatarMoeda(totalDiarias) },
+    { label: 'TOTAL GERAL', valor: formatarMoeda(totalGeral) },
+  ];
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-3 md:gap-4">
+        {itens.map((item) => (
+          <div key={item.label}>
+            <p className="text-xs font-medium tracking-wide text-slate-500">{item.label}</p>
+            <p className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">{item.valor}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 type ValoresFormulario = {
   descricao: string;
   quantidadePessoas: number;
@@ -147,7 +170,7 @@ function NovaViagemForm({
       <h4 className="text-sm font-semibold text-slate-800">Nova Viagem</h4>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <div className="md:col-span-3">
-          <label className="mb-1 block text-xs font-medium text-slate-600">Descrição</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">LOCALIDADE (PAÍS)</label>
           <input
             type="text"
             value={descricao}
@@ -167,7 +190,7 @@ function NovaViagemForm({
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">Média de Dias</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">MÉDIAS DE DIAS</label>
           <input
             type="number"
             min={1}
@@ -178,7 +201,7 @@ function NovaViagemForm({
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">Custo Unit. Passagem</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">CUSTO UNIT. PASSAGEM (IDA/VOLTA)</label>
           <input
             type="number"
             min={0}
@@ -195,7 +218,7 @@ function NovaViagemForm({
         <div />
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">Custo Unit. Diária</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">CUSTO DE DIÁRIAS (POR PESSOA)</label>
           <input
             type="number"
             min={0}
@@ -302,31 +325,39 @@ export function ViagemPanel({
     [viagens],
   );
 
-  const composicaoPorComponente = useMemo(() => {
-    const totais = viagens.reduce(
-      (acc, v) => {
-        const componentes = calcularComponentesCustoViagem({
-          quantidadePessoas: v.quantidadePessoas,
-          mediaDias: v.mediaDias,
-          custoUnitarioPassagem: v.custoUnitarioPassagem,
-          custoUnitarioDiaria: v.custoUnitarioDiaria,
-          custoUnitarioTransporte: v.custoUnitarioTransporte,
-        });
-        return {
-          passagem: acc.passagem + componentes.passagem.toNumber(),
-          diaria: acc.diaria + componentes.diaria.toNumber(),
-          transporte: acc.transporte + componentes.transporte.toNumber(),
-        };
-      },
-      { passagem: 0, diaria: 0, transporte: 0 },
-    );
+  // Totais agregados por componente (Passagem/Diária/Transporte) somando todas as viagens da
+  // versão. Fonte única para a faixa "TOTAL DE PASSAGENS/DIÁRIAS/GERAL" e para o gráfico de
+  // composição — a matemática vem de calcularComponentesCustoViagem, nunca duplicada aqui.
+  const totaisPorComponente = useMemo(
+    () =>
+      viagens.reduce(
+        (acc, v) => {
+          const componentes = calcularComponentesCustoViagem({
+            quantidadePessoas: v.quantidadePessoas,
+            mediaDias: v.mediaDias,
+            custoUnitarioPassagem: v.custoUnitarioPassagem,
+            custoUnitarioDiaria: v.custoUnitarioDiaria,
+            custoUnitarioTransporte: v.custoUnitarioTransporte,
+          });
+          return {
+            passagem: acc.passagem + componentes.passagem.toNumber(),
+            diaria: acc.diaria + componentes.diaria.toNumber(),
+            transporte: acc.transporte + componentes.transporte.toNumber(),
+          };
+        },
+        { passagem: 0, diaria: 0, transporte: 0 },
+      ),
+    [viagens],
+  );
 
-    return [
-      { id: 'passagem', label: 'Passagem', valor: totais.passagem, cor: PALETA_CATEGORICA[0] },
-      { id: 'diaria', label: 'Diária', valor: totais.diaria, cor: PALETA_CATEGORICA[1] },
-      { id: 'transporte', label: 'Transporte', valor: totais.transporte, cor: PALETA_CATEGORICA[2] },
-    ];
-  }, [viagens]);
+  const composicaoPorComponente = useMemo(
+    () => [
+      { id: 'passagem', label: 'Passagem', valor: totaisPorComponente.passagem, cor: PALETA_CATEGORICA[0] },
+      { id: 'diaria', label: 'Diária', valor: totaisPorComponente.diaria, cor: PALETA_CATEGORICA[1] },
+      { id: 'transporte', label: 'Transporte', valor: totaisPorComponente.transporte, cor: PALETA_CATEGORICA[2] },
+    ],
+    [totaisPorComponente],
+  );
 
   function copiar(viagem: ViagemResultado) {
     setValoresFormulario({
@@ -351,6 +382,11 @@ export function ViagemPanel({
       {viagens.length > 0 && (
         <>
           <ResumoExecutivoViagens totalViagens={viagens.length} custoTotalEstimado={custoTotalEstimado} totalPessoas={totalPessoas} />
+          <FaixaTotaisViagens
+            totalPassagens={totaisPorComponente.passagem}
+            totalDiarias={totaisPorComponente.diaria}
+            totalGeral={totaisPorComponente.passagem + totaisPorComponente.diaria + totaisPorComponente.transporte}
+          />
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <BarChartHorizontal titulo="Ranking de Viagens — Custo Estimado" barras={rankingPorViagem} formatarValor={formatarMoeda} />
             <BarChartHorizontal titulo="Composição de Custo — Passagem × Diária × Transporte" barras={composicaoPorComponente} formatarValor={formatarMoeda} />
