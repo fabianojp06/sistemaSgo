@@ -50,6 +50,9 @@
    candidato a E2E Playwright) segue só manual.
 5. **`.mcp.json`** (MCP do Supabase) nunca funcionou por restrição de rede local — decidir se
    permanece no repo ou sai.
+6. **US-140 (bloqueada)** — Total de Transporte da Viagem por média histórica da conta (pedido
+   de 2026-09-01). Bloqueada: o SGO não tem realizado histórico por conta multi-ano. Precisa de
+   decisão do usuário (fonte do dado) + ADR. Ver `docs/US-140 ...md` e o kanban.
 
 ## Próximo passo combinado
 
