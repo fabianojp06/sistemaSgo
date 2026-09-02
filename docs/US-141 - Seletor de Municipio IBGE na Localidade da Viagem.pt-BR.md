@@ -4,7 +4,7 @@
 **Épico:** EP118-24 — Módulo de Cadastros
 **Prioridade:** Média
 **Estimativa:** M (~1,5 a 2 dias)
-**Status:** 🔜 Próximo da Fila — depende do ADR-048 formalizado pelo `techlead-fsg` antes da implementação
+**Status:** 🔜 Próximo da Fila — **ADR-048 aceito** (`docs/ADR-048 ...md`), pronto para o `fullstack-dev` implementar
 **Origem:** pedido do usuário em 2026-09-02, decorrente da US-109 (UC03.29-33)
 
 **Como** analista da Gerência Financeira (GFIN) da CTCEA cadastrando as viagens de uma Proposta,
@@ -178,7 +178,7 @@ Então a Viagem copiada na Versão 2 mantém municipioIbge = "4106902", municipi
 
 | Aspecto | Detalhe |
 |---|---|
-| **Migração de schema** | `Viagem`: `+ municipioIbge String?`, `+ municipioNome String?`, `+ uf String?`, `+ latitude Decimal? @db.Decimal(10,7)`, `+ longitude Decimal? @db.Decimal(10,7)` (tipo exato — `Decimal` vs `Float` — a decidir no ADR-048; o projeto tem cultura de evitar `Float`). Migration **aditiva**, todas nullable, **sem backfill**. Escrita à mão e aplicada via SQL Editor do Supabase (ambiente sem `.env`). |
+| **Migração de schema** | `Viagem`: `+ municipioIbge String?`, `+ municipioNome String?`, `+ uf String?`, `+ latitude Decimal? @db.Decimal(9,6)`, `+ longitude Decimal? @db.Decimal(9,6)` + índice `(tenantId, municipioIbge)` (tipo e DDL cravados no **ADR-048**). Migration **aditiva**, todas nullable, **sem backfill**. Escrita à mão e aplicada via SQL Editor do Supabase (ambiente sem `.env`); `migrate resolve --applied` pelo Session Pooler. |
 | Catálogo | Novo módulo estático `src/infrastructure/integrations/municipios-br/municipios-brasileiros-raw.ts` (ou similar), gerado do CSV/JSON do repo `kelvins/municipios-brasileiros` num commit fixo. + `LICENSE`/atribuição MIT. Provedor de leitura (`MunicipioBrasileiroCatalogo`) para o servidor resolver código → nome/uf/lat/long. |
 | `CadastrarViagemUseCase` | Recebe `municipioIbge` (obrigatório). Valida contra o catálogo. Resolve e grava `municipioNome`/`uf`/`latitude`/`longitude`. `descricao` passa a ser opcional (ajustar validação). |
 | `EditarViagemUseCase` | Recebe `municipioIbge` (opcional na edição, para não travar viagem legada). Mesma validação/resolução. Inclui a troca de município no `HistoricoOperacao` (`dadosSerializados`). Mantém todas as regras herdadas (status da Versão, congelamento de vínculos, optimistic locking). |
