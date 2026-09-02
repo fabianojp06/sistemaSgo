@@ -64,9 +64,14 @@
 
 ## Próximo passo combinado
 
-US-141 **entregue e em produção**. Nenhum item forte na fila. Candidatos: (a) build de
-`/orcamentario/acompanhamento` (pendência #1); (b) follow-up leve da US-141 (pendência #7);
-(c) tradução EN-US; (d) Módulo Orçamentário; (e) US-127; (f) desbloquear US-140.
+**US-142** (Cronograma de Desembolso por parcelas, layout APÊNDICE J) — refinada 2026-09-02
+(`docs/US-142 ...md`). Decisões do usuário: parcelas DERIVADAS (3/ano jan-mai-set), Etapa=Meta,
+substitui a grade mensal atual. **Bloqueada por ADR** — 7 GAPs abertos (regra de repasse,
+texto da descrição, 1ª parcela, rateio por Meta em CONSOLIDADA/imposto, "valor repassado 12
+meses", Viagem sem data, exportação). Próximo: `techlead-fsg` faz o ADR.
+
+Outros candidatos: (a) build de `/orcamentario/acompanhamento` (pendência #1); (b) follow-up
+leve da US-141 (pendência #7); (c) tradução EN-US; (d) US-127; (e) desbloquear US-140.
 
 > **Lição desta sessão (2026-09-02):** migration aditiva mergeada sem ser aplicada = **500 em
 > produção** assim que o Server Component consultou as colunas novas. Ao mergear qualquer PR com
