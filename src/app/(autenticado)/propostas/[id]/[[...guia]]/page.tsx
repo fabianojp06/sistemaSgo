@@ -162,6 +162,11 @@ export default async function PropostaDetalhePage({
       select: {
         id: true,
         descricao: true,
+        municipioIbge: true,
+        municipioNome: true,
+        uf: true,
+        latitude: true,
+        longitude: true,
         custoEstimado: true,
         quantidadePessoas: true,
         mediaDias: true,
@@ -176,6 +181,11 @@ export default async function PropostaDetalhePage({
     viagensIniciais = viagensDb.map((v) => ({
       id: v.id,
       descricao: v.descricao,
+      municipioIbge: v.municipioIbge,
+      municipioNome: v.municipioNome,
+      uf: v.uf,
+      latitude: v.latitude?.toString() ?? null,
+      longitude: v.longitude?.toString() ?? null,
       custoEstimado: v.custoEstimado.toString(),
       quantidadePessoas: v.quantidadePessoas,
       mediaDias: v.mediaDias,

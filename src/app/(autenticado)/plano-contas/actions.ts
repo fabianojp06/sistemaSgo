@@ -858,6 +858,11 @@ export async function configurarBeneficiosCargo(input: {
 export type ViagemResultado = {
   id: string;
   descricao: string;
+  municipioIbge: string | null;
+  municipioNome: string | null;
+  uf: string | null;
+  latitude: string | null;
+  longitude: string | null;
   custoEstimado: string;
   quantidadePessoas: number;
   mediaDias: number;
@@ -869,9 +874,49 @@ export type ViagemResultado = {
   contaTransporteId: string;
 };
 
+function paraViagemResultado(viagem: {
+  id: string;
+  descricao: string;
+  municipioIbge: string | null;
+  municipioNome: string | null;
+  uf: string | null;
+  latitude: Prisma.Decimal | null;
+  longitude: Prisma.Decimal | null;
+  custoEstimado: Prisma.Decimal;
+  quantidadePessoas: number;
+  mediaDias: number;
+  custoUnitarioPassagem: Prisma.Decimal;
+  contaPassagemId: string;
+  custoUnitarioDiaria: Prisma.Decimal;
+  contaDiariaId: string;
+  custoUnitarioTransporte: Prisma.Decimal;
+  contaTransporteId: string;
+}): ViagemResultado {
+  return {
+    id: viagem.id,
+    descricao: viagem.descricao,
+    municipioIbge: viagem.municipioIbge,
+    municipioNome: viagem.municipioNome,
+    uf: viagem.uf,
+    latitude: viagem.latitude?.toString() ?? null,
+    longitude: viagem.longitude?.toString() ?? null,
+    custoEstimado: viagem.custoEstimado.toString(),
+    quantidadePessoas: viagem.quantidadePessoas,
+    mediaDias: viagem.mediaDias,
+    custoUnitarioPassagem: viagem.custoUnitarioPassagem.toString(),
+    contaPassagemId: viagem.contaPassagemId,
+    custoUnitarioDiaria: viagem.custoUnitarioDiaria.toString(),
+    contaDiariaId: viagem.contaDiariaId,
+    custoUnitarioTransporte: viagem.custoUnitarioTransporte.toString(),
+    contaTransporteId: viagem.contaTransporteId,
+  };
+}
+
+// US-141 — "Motivo/Complemento" opcional; município (código IBGE de 7 dígitos) obrigatório no cadastro.
 const CadastrarViagemSchema = z.object({
   versaoId: z.string().min(1),
-  descricao: z.string().trim().min(1).max(100),
+  municipioIbge: z.string().regex(/^\d{7}$/, 'Selecione o município de destino da viagem.'),
+  descricao: z.string().trim().max(100).optional().default(''),
   quantidadePessoas: z.number().int().positive(),
   mediaDias: z.number().int().positive(),
   custoUnitarioPassagem: z.number().nonnegative(),
@@ -885,7 +930,8 @@ const CadastrarViagemSchema = z.object({
 /** US-109, Cenário 1 — Cadastrar Viagem (exige Proposta POR_META com Meta cadastrada). */
 export async function cadastrarViagem(input: {
   versaoId: string;
-  descricao: string;
+  municipioIbge: string;
+  descricao?: string;
   quantidadePessoas: number;
   mediaDias: number;
   custoUnitarioPassagem: number;
@@ -900,33 +946,23 @@ export async function cadastrarViagem(input: {
 
   const entrada = CadastrarViagemSchema.safeParse(input);
   if (!entrada.success) {
-    return { sucesso: false, mensagem: 'Preencha Descrição, Quantidade de Pessoas, Média de Dias e os custos/contas de passagem, diária e transporte.' };
+    return { sucesso: false, mensagem: 'Selecione o município e preencha Quantidade de Pessoas, Média de Dias e os custos/contas de passagem, diária e transporte.' };
   }
 
   try {
     const viagem = await getCadastrarViagemUseCase().execute({ ...contexto, ...entrada.data });
     revalidatePath('/', 'layout');
-    return { sucesso: true, dados: {
-      id: viagem.id,
-      descricao: viagem.descricao,
-      custoEstimado: viagem.custoEstimado.toString(),
-      quantidadePessoas: viagem.quantidadePessoas,
-      mediaDias: viagem.mediaDias,
-      custoUnitarioPassagem: viagem.custoUnitarioPassagem.toString(),
-      contaPassagemId: viagem.contaPassagemId,
-      custoUnitarioDiaria: viagem.custoUnitarioDiaria.toString(),
-      contaDiariaId: viagem.contaDiariaId,
-      custoUnitarioTransporte: viagem.custoUnitarioTransporte.toString(),
-      contaTransporteId: viagem.contaTransporteId,
-    } };
+    return { sucesso: true, dados: paraViagemResultado(viagem) };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
   }
 }
 
+// US-141 — município opcional na edição (não trava correção de viagem legada sem município).
 const EditarViagemSchema = z.object({
   viagemId: z.string().min(1),
-  descricao: z.string().trim().min(1).max(100),
+  municipioIbge: z.string().regex(/^\d{7}$/).optional(),
+  descricao: z.string().trim().max(100).optional().default(''),
   quantidadePessoas: z.number().int().positive(),
   mediaDias: z.number().int().positive(),
   custoUnitarioPassagem: z.number().nonnegative(),
@@ -941,7 +977,8 @@ const EditarViagemSchema = z.object({
 /** US-109, Cenário 4 — Editar Viagem. Vínculos com Proposta/Meta são congelados. */
 export async function editarViagem(input: {
   viagemId: string;
-  descricao: string;
+  municipioIbge?: string;
+  descricao?: string;
   quantidadePessoas: number;
   mediaDias: number;
   custoUnitarioPassagem: number;
@@ -957,25 +994,13 @@ export async function editarViagem(input: {
 
   const entrada = EditarViagemSchema.safeParse(input);
   if (!entrada.success) {
-    return { sucesso: false, mensagem: 'Preencha Descrição, Quantidade de Pessoas, Média de Dias e os custos/contas de passagem, diária e transporte.' };
+    return { sucesso: false, mensagem: 'Preencha Quantidade de Pessoas, Média de Dias e os custos/contas de passagem, diária e transporte.' };
   }
 
   try {
     const viagem = await getEditarViagemUseCase().execute({ ...contexto, ...entrada.data });
     revalidatePath('/', 'layout');
-    return { sucesso: true, dados: {
-      id: viagem.id,
-      descricao: viagem.descricao,
-      custoEstimado: viagem.custoEstimado.toString(),
-      quantidadePessoas: viagem.quantidadePessoas,
-      mediaDias: viagem.mediaDias,
-      custoUnitarioPassagem: viagem.custoUnitarioPassagem.toString(),
-      contaPassagemId: viagem.contaPassagemId,
-      custoUnitarioDiaria: viagem.custoUnitarioDiaria.toString(),
-      contaDiariaId: viagem.contaDiariaId,
-      custoUnitarioTransporte: viagem.custoUnitarioTransporte.toString(),
-      contaTransporteId: viagem.contaTransporteId,
-    } };
+    return { sucesso: true, dados: paraViagemResultado(viagem) };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
   }
