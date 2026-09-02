@@ -38,7 +38,7 @@
 | **Módulo de Cadastros (EP118-24)** | US-001 a US-118 concluídas; US-123 a US-139 concluídas. Ver kanban. Fila priorizada quase vazia (só US-127 — cadastro rápido de imposto no rateio, prioridade baixa). |
 | **Cargos / Tabela Salarial** | US-131 a US-139 entregues (Tabela Salarial, integração Rubi, Grade Salarial CTCEA persistida, Periculosidade/Insalubridade, Catálogo de Cargo de Mercado). PRs #5–#15 mergeados. |
 | **Módulo Orçamentário (`/orcamentario`)** | Frente nova. US-138 (Relatório de Cronograma de Desembolso) entregue. Landing em grade de tiles + telas iniciais de Acompanhamento e Orçado (`b20b927`/`13dd8a4`). |
-| **Tela de Viagens (US-109)** | 2026-09-01: rótulos renomeados (LOCALIDADE (PAÍS) etc.) + faixa agregada TOTAL DE PASSAGENS/DIÁRIAS/GERAL (`4484882`, direto na master); **editar Viagem pela tela** — botão "Editar" por linha reaproveitando `editarViagem`/`EditarViagemUseCase` já existentes (PR #16, `c8c6ba0`). Sem mudança de backend/contrato/schema. Pendência derivada: US-140 (bloqueada, abaixo). |
+| **Tela de Viagens (US-109)** | 2026-09-01: rótulos renomeados (LOCALIDADE (PAÍS) etc.) + faixa agregada TOTAL DE PASSAGENS/DIÁRIAS/GERAL (`4484882`); **editar Viagem pela tela** (PR #16, `c8c6ba0`). 2026-09-02: refinadas **US-141** (seletor de município IBGE no lugar do texto livre de localidade — 🔜 próximo da fila, depende de ADR-048) e **US-140** (transporte por média histórica — 🔴 bloqueada). |
 | **Tradução EN-US da documentação** | 19/43 arquivos. Última: US-106, US-107, US-107a (`55cabfa`). Tarefa de menor esforço sempre disponível. |
 
 ## Pendências herdadas em aberto (não perder de vista)
@@ -60,10 +60,11 @@
 
 ## Próximo passo combinado
 
-Nenhum item priorizado forte na fila. Candidatos: (a) corrigir o build de
-`/orcamentario/acompanhamento` (pendência #1); (b) continuar tradução EN-US; (c) avançar o
-Módulo Orçamentário; (d) US-127 (baixa prioridade); (e) desbloquear US-140 (o usuário definir a
-fonte do realizado histórico por conta).
+Item priorizado: **US-141** (seletor de município IBGE na Viagem) — precisa do `techlead-fsg`
+formalizar o **ADR-048** (tipo das colunas de coordenada, obrigatoriedade de `municipioIbge`,
+estratégia de migration) antes de o `fullstack-dev` implementar (branch + PR + `/code-review`).
+Outros candidatos: (a) build de `/orcamentario/acompanhamento` (pendência #1); (b) tradução
+EN-US; (c) Módulo Orçamentário; (d) US-127; (e) desbloquear US-140.
 
 > Observação da sessão de 2026-09-01: PR #16 (editar Viagem) foi mergeado pelo usuário **sem
 > rodar `/code-review`** — decisão consciente, mudança só de UI. Se aparecer regressão na tela

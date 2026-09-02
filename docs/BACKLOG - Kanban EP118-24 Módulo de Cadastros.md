@@ -49,7 +49,8 @@
 
 | Ordem | Item | Por que é o próximo | Esforço estimado |
 |---|---|---|---|
-| 1 | **US-127 (UC03.01, Fluxo C) — Cadastro Rápido de Imposto no Rateio** | Atalho `[+ Novo Imposto]` inline em `RateioImpostoPanel.tsx`, reaproveitando `CadastrarAliquotaImpostoUseCase` (US-124) — evita sair da tela da Proposta para cadastrar um tributo ainda não existente. Prioridade baixa; bloqueada até o refinamento decidir se o modal usa todos os campos do cadastro completo ou um subconjunto reduzido (ver US doc). | P |
+| 1 | **US-141 — Seletor de Município (IBGE) na Localidade da Viagem** | Troca o texto livre "LOCALIDADE (PAÍS)" da Viagem por um campo estruturado de município BR (catálogo IBGE embutido, 5.570 municípios, fonte `kelvins/municipios-brasileiros` MIT). `descricao` vira "motivo/complemento" opcional. Guarda snapshot nome/uf + lat/long (destrava mapa futuro sem geocoding). Refinada — ver `docs/US-141 ...md`. **Depende de ADR-048** (`techlead-fsg` formaliza tipo de coluna de coordenada, obrigatoriedade, migration) antes de codar. Migration + contrato de use case → branch + PR + `/code-review`. | M (~1,5–2 dias) |
+| 2 | **US-127 (UC03.01, Fluxo C) — Cadastro Rápido de Imposto no Rateio** | Atalho `[+ Novo Imposto]` inline em `RateioImpostoPanel.tsx`, reaproveitando `CadastrarAliquotaImpostoUseCase` (US-124) — evita sair da tela da Proposta para cadastrar um tributo ainda não existente. Prioridade baixa; bloqueada até o refinamento decidir se o modal usa todos os campos do cadastro completo ou um subconjunto reduzido (ver US doc). | P |
 
 ---
 
