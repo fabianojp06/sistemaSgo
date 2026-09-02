@@ -2,7 +2,12 @@ import { Prisma } from '@prisma/client';
 import { describe, expect, it } from 'vitest';
 import { vi } from 'vitest';
 import { CadastrarViagemUseCase } from './CadastrarViagemUseCase';
-import { CamposObrigatoriosViagemError, ContaViagemNaoAnaliticaError, MetaNaoEncontradaError } from '@/domain/plano-contas/errors';
+import {
+  ContaViagemNaoAnaliticaError,
+  MetaNaoEncontradaError,
+  MunicipioNaoEncontradoError,
+  MunicipioViagemObrigatorioError,
+} from '@/domain/plano-contas/errors';
 
 type VersaoMock = { id: string; tenantId: string; status: string; ativa: boolean; proposta: { categoria: string } };
 type ContaMock = { id: string; isAnalitica: boolean };
@@ -42,10 +47,13 @@ const metaAtiva: MetaMock = { id: 'm1', tenantId: 't1', versaoId: 'v1', ativo: t
 const contaAnalitica = (id: string): ContaMock => ({ id, isAnalitica: true });
 const contaSintetica = (id: string): ContaMock => ({ id, isAnalitica: false });
 
+const CODIGO_BRASILIA = '5300108'; // catálogo IBGE embutido (ADR-048)
+
 const inputBase = {
   tenantId: 't1',
   usuarioId: 'u1',
   versaoId: 'v1',
+  municipioIbge: CODIGO_BRASILIA,
   descricao: 'Missão técnica em Brasília',
   quantidadePessoas: 2,
   mediaDias: 3,
@@ -73,6 +81,51 @@ describe('CadastrarViagemUseCase [US-109]', () => {
     expect(prisma.historicoOperacao.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ tipoOperacao: 'VIAGEM_CRIADA' }) }),
     );
+  });
+
+  it('resolve o snapshot de município do catálogo a partir só do código IBGE [US-141]', async () => {
+    const prisma = criarPrismaMock(
+      [versaoPorMeta],
+      [metaAtiva],
+      [contaAnalitica('cp'), contaAnalitica('cd'), contaAnalitica('ct')],
+    );
+    const useCase = new CadastrarViagemUseCase(prisma as never);
+
+    const viagem = (await useCase.execute(inputBase)) as unknown as {
+      municipioIbge: string;
+      municipioNome: string;
+      uf: string;
+      latitude: string;
+      longitude: string;
+    };
+
+    expect(viagem.municipioIbge).toBe(CODIGO_BRASILIA);
+    expect(viagem.municipioNome).toBe('Brasília');
+    expect(viagem.uf).toBe('DF');
+    expect(viagem.latitude).toBeTruthy();
+    expect(viagem.longitude).toBeTruthy();
+  });
+
+  it('bloqueia cadastro sem município [US-141]', async () => {
+    const prisma = criarPrismaMock(
+      [versaoPorMeta],
+      [metaAtiva],
+      [contaAnalitica('cp'), contaAnalitica('cd'), contaAnalitica('ct')],
+    );
+    const useCase = new CadastrarViagemUseCase(prisma as never);
+
+    await expect(useCase.execute({ ...inputBase, municipioIbge: '' })).rejects.toThrow(MunicipioViagemObrigatorioError);
+  });
+
+  it('bloqueia código IBGE inexistente no catálogo [US-141]', async () => {
+    const prisma = criarPrismaMock(
+      [versaoPorMeta],
+      [metaAtiva],
+      [contaAnalitica('cp'), contaAnalitica('cd'), contaAnalitica('ct')],
+    );
+    const useCase = new CadastrarViagemUseCase(prisma as never);
+
+    await expect(useCase.execute({ ...inputBase, municipioIbge: '9999999' })).rejects.toThrow(MunicipioNaoEncontradoError);
   });
 
   it('aceita Viagem em Proposta CONSOLIDADA, sem exigir Meta (correção de escopo, 2026-08-07) [Cenário 2]', async () => {
@@ -106,10 +159,16 @@ describe('CadastrarViagemUseCase [US-109]', () => {
     await expect(useCase.execute(inputBase)).rejects.toThrow(ContaViagemNaoAnaliticaError);
   });
 
-  it('bloqueia campos obrigatórios ausentes', async () => {
-    const prisma = criarPrismaMock([versaoPorMeta], [metaAtiva], []);
+  it('aceita cadastro sem "Motivo/Complemento" — descricao é opcional [US-141]', async () => {
+    const prisma = criarPrismaMock(
+      [versaoPorMeta],
+      [metaAtiva],
+      [contaAnalitica('cp'), contaAnalitica('cd'), contaAnalitica('ct')],
+    );
     const useCase = new CadastrarViagemUseCase(prisma as never);
 
-    await expect(useCase.execute({ ...inputBase, descricao: '' })).rejects.toThrow(CamposObrigatoriosViagemError);
+    const viagem = await useCase.execute({ ...inputBase, descricao: '' });
+
+    expect((viagem.custoEstimado as Prisma.Decimal).toString()).toBe('2400');
   });
 });

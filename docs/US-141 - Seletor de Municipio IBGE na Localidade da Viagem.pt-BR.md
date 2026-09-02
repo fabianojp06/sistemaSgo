@@ -4,7 +4,7 @@
 **Épico:** EP118-24 — Módulo de Cadastros
 **Prioridade:** Média
 **Estimativa:** M (~1,5 a 2 dias)
-**Status:** 🔜 Próximo da Fila — **ADR-048 aceito** (`docs/ADR-048 ...md`), pronto para o `fullstack-dev` implementar
+**Status:** ⏳ Implementada na branch `feature/us-141-municipio-ibge-viagem` (2026-09-02) — aguarda PR / `/code-review` / merge / aplicação da migration. ADR: `docs/ADR-048 ...md`.
 **Origem:** pedido do usuário em 2026-09-02, decorrente da US-109 (UC03.29-33)
 
 **Como** analista da Gerência Financeira (GFIN) da CTCEA cadastrando as viagens de uma Proposta,

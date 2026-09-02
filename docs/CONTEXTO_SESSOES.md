@@ -1077,9 +1077,41 @@ método da média, qual conta, o que fazer com o campo atual, borda sem históri
 Adicionada ao kanban em 🔴 Bloqueado. Menor incremento futuro: US-140a (carga de realizado
 histórico por conta via planilha) → depois US-140 (exibir a média).
 
-**Estado ao final:** `origin/master` em `c8c6ba0`, local sincronizado. Todos os commits desta
-sessão publicados. Pendências herdadas seguem abertas (build `/orcamentario/acompanhamento`,
-reset de senha do Postgres, dívida do lock-por-tenant, `.mcp.json`) + US-140 nova.
+**Estado ao final da parte 1:** `origin/master` em `c8c6ba0`, local sincronizado. Pendências
+herdadas seguem abertas + US-140 nova.
+
+## 2026-09-02 (cont.) — US-141 implementada (município IBGE na Viagem)
+
+O usuário pediu para seguir de forma autônoma até o merge. Fonte de dados:
+`github.com/kelvins/municipios-brasileiros` (MIT, commit `503e2f70`, 5571 municípios com
+código IBGE + nome + UF + lat/long) — clonado para o scratchpad e transcrito.
+
+Implementado na branch `feature/us-141-municipio-ibge-viagem` (3 commits `0538efd`/`a4f2acc`/`56adba6`),
+seguindo ADR-048:
+- **Catálogo embutido**: `scripts/gerar-municipios-br-raw.mjs` + `src/infrastructure/integrations/municipios-br/`
+  (`municipios-brasileiros-raw.ts` gerado — 5571 registros, ~590 KB; `types.ts`; `municipio-br-catalogo.ts`
+  com `resolverMunicipioBr()` em memória; `LICENSE` MIT). Sem sync, sem tabela, sem job.
+- **Schema/migration**: `Viagem` +5 colunas (`municipioIbge`, `municipioNome`, `uf` snapshot +
+  `latitude`/`longitude` `Decimal(9,6)`) + índice `(tenantId, municipioIbge)`. Migration aditiva
+  `20260902120000_add_municipio_ibge_viagem` **escrita mas NÃO aplicada** — o usuário aplica via
+  SQL Editor do Supabase (regra do CLAUDE.md).
+- **Use cases**: `CadastrarViagemUseCase` exige `municipioIbge` (só o código; nome/uf/coords
+  resolvidos do catálogo no servidor — anti-spoofing); `descricao` virou opcional.
+  `EditarViagemUseCase` — município opcional (não trava viagem legada). **`CriarVersaoPropostaUseCase`
+  propaga os 5 campos** ao copiar Viagens (risco de regressão nº 1 do ADR — teste dedicado).
+- **UI**: `ComboboxMunicipio.tsx` (busca client-side acento/caixa-insensível, mín. 2 chars, teto
+  20, catálogo por `import()` dinâmico + cache de módulo) + `municipios-br-client.ts`.
+  `ViagemPanel`: rótulo "MUNICÍPIO (BRASIL)" obrigatório no cadastro; "LOCALIDADE (PAÍS)" →
+  "MOTIVO / COMPLEMENTO DA VIAGEM" (opcional); viagem legada exibe "— (sem município)".
+- **Server Actions**: `cadastrarViagem`/`editarViagem` +`municipioIbge`; `ViagemResultado` +5
+  campos; `page.tsx` select estendido.
+- **Testes**: catálogo (hit/miss, integridade dos 5571), `filtrarMunicipios` (acento-insensível,
+  teto), `CadastrarViagemUseCase` (obrigatório/inválido/snapshot/descrição opcional),
+  `EditarViagemUseCase` (troca/opcional-legada/inválido), `CriarVersaoPropostaUseCase` (propaga).
+
+**Não validado localmente** — ambiente sem `node_modules` (npm bloqueado por self-signed cert).
+Só `node --experimental-strip-types --check` passou nos arquivos `.ts` (não pega `.tsx` nem tipos).
+CI é o gate. Depois do merge: **usuário aplica a migration** ou produção quebra.
 
 ---
 

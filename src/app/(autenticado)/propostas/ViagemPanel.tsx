@@ -4,7 +4,15 @@ import { useMemo, useRef, useState, useTransition } from 'react';
 import { cadastrarViagem, editarViagem, excluirViagem, type ViagemResultado } from '@/app/(autenticado)/plano-contas/actions';
 import { SeletorContaAnalitica } from './SeletorContaAnalitica';
 import { BarChartHorizontal } from './BarChartHorizontal';
+import { ComboboxMunicipio } from './ComboboxMunicipio';
 import { calcularComponentesCustoViagem } from '@/domain/plano-contas/calcularCustoEstimadoViagem';
+
+/** US-141 — rótulo de destino da viagem: município quando houver, senão o texto livre. */
+function rotuloDestino(viagem: Pick<ViagemResultado, 'municipioNome' | 'uf' | 'descricao'>): string {
+  if (viagem.municipioNome) return `${viagem.municipioNome} — ${viagem.uf ?? ''}`.trim();
+  if (viagem.descricao.trim().length > 0) return viagem.descricao;
+  return '— (sem município)';
+}
 
 type ContaOpcao = { id: string; label: string };
 
@@ -102,6 +110,9 @@ function FaixaTotaisViagens({ totalPassagens, totalDiarias, totalGeral }: { tota
 }
 
 type ValoresFormulario = {
+  municipioIbge: string;
+  municipioNome: string;
+  uf: string;
   descricao: string;
   quantidadePessoas: number;
   mediaDias: number;
@@ -137,6 +148,12 @@ function ViagemForm({
   onCancelarEdicao: () => void;
 }) {
   const editando = viagemEmEdicao !== null;
+  // O form é remontado (key={chaveFormulario}) a cada troca de modo/viagem, então derivar
+  // o rótulo dos props é seguro — não precisa de state.
+  const rotuloMunicipioInicial = valoresIniciais.municipioNome
+    ? `${valoresIniciais.municipioNome} — ${valoresIniciais.uf}`
+    : null;
+  const [municipioIbge, setMunicipioIbge] = useState(valoresIniciais.municipioIbge);
   const [descricao, setDescricao] = useState(valoresIniciais.descricao);
   const [quantidadePessoas, setQuantidadePessoas] = useState(valoresIniciais.quantidadePessoas);
   const [mediaDias, setMediaDias] = useState(valoresIniciais.mediaDias);
@@ -167,8 +184,12 @@ function ViagemForm({
         contaTransporteId,
       };
       const resposta = viagemEmEdicao
-        ? await editarViagem({ viagemId: viagemEmEdicao.id, ...campos })
-        : await cadastrarViagem({ versaoId, ...campos });
+        ? await editarViagem({
+            viagemId: viagemEmEdicao.id,
+            ...campos,
+            ...(municipioIbge.length > 0 ? { municipioIbge } : {}),
+          })
+        : await cadastrarViagem({ versaoId, ...campos, municipioIbge });
       if (!resposta.sucesso) {
         setErro(resposta.mensagem);
         return;
@@ -183,7 +204,20 @@ function ViagemForm({
       <h4 className="text-sm font-semibold text-slate-800">{editando ? 'Editar Viagem' : 'Nova Viagem'}</h4>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <div className="md:col-span-3">
-          <label className="mb-1 block text-xs font-medium text-slate-600">LOCALIDADE (PAÍS)</label>
+          <label className="mb-1 block text-xs font-medium text-slate-600">MUNICÍPIO (BRASIL)</label>
+          <ComboboxMunicipio
+            codigoIbge={municipioIbge}
+            rotuloInicial={rotuloMunicipioInicial}
+            onChange={(sel) => setMunicipioIbge(sel?.codigoIbge ?? '')}
+          />
+          {editando && municipioIbge.length === 0 && (
+            <p className="mt-1 text-[11px] text-amber-600">
+              Esta viagem foi cadastrada sem município. Selecione um para padronizar.
+            </p>
+          )}
+        </div>
+        <div className="md:col-span-3">
+          <label className="mb-1 block text-xs font-medium text-slate-600">MOTIVO / COMPLEMENTO DA VIAGEM (opcional)</label>
           <input
             type="text"
             value={descricao}
@@ -270,7 +304,7 @@ function ViagemForm({
         <button
           type="button"
           onClick={salvar}
-          disabled={pending || descricao.trim().length === 0}
+          disabled={pending || (!editando && municipioIbge.length === 0)}
           className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white disabled:opacity-50"
         >
           {pending ? 'Salvando...' : editando ? 'Salvar alterações' : 'Cadastrar'}
@@ -291,6 +325,9 @@ function ViagemForm({
 }
 
 const VALORES_VAZIOS: ValoresFormulario = {
+  municipioIbge: '',
+  municipioNome: '',
+  uf: '',
   descricao: '',
   quantidadePessoas: 1,
   mediaDias: 1,
@@ -304,6 +341,9 @@ const VALORES_VAZIOS: ValoresFormulario = {
 
 function valoresDe(viagem: ViagemResultado, descricao: string): ValoresFormulario {
   return {
+    municipioIbge: viagem.municipioIbge ?? '',
+    municipioNome: viagem.municipioNome ?? '',
+    uf: viagem.uf ?? '',
     descricao,
     quantidadePessoas: viagem.quantidadePessoas,
     mediaDias: viagem.mediaDias,
@@ -364,7 +404,7 @@ export function ViagemPanel({
     () =>
       viagens.map((v, i) => ({
         id: v.id,
-        label: v.descricao,
+        label: rotuloDestino(v),
         valor: Number(v.custoEstimado),
         cor: PALETA_CATEGORICA[i % PALETA_CATEGORICA.length],
       })),
@@ -417,7 +457,8 @@ export function ViagemPanel({
   }
 
   function copiar(viagem: ViagemResultado) {
-    setValoresFormulario(valoresDe(viagem, `${viagem.descricao} (cópia)`));
+    const descricaoCopia = viagem.descricao.trim().length > 0 ? `${viagem.descricao} (cópia)` : '';
+    setValoresFormulario(valoresDe(viagem, descricaoCopia));
     setViagemEmEdicaoId(null);
     irParaFormulario();
   }
@@ -478,7 +519,11 @@ export function ViagemPanel({
                 }`}
               >
                 <span>
-                  {viagem.descricao} — <span className="text-xs text-slate-500">custo estimado R$ {viagem.custoEstimado}</span>
+                  {rotuloDestino(viagem)}
+                  {viagem.municipioNome && viagem.descricao.trim().length > 0 && (
+                    <span className="text-xs text-slate-500"> · {viagem.descricao}</span>
+                  )}{' '}
+                  — <span className="text-xs text-slate-500">custo estimado R$ {viagem.custoEstimado}</span>
                 </span>
                 {!readOnly && (
                   <div className="flex items-center gap-2">

@@ -38,7 +38,7 @@
 | **Módulo de Cadastros (EP118-24)** | US-001 a US-118 concluídas; US-123 a US-139 concluídas. Ver kanban. Fila priorizada quase vazia (só US-127 — cadastro rápido de imposto no rateio, prioridade baixa). |
 | **Cargos / Tabela Salarial** | US-131 a US-139 entregues (Tabela Salarial, integração Rubi, Grade Salarial CTCEA persistida, Periculosidade/Insalubridade, Catálogo de Cargo de Mercado). PRs #5–#15 mergeados. |
 | **Módulo Orçamentário (`/orcamentario`)** | Frente nova. US-138 (Relatório de Cronograma de Desembolso) entregue. Landing em grade de tiles + telas iniciais de Acompanhamento e Orçado (`b20b927`/`13dd8a4`). |
-| **Tela de Viagens (US-109)** | 2026-09-01: rótulos renomeados (LOCALIDADE (PAÍS) etc.) + faixa agregada TOTAL DE PASSAGENS/DIÁRIAS/GERAL (`4484882`); **editar Viagem pela tela** (PR #16, `c8c6ba0`). 2026-09-02: **US-141** (seletor de município IBGE no lugar do texto livre de localidade) refinada + **ADR-048 aceito** — 🔜 próximo da fila, pronta p/ implementar; **US-140** (transporte por média histórica) 🔴 bloqueada. |
+| **Tela de Viagens (US-109)** | 2026-09-01: rótulos renomeados (LOCALIDADE (PAÍS) etc.) + faixa agregada TOTAL DE PASSAGENS/DIÁRIAS/GERAL (`4484882`); **editar Viagem pela tela** (PR #16, `c8c6ba0`). 2026-09-02: **US-141** (seletor de município IBGE) refinada + **ADR-048 aceito** + **implementada** na branch `feature/us-141-municipio-ibge-viagem` (catálogo IBGE embutido 5571 municípios, migration aditiva pendente de aplicação, combobox client-side) — aguarda PR/`/code-review`/merge; **US-140** (transporte por média histórica) 🔴 bloqueada. |
 | **Tradução EN-US da documentação** | 19/43 arquivos. Última: US-106, US-107, US-107a (`55cabfa`). Tarefa de menor esforço sempre disponível. |
 
 ## Pendências herdadas em aberto (não perder de vista)
@@ -60,12 +60,13 @@
 
 ## Próximo passo combinado
 
-Item priorizado: **implementar US-141** (seletor de município IBGE na Viagem) — **ADR-048 já
-aceito** (`docs/ADR-048 ...md`: colunas `Decimal(9,6)`, `municipioIbge` nullable + validação no
-use case, catálogo embutido em `src/infrastructure/integrations/municipios-br/` sem sync,
-snapshot congelado, DDL da migration pronto). Pronto para o `fullstack-dev` numa branch + PR +
-`/code-review`. Outros candidatos: (a) build de `/orcamentario/acompanhamento` (pendência #1);
-(b) tradução EN-US; (c) Módulo Orçamentário; (d) US-127; (e) desbloquear US-140.
+**US-141 implementada** na branch `feature/us-141-municipio-ibge-viagem` (3 commits). Falta:
+abrir PR → `/code-review high` → merge → **usuário aplica a migration**
+`20260902120000_add_municipio_ibge_viagem` via SQL Editor do Supabase (a app não funciona em
+produção até isso) → `prisma migrate resolve --applied` pelo Session Pooler.
+
+Outros candidatos: (a) build de `/orcamentario/acompanhamento` (pendência #1); (b) tradução
+EN-US; (c) Módulo Orçamentário; (d) US-127; (e) desbloquear US-140.
 
 > Observação da sessão de 2026-09-01: PR #16 (editar Viagem) foi mergeado pelo usuário **sem
 > rodar `/code-review`** — decisão consciente, mudança só de UI. Se aparecer regressão na tela

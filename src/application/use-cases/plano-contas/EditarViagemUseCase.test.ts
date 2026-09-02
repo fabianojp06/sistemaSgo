@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 import { EditarViagemUseCase } from './EditarViagemUseCase';
-import { ConflitoConcorrenciaError, ContaViagemNaoAnaliticaError } from '@/domain/plano-contas/errors';
+import { ConflitoConcorrenciaError, ContaViagemNaoAnaliticaError, MunicipioNaoEncontradoError } from '@/domain/plano-contas/errors';
 
 type ViagemMock = {
   id: string;
@@ -155,6 +155,61 @@ describe('EditarViagemUseCase [US-109]', () => {
       }),
     ).rejects.toThrow(ConflitoConcorrenciaError);
     expect(base.viagem.updateMany).not.toHaveBeenCalled();
+  });
+
+  const camposBase = {
+    tenantId: 't1',
+    usuarioId: 'u1',
+    viagemId: 'via1',
+    descricao: 'Viagem revisada',
+    quantidadePessoas: 2,
+    mediaDias: 2,
+    custoUnitarioPassagem: 400,
+    contaPassagemId: 'cp',
+    custoUnitarioDiaria: 150,
+    contaDiariaId: 'cd',
+    custoUnitarioTransporte: 50,
+    contaTransporteId: 'ct',
+  };
+
+  it('troca o município e regrava o snapshot do catálogo [US-141]', async () => {
+    const { base, getAtual } = criarPrismaMock(viagemBase, versaoRascunho, [
+      contaAnalitica('cp'),
+      contaAnalitica('cd'),
+      contaAnalitica('ct'),
+    ]);
+    const useCase = new EditarViagemUseCase(base as never);
+
+    await useCase.execute({ ...camposBase, municipioIbge: '4106902' }); // Curitiba
+
+    const atual = getAtual() as unknown as { municipioIbge: string; municipioNome: string; uf: string };
+    expect(atual.municipioIbge).toBe('4106902');
+    expect(atual.municipioNome).toBe('Curitiba');
+    expect(atual.uf).toBe('PR');
+  });
+
+  it('permite salvar viagem legada sem informar município (opcional na edição) [US-141]', async () => {
+    const { base, getAtual } = criarPrismaMock(viagemBase, versaoRascunho, [
+      contaAnalitica('cp'),
+      contaAnalitica('cd'),
+      contaAnalitica('ct'),
+    ]);
+    const useCase = new EditarViagemUseCase(base as never);
+
+    await useCase.execute(camposBase);
+
+    expect((getAtual() as unknown as { municipioIbge?: string }).municipioIbge).toBeUndefined();
+  });
+
+  it('bloqueia código IBGE inexistente na edição [US-141]', async () => {
+    const { base } = criarPrismaMock(viagemBase, versaoRascunho, [
+      contaAnalitica('cp'),
+      contaAnalitica('cd'),
+      contaAnalitica('ct'),
+    ]);
+    const useCase = new EditarViagemUseCase(base as never);
+
+    await expect(useCase.execute({ ...camposBase, municipioIbge: '9999999' })).rejects.toThrow(MunicipioNaoEncontradoError);
   });
 
   it('bloqueia conflito detectado só no updateMany (corrida real entre leitura e escrita) [US-105]', async () => {
