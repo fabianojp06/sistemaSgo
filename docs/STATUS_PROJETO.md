@@ -14,16 +14,15 @@
 > **Regra:** ao encerrar uma sessão com mudança relevante de estado, atualize este arquivo E
 > `CONTEXTO_SESSOES.md`, e faça commit (fluxo Git híbrido do `CLAUDE.md`).
 
-**Última atualização:** 2026-09-01 (sessão da tela de Viagens)
+**Última atualização:** 2026-09-02 (US-141 mergeada)
 
 ---
 
 ## Onde estamos
 
-- **Branch:** `master` limpa e sincronizada com `origin/master` (`c8c6ba0`). Sem branch de feature ativa.
-- **Suíte de testes:** 385/385 na última verificação com ambiente completo (2026-08-31). As
-  mudanças de 2026-09-01 na tela de Viagens **não foram validadas localmente** (npm bloqueado por
-  self-signed cert nesta rede) — passaram só pelo CI do GitHub Actions no PR #16.
+- **Branch:** `master` sincronizada com `origin/master` (`54d5298`, merge do PR #17). Sem branch de feature ativa.
+- **Suíte de testes:** validação local impossível nesta rede (npm bloqueado por self-signed
+  cert). As mudanças da tela de Viagens (PRs #16, #17) passaram só pelo CI do GitHub Actions.
 - **Ambiente atual:** container efêmero sem `.env` e **sem `node_modules`**; `npm install` falha
   com `SELF_SIGNED_CERT_IN_CHAIN` (mesma restrição de rede do MCP do Supabase). Não dá para rodar
   `tsc`/`eslint`/`vitest`/`next` aqui — depende do CI. Migrations são escritas à mão e aplicadas
@@ -38,7 +37,7 @@
 | **Módulo de Cadastros (EP118-24)** | US-001 a US-118 concluídas; US-123 a US-139 concluídas. Ver kanban. Fila priorizada quase vazia (só US-127 — cadastro rápido de imposto no rateio, prioridade baixa). |
 | **Cargos / Tabela Salarial** | US-131 a US-139 entregues (Tabela Salarial, integração Rubi, Grade Salarial CTCEA persistida, Periculosidade/Insalubridade, Catálogo de Cargo de Mercado). PRs #5–#15 mergeados. |
 | **Módulo Orçamentário (`/orcamentario`)** | Frente nova. US-138 (Relatório de Cronograma de Desembolso) entregue. Landing em grade de tiles + telas iniciais de Acompanhamento e Orçado (`b20b927`/`13dd8a4`). |
-| **Tela de Viagens (US-109)** | 2026-09-01: rótulos renomeados (LOCALIDADE (PAÍS) etc.) + faixa agregada TOTAL DE PASSAGENS/DIÁRIAS/GERAL (`4484882`); **editar Viagem pela tela** (PR #16, `c8c6ba0`). 2026-09-02: **US-141** (seletor de município IBGE) refinada + **ADR-048 aceito** + **implementada** na branch `feature/us-141-municipio-ibge-viagem` (catálogo IBGE embutido 5571 municípios, migration aditiva pendente de aplicação, combobox client-side) — aguarda PR/`/code-review`/merge; **US-140** (transporte por média histórica) 🔴 bloqueada. |
+| **Tela de Viagens (US-109)** | 2026-09-01: rótulos + faixa TOTAL PASSAGENS/DIÁRIAS/GERAL (`4484882`); editar Viagem pela tela (PR #16). 2026-09-02: **US-141 mergeada** (PR #17, `54d5298`) — seletor de município IBGE (catálogo embutido 5571 municípios, `src/infrastructure/integrations/municipios-br/`), `descricao` → "Motivo/Complemento" opcional, snapshot nome/uf + lat/long. Migration `20260902120000_add_municipio_ibge_viagem` **aplicada em produção** (deu 500 até aplicar). ADR-048. **US-140** (transporte por média histórica) 🔴 bloqueada. |
 | **Tradução EN-US da documentação** | 19/43 arquivos. Última: US-106, US-107, US-107a (`55cabfa`). Tarefa de menor esforço sempre disponível. |
 
 ## Pendências herdadas em aberto (não perder de vista)
@@ -54,23 +53,25 @@
    candidato a E2E Playwright) segue só manual.
 5. **`.mcp.json`** (MCP do Supabase) nunca funcionou por restrição de rede local — decidir se
    permanece no repo ou sai.
-6. **US-140 (bloqueada)** — Total de Transporte da Viagem por média histórica da conta (pedido
-   de 2026-09-01). Bloqueada: o SGO não tem realizado histórico por conta multi-ano. Precisa de
-   decisão do usuário (fonte do dado) + ADR. Ver `docs/US-140 ...md` e o kanban.
+6. **US-140 (bloqueada)** — Total de Transporte da Viagem por média histórica da conta. O SGO
+   não tem realizado histórico por conta multi-ano. Precisa de decisão do usuário + ADR.
+7. **Follow-up leve da US-141** (não urgente, sem regressão em produção): (a) não dá para
+   **remover** um município já atribuído a uma Viagem (só trocar por outro); (b) o snapshot de
+   município é re-resolvido do catálogo a cada edição da Viagem (mesmo sem mexer no destino) —
+   irrelevante hoje pois o catálogo é pinado, mas viola o "congelado" do ADR-048; (c)
+   `prisma migrate resolve --applied 20260902120000_add_municipio_ibge_viagem` ainda não rodado
+   (histórico do Prisma fora de sincronia com o banco). Ver `docs/CONTEXTO_SESSOES.md`.
 
 ## Próximo passo combinado
 
-**US-141 implementada** na branch `feature/us-141-municipio-ibge-viagem` (3 commits). Falta:
-abrir PR → `/code-review high` → merge → **usuário aplica a migration**
-`20260902120000_add_municipio_ibge_viagem` via SQL Editor do Supabase (a app não funciona em
-produção até isso) → `prisma migrate resolve --applied` pelo Session Pooler.
+US-141 **entregue e em produção**. Nenhum item forte na fila. Candidatos: (a) build de
+`/orcamentario/acompanhamento` (pendência #1); (b) follow-up leve da US-141 (pendência #7);
+(c) tradução EN-US; (d) Módulo Orçamentário; (e) US-127; (f) desbloquear US-140.
 
-Outros candidatos: (a) build de `/orcamentario/acompanhamento` (pendência #1); (b) tradução
-EN-US; (c) Módulo Orçamentário; (d) US-127; (e) desbloquear US-140.
-
-> Observação da sessão de 2026-09-01: PR #16 (editar Viagem) foi mergeado pelo usuário **sem
-> rodar `/code-review`** — decisão consciente, mudança só de UI. Se aparecer regressão na tela
-> de Viagens, é candidato a revisar.
+> **Lição desta sessão (2026-09-02):** migration aditiva mergeada sem ser aplicada = **500 em
+> produção** assim que o Server Component consultou as colunas novas. Ao mergear qualquer PR com
+> migration, aplicar o SQL no Supabase **antes ou imediatamente após** o merge — não depois que o
+> usuário reclama.
 
 ## Convenções operacionais rápidas
 

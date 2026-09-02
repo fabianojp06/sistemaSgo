@@ -1111,7 +1111,29 @@ seguindo ADR-048:
 
 **Não validado localmente** — ambiente sem `node_modules` (npm bloqueado por self-signed cert).
 Só `node --experimental-strip-types --check` passou nos arquivos `.ts` (não pega `.tsx` nem tipos).
-CI é o gate. Depois do merge: **usuário aplica a migration** ou produção quebra.
+CI é o gate.
+
+### Desfecho — PR #17 mergeado, 500 em produção, corrigido
+
+- `/code-review high` rodou 2x na branch. 1ª rodada: 6 achados, os relevantes corrigidos (commit
+  `aad6555` — ranking de relevância no combobox, `viagem-serializer.ts` unificando o mapeamento
+  linha→DTO, log de exclusão sem `descricao`, etc.). 2ª rodada apontou 2 erros de `tsc` — mas
+  eram contra edições minhas **ainda não commitadas** de uma 3ª leva; o código mergeado (1ª leva)
+  compila e passou no CI.
+- Usuário mergeou o **PR #17** (`54d5298`) direto no GitHub, sem esperar eu terminar.
+- **`/propostas/{id}/viagens` deu 500 em produção** — a migration `20260902120000_add_municipio_ibge_viagem`
+  não tinha sido aplicada; o Server Component consultava colunas (`municipioIbge` etc.) que não
+  existiam no Supabase. Passei o SQL (`ALTER TABLE "Viagem" ADD COLUMN ...` × 5 + `CREATE INDEX`),
+  o usuário aplicou via SQL Editor, produção voltou.
+- A 3ª leva de correções (achados da 2ª rodada do code-review) foi **descartada** (stash pop
+  conflitou feio com o master já mergeado; `git stash drop`). Ficaram como pendência leve #7 do
+  `STATUS_PROJETO.md` — não são regressão, não são urgentes:
+  1. não dá para **remover** um município já atribuído (só trocar);
+  2. o snapshot é re-resolvido do catálogo a cada edição da Viagem (viola "congelado" do ADR-048,
+     inócuo hoje pois o catálogo é pinado);
+  3. `prisma migrate resolve --applied 20260902120000_add_municipio_ibge_viagem` ainda pendente.
+
+**Lição:** PR com migration → aplicar o SQL no Supabase junto do merge, não depois do 500.
 
 ---
 

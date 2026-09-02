@@ -4,7 +4,7 @@
 **Épico:** EP118-24 — Módulo de Cadastros
 **Prioridade:** Média
 **Estimativa:** M (~1,5 a 2 dias)
-**Status:** ⏳ Implementada na branch `feature/us-141-municipio-ibge-viagem` (2026-09-02) — aguarda PR / `/code-review` / merge / aplicação da migration. ADR: `docs/ADR-048 ...md`.
+**Status:** ✅ Entregue — PR #17 (`54d5298`, 2026-09-02), migration aplicada em produção. ADR: `docs/ADR-048 ...md`. Follow-up leve em aberto: remover município (só troca hoje), snapshot re-resolvido a cada edição, `migrate resolve` pendente — ver `docs/STATUS_PROJETO.md` pendência #7.
 **Origem:** pedido do usuário em 2026-09-02, decorrente da US-109 (UC03.29-33)
 
 **Como** analista da Gerência Financeira (GFIN) da CTCEA cadastrando as viagens de uma Proposta,
