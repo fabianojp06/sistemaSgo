@@ -503,10 +503,27 @@ export class ContaViagemNaoAnaliticaError extends Error {
 }
 
 // US-109 — campos obrigatórios do cadastro/alteração de Viagem.
+// US-141 — "Descrição" (agora "Motivo/Complemento") deixou de ser obrigatória.
 export class CamposObrigatoriosViagemError extends Error {
   constructor() {
-    super('Preencha Descrição, Quantidade de Pessoas, Média de Dias e os custos/contas de passagem, diária e transporte.');
+    super('Preencha Quantidade de Pessoas, Média de Dias e os custos/contas de passagem, diária e transporte.');
     this.name = 'CamposObrigatoriosViagemError';
+  }
+}
+
+// US-141 — município é obrigatório no cadastro de nova Viagem (regra de aplicação; a coluna é nullable no banco).
+export class MunicipioViagemObrigatorioError extends Error {
+  constructor() {
+    super('Selecione o município de destino da viagem.');
+    this.name = 'MunicipioViagemObrigatorioError';
+  }
+}
+
+// US-141 — código IBGE informado não existe no catálogo embutido de municípios.
+export class MunicipioNaoEncontradoError extends Error {
+  constructor() {
+    super('Município não encontrado no catálogo.');
+    this.name = 'MunicipioNaoEncontradoError';
   }
 }
 

@@ -118,6 +118,12 @@ export class CriarVersaoPropostaUseCase {
             versaoId: novaVersao.id,
             metaId: v.metaId ? metaNovaId : null,
             descricao: v.descricao,
+            // US-141 — copia o snapshot de município como está (não re-resolver do catálogo).
+            municipioIbge: v.municipioIbge,
+            municipioNome: v.municipioNome,
+            uf: v.uf,
+            latitude: v.latitude,
+            longitude: v.longitude,
             quantidadePessoas: v.quantidadePessoas,
             mediaDias: v.mediaDias,
             custoUnitarioPassagem: v.custoUnitarioPassagem,

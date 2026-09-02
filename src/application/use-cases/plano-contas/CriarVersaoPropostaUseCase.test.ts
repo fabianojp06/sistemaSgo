@@ -123,7 +123,7 @@ describe('CriarVersaoPropostaUseCase [US-007/US-119, ADR-033]', () => {
 
   it('copia Viagem e ItemPatrimonial apontando metaId para a Meta nova', async () => {
     const meta = { tenantId: 't1', versaoId: 'v1', tipo: 'INSTITUCIONAL', nome: 'Meta X', valorGlobal: new Prisma.Decimal(0), status: 'ATIVO', observacao: null };
-    const viagens = [{ tenantId: 't1', versaoId: 'v1', metaId: 'meta-antiga', descricao: 'Viagem X', quantidadePessoas: 2, mediaDias: 3, custoUnitarioPassagem: new Prisma.Decimal(100), contaPassagemId: 'cp', custoUnitarioDiaria: new Prisma.Decimal(50), contaDiariaId: 'cd', custoUnitarioTransporte: new Prisma.Decimal(30), contaTransporteId: 'ct', custoEstimado: new Prisma.Decimal(400) }];
+    const viagens = [{ tenantId: 't1', versaoId: 'v1', metaId: 'meta-antiga', descricao: 'Viagem X', municipioIbge: '4106902', municipioNome: 'Curitiba', uf: 'PR', latitude: new Prisma.Decimal('-25.4195'), longitude: new Prisma.Decimal('-49.2646'), quantidadePessoas: 2, mediaDias: 3, custoUnitarioPassagem: new Prisma.Decimal(100), contaPassagemId: 'cp', custoUnitarioDiaria: new Prisma.Decimal(50), contaDiariaId: 'cd', custoUnitarioTransporte: new Prisma.Decimal(30), contaTransporteId: 'ct', custoEstimado: new Prisma.Decimal(400) }];
     const itens = [{ tenantId: 't1', versaoId: 'v1', metaId: 'meta-antiga', contaId: 'ci', descricao: 'Item X', data: new Date('2026-01-01'), quantidade: 1, valorUnitario: new Prisma.Decimal(200), valorTotal: new Prisma.Decimal(200) }];
     const prisma = criarPrismaMock({ meta, viagens, itens });
     const useCase = new CriarVersaoPropostaUseCase(prisma as never);
@@ -131,7 +131,17 @@ describe('CriarVersaoPropostaUseCase [US-007/US-119, ADR-033]', () => {
     await useCase.execute({ tenantId: 't1', usuarioId: 'u1', propostaId: 'p1' });
 
     expect(prisma.viagem.createMany).toHaveBeenCalledWith({
-      data: [expect.objectContaining({ versaoId: 'v2', metaId: 'meta-nova', descricao: 'Viagem X' })],
+      data: [
+        expect.objectContaining({
+          versaoId: 'v2',
+          metaId: 'meta-nova',
+          descricao: 'Viagem X',
+          // US-141 — snapshot de município propagado para a nova Versão (regressão do ADR-048)
+          municipioIbge: '4106902',
+          municipioNome: 'Curitiba',
+          uf: 'PR',
+        }),
+      ],
     });
     expect(prisma.itemPatrimonial.createMany).toHaveBeenCalledWith({
       data: [expect.objectContaining({ versaoId: 'v2', metaId: 'meta-nova', descricao: 'Item X' })],

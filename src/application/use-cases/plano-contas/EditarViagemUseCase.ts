@@ -1,9 +1,11 @@
-import type { PrismaClient, Viagem } from '@prisma/client';
+import type { Prisma, PrismaClient, Viagem } from '@prisma/client';
 import { calcularCustoEstimadoViagem } from '@/domain/plano-contas/calcularCustoEstimadoViagem';
+import { resolverMunicipioBr } from '@/infrastructure/integrations/municipios-br/municipio-br-catalogo';
 import {
   CamposObrigatoriosViagemError,
   ConflitoConcorrenciaError,
   ContaViagemNaoAnaliticaError,
+  MunicipioNaoEncontradoError,
   VersaoPropostaInvalidaError,
   ViagemNaoEncontradaError,
 } from '@/domain/plano-contas/errors';
@@ -12,6 +14,9 @@ type EditarViagemInput = {
   tenantId: string;
   usuarioId: string;
   viagemId: string;
+  /** US-141 — opcional na edição (não trava correção de viagem legada sem município).
+   * Quando informado, é o código IBGE de 7 dígitos; o resto vem do catálogo. */
+  municipioIbge?: string | null;
   descricao: string;
   quantidadePessoas: number;
   mediaDias: number;
@@ -36,7 +41,6 @@ export class EditarViagemUseCase {
   async execute(input: EditarViagemInput): Promise<Viagem> {
     const descricao = input.descricao?.trim() ?? '';
     if (
-      descricao.length === 0 ||
       descricao.length > 100 ||
       !input.quantidadePessoas ||
       input.quantidadePessoas <= 0 ||
@@ -89,6 +93,31 @@ export class EditarViagemUseCase {
       custoUnitarioTransporte: input.custoUnitarioTransporte,
     });
 
+    // US-141 — se o cliente informou um município, valida e resolve o snapshot do catálogo.
+    // Se não informou (viagem legada sendo corrigida), mantém o que já estava gravado.
+    const codigoMunicipio = input.municipioIbge?.trim() ?? '';
+    let dadosMunicipio: Pick<
+      Prisma.ViagemUncheckedUpdateManyInput,
+      'municipioIbge' | 'municipioNome' | 'uf' | 'latitude' | 'longitude'
+    > = {};
+    let descricaoMunicipioLog = viagemAtual.municipioNome
+      ? `${viagemAtual.municipioNome}/${viagemAtual.uf ?? ''}`
+      : 'sem município';
+    if (codigoMunicipio.length > 0) {
+      const municipio = resolverMunicipioBr(codigoMunicipio);
+      if (!municipio) {
+        throw new MunicipioNaoEncontradoError();
+      }
+      dadosMunicipio = {
+        municipioIbge: municipio.codigoIbge,
+        municipioNome: municipio.nome,
+        uf: municipio.uf,
+        latitude: municipio.latitude,
+        longitude: municipio.longitude,
+      };
+      descricaoMunicipioLog += ` → ${municipio.nome}/${municipio.uf}`;
+    }
+
     // US-105 — se o cliente informou o token e ele já diverge do estado lido, nem tenta:
     // conflito é certo. Evita abrir transação para uma escrita que vamos rejeitar de qualquer forma.
     if (input.tokenConcorrencia && input.tokenConcorrencia.getTime() !== viagemAtual.updatedAt.getTime()) {
@@ -102,6 +131,7 @@ export class EditarViagemUseCase {
         where: { id: input.viagemId, updatedAt: viagemAtual.updatedAt },
         data: {
           descricao,
+          ...dadosMunicipio,
           quantidadePessoas: input.quantidadePessoas,
           mediaDias: input.mediaDias,
           custoUnitarioPassagem: input.custoUnitarioPassagem,
@@ -123,9 +153,10 @@ export class EditarViagemUseCase {
           tenantId: input.tenantId,
           usuarioId: input.usuarioId,
           tipoOperacao: 'VIAGEM_EDITADA',
-          descricao: `Viagem "${viagemAtual.descricao} — ${descricao}" editada`,
+          descricao: `Viagem (${descricaoMunicipioLog}) editada`,
           dadosSerializados: {
             viagemId: viagem.id,
+            municipio: descricaoMunicipioLog,
             custoEstimadoAnterior: viagemAtual.custoEstimado.toString(),
             custoEstimadoNovo: custoEstimado.toString(),
           },

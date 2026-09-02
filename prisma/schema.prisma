@@ -519,7 +519,17 @@ model Viagem {
   metaId   String?
   meta     Meta?          @relation(fields: [metaId], references: [id])
 
-  descricao String // até 100 caracteres, validado na aplicação
+  descricao String // US-141: "Motivo/Complemento da Viagem"; até 100 caracteres, opcional, validado na aplicação
+
+  // US-141 / ADR-048 — município de destino (catálogo IBGE embutido). Nullable no banco
+  // (viagens legadas ficam sem); obrigatoriedade no cadastro é regra do use case.
+  // municipioNome/uf são snapshot congelado do catálogo no momento do cadastro/edição.
+  // latitude/longitude ficam persistidas para uma futura visualização geográfica (sem geocoding).
+  municipioIbge  String?
+  municipioNome  String?
+  uf             String?
+  latitude       Decimal? @db.Decimal(9, 6)
+  longitude      Decimal? @db.Decimal(9, 6)
 
   quantidadePessoas Int
   mediaDias         Int
@@ -545,6 +555,7 @@ model Viagem {
 
   @@index([tenantId, versaoId])
   @@index([tenantId, metaId])
+  @@index([tenantId, municipioIbge]) // US-141 — agregação por destino
 }
 
 // ADR-023 — US-110. ItemPatrimonial cobre Bens, Serviços e Equipamentos (CAPEX),

@@ -1,9 +1,12 @@
 import type { PrismaClient, Viagem } from '@prisma/client';
 import { calcularCustoEstimadoViagem } from '@/domain/plano-contas/calcularCustoEstimadoViagem';
+import { resolverMunicipioBr } from '@/infrastructure/integrations/municipios-br/municipio-br-catalogo';
 import {
   CamposObrigatoriosViagemError,
   ContaViagemNaoAnaliticaError,
   MetaNaoEncontradaError,
+  MunicipioNaoEncontradoError,
+  MunicipioViagemObrigatorioError,
   VersaoPropostaInvalidaError,
 } from '@/domain/plano-contas/errors';
 
@@ -11,6 +14,9 @@ type CadastrarViagemInput = {
   tenantId: string;
   usuarioId: string;
   versaoId: string;
+  /** US-141 — obrigatório no cadastro; código IBGE de 7 dígitos. */
+  municipioIbge: string;
+  /** US-141 — "Motivo/Complemento da Viagem"; opcional. */
   descricao: string;
   quantidadePessoas: number;
   mediaDias: number;
@@ -36,7 +42,6 @@ export class CadastrarViagemUseCase {
   async execute(input: CadastrarViagemInput): Promise<Viagem> {
     const descricao = input.descricao?.trim() ?? '';
     if (
-      descricao.length === 0 ||
       descricao.length > 100 ||
       !input.quantidadePessoas ||
       input.quantidadePessoas <= 0 ||
@@ -47,6 +52,17 @@ export class CadastrarViagemUseCase {
       !input.contaTransporteId
     ) {
       throw new CamposObrigatoriosViagemError();
+    }
+
+    // US-141 — município obrigatório no cadastro; o cliente só envia o código IBGE,
+    // nome/uf/coordenadas são resolvidos aqui do catálogo (anti-spoofing).
+    const codigoMunicipio = input.municipioIbge?.trim() ?? '';
+    if (codigoMunicipio.length === 0) {
+      throw new MunicipioViagemObrigatorioError();
+    }
+    const municipio = resolverMunicipioBr(codigoMunicipio);
+    if (!municipio) {
+      throw new MunicipioNaoEncontradoError();
     }
 
     const versao = await this.prisma.versaoProposta.findFirst({
@@ -100,6 +116,11 @@ export class CadastrarViagemUseCase {
           versaoId: input.versaoId,
           metaId,
           descricao,
+          municipioIbge: municipio.codigoIbge,
+          municipioNome: municipio.nome,
+          uf: municipio.uf,
+          latitude: municipio.latitude,
+          longitude: municipio.longitude,
           quantidadePessoas: input.quantidadePessoas,
           mediaDias: input.mediaDias,
           custoUnitarioPassagem: input.custoUnitarioPassagem,
@@ -117,8 +138,14 @@ export class CadastrarViagemUseCase {
           tenantId: input.tenantId,
           usuarioId: input.usuarioId,
           tipoOperacao: 'VIAGEM_CRIADA',
-          descricao: `Viagem "${descricao}" cadastrada para a Versão ${input.versaoId}`,
-          dadosSerializados: { viagemId: viagem.id, versaoId: input.versaoId, custoEstimado: custoEstimado.toString() },
+          descricao: `Viagem para ${municipio.nome}/${municipio.uf} cadastrada para a Versão ${input.versaoId}`,
+          dadosSerializados: {
+            viagemId: viagem.id,
+            versaoId: input.versaoId,
+            municipioIbge: municipio.codigoIbge,
+            municipio: `${municipio.nome}/${municipio.uf}`,
+            custoEstimado: custoEstimado.toString(),
+          },
         },
       });
 
