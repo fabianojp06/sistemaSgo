@@ -64,12 +64,15 @@
 
 ### Frente nova — Impostos (2026-09-02)
 
-O usuário quer **cálculo automático de imposto** (`base × alíquota%`) sobre contas analíticas
-**e sintéticas**, por Proposta × Versão × Conta. Descoberta feita → `docs/EPICO - Aplicacao
-Automatica de Impostos sobre Contas.pt-BR.md`. Decisões colhidas (ADR-039 A1 / sem cascata / C1 /
-D1 / exibir sem-imposto + com-imposto). **Próximo:** `techlead-fsg` reescreve/aceita o ADR-039
-(fecha C-IMP-02 a C-IMP-07: modelagem, gatilho de recálculo, dados manuais existentes, impacto no
-ADR-040). Depois: US-144 (motor, analíticas) → US-145 (sintéticas) → US-146 (exibir os 2 valores).
+Cálculo **automático** de imposto (`base × alíquota%`) sobre contas analíticas **e sintéticas**,
+por Proposta × Versão × Conta. Descoberta + épico: `docs/EPICO - Aplicacao Automatica de Impostos
+sobre Contas.pt-BR.md`. **ADR-050 aceito** (substitui o ADR-039): modelo A1 (`RateioImpostoGrade`
++`modoValor`+`valorBaseSnapshot`, sem modelo novo), contaId analítica ou sintética, base = custo
+total (1 linha/conta×alíquota, competência = dataInicio), gatilho = **botão "Gerar Impostos"**
+(não síncrono) + aviso de stale, dados existentes = grandfather (zero recálculo), Semáforo/Valor
+Global seguem "com imposto" + "sem imposto" novo ao lado, reajuste (ADR-040) intacto +
+`AliquotaImpostoParametro.categoria` (TRIBUTO/INDICE_REAJUSTE). **Pronto para a AN/PO escrever
+US-144/145/146.** Migration aditiva, aplicada junto do merge.
 
 ## Próximo passo combinado
 

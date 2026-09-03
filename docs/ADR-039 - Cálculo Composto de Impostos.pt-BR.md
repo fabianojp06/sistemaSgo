@@ -1,7 +1,6 @@
 # ADR-039 — Cálculo Automático e Composto de Impostos sobre Conta Contábil
 
-**Status:** Respostas colhidas em 2026-09-02 — **aguardando o `techlead-fsg` reescrever/aceitar**
-(ver `docs/EPICO - Aplicacao Automatica de Impostos sobre Contas.pt-BR.md`)
+**Status:** ⛔ **SUBSTITUÍDO PELO ADR-050** (`docs/ADR-050 - Aplicacao Automatica de Impostos sobre Contas.pt-BR.md`, 2026-09-02). Nunca foi aceito; o título "Composto" não vale mais (a decisão foi **sem** composição). Mantido só como registro histórico das opções levantadas.
 **Data:** 2026-08-08 (proposto) / 2026-09-02 (respostas)
 **Módulo SGO:** Cadastros / Orçamentário — Rateio de Impostos (evolução de US-101 / ADR-027 / ADR-038)
 **Artefato:** https://claude.ai/code/artifact/d9fc8dc3-b182-4866-881c-7768d88d0e71

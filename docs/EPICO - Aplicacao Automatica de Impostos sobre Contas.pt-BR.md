@@ -79,10 +79,22 @@ de reajuste do ADR-040 não sobrevive à mudança.
 
 ## Próximo passo
 
-1. **`techlead-fsg`** — finalizar/substituir o **ADR-039** com as decisões acima (A1, sem
-   cascata, C1, D1, exibir os dois valores) e fechar C-IMP-02, C-IMP-03, C-IMP-04, C-IMP-07
-   (modelagem: nova coluna vs novo modelo; gatilho de recálculo; qual valor dirige o Semáforo;
-   destino dos dados manuais).
-2. **`analista-negocios-po`** — escrever US-144, US-145, US-146 com Critérios de Aceite Gherkin
-   depois do ADR.
+1. ✅ **`techlead-fsg`** — **ADR-050 aceito** (`docs/ADR-050 ...md`, substitui o ADR-039). Fecha
+   todas as 7 frentes: modelo A1 (`RateioImpostoGrade` +`modoValor`+`valorBaseSnapshot`, sem
+   modelo novo); contaId analítica **ou** sintética (fase pós-agregação, invariante da sintética
+   quebra com aviso); base = custo total, 1 linha por conta×alíquota, competência = dataInicio;
+   gatilho = **botão "Gerar Impostos"** + aviso de stale; dados existentes = **grandfather total**
+   (zero recálculo); Semáforo/Valor Global seguem "com imposto" (como hoje), "sem imposto" é
+   número novo ao lado; reajuste (ADR-040) **intacto** + nova coluna `AliquotaImpostoParametro.categoria`
+   (TRIBUTO / INDICE_REAJUSTE) resolve a ambiguidade. **US-147 vira dívida técnica opcional.**
+2. **`analista-negocios-po`** — escrever US-144, US-145, US-146 com Critérios de Aceite Gherkin.
 3. **`fullstack-dev`** — implementar (branch + PR + `/code-review`; migration junto do merge).
+
+### Decomposição atualizada (pós-ADR-050)
+
+| ID | Título | Estimativa | Depende |
+|---|---|---|---|
+| **US-144** | Migration (`modoValor`, `valorBaseSnapshot`, `categoria`) + motor de cálculo automático sobre conta **analítica** + botão "Gerar Impostos" + aviso de stale + congelamento/imunidade TP | G | ADR-050 ✅ |
+| **US-145** | Conta **sintética** como alvo (fase pós-agregação no `ValorRealizadoService`, flag `temImpostoDireto`, nota na tela) | M | US-144 |
+| **US-146** | Exibir "Custo" / "Custo c/ Impostos" no dashboard US-118, guia Valor Orçado e badge do Semáforo | M | US-144 |
+| US-147 *(opcional)* | Separar tributo de índice de reajuste em modelos/telas distintos | G | — (só se doer) |
