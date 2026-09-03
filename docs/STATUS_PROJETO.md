@@ -62,6 +62,15 @@
    `prisma migrate resolve --applied 20260902120000_add_municipio_ibge_viagem` ainda não rodado
    (histórico do Prisma fora de sincronia com o banco). Ver `docs/CONTEXTO_SESSOES.md`.
 
+### Frente nova — Impostos (2026-09-02)
+
+O usuário quer **cálculo automático de imposto** (`base × alíquota%`) sobre contas analíticas
+**e sintéticas**, por Proposta × Versão × Conta. Descoberta feita → `docs/EPICO - Aplicacao
+Automatica de Impostos sobre Contas.pt-BR.md`. Decisões colhidas (ADR-039 A1 / sem cascata / C1 /
+D1 / exibir sem-imposto + com-imposto). **Próximo:** `techlead-fsg` reescreve/aceita o ADR-039
+(fecha C-IMP-02 a C-IMP-07: modelagem, gatilho de recálculo, dados manuais existentes, impacto no
+ADR-040). Depois: US-144 (motor, analíticas) → US-145 (sintéticas) → US-146 (exibir os 2 valores).
+
 ## Próximo passo combinado
 
 **US-142** (Cronograma de Desembolso por parcelas, layout **ANEXO 9** — PDF real do TP

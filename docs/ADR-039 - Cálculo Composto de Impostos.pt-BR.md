@@ -1,9 +1,26 @@
 # ADR-039 — Cálculo Automático e Composto de Impostos sobre Conta Contábil
 
-**Status:** Proposto (aguardando 6 respostas do usuário)
-**Data:** 2026-08-08
-**Módulo SGO:** Cadastros — Rateio de Impostos (evolução de US-101 / ADR-027 / ADR-038)
+**Status:** Respostas colhidas em 2026-09-02 — **aguardando o `techlead-fsg` reescrever/aceitar**
+(ver `docs/EPICO - Aplicacao Automatica de Impostos sobre Contas.pt-BR.md`)
+**Data:** 2026-08-08 (proposto) / 2026-09-02 (respostas)
+**Módulo SGO:** Cadastros / Orçamentário — Rateio de Impostos (evolução de US-101 / ADR-027 / ADR-038)
 **Artefato:** https://claude.ai/code/artifact/d9fc8dc3-b182-4866-881c-7768d88d0e71
+
+> ## Respostas do usuário (2026-09-02) — descoberta do "Módulo Impostos"
+>
+> | Decisão | Resposta |
+> |---|---|
+> | **A — valor base** | **A1** — Empregados + Viagens + Bens da conta, excluindo o próprio imposto. |
+> | **B — composição** | **NÃO compõe.** Cada imposto sobre a mesma base; os valores somam-se (`base × Σ alíquotas`). Sem ordem, **sem regra de desempate de data** (pergunta 3 fica sem efeito). |
+> | **C — conta sintética** | **C1** — ajuste direto na sintética (deixa de ser soma pura das filhas). |
+> | **D — pós-oficialização** | **D1** — cálculo automático só em RASCUNHO/EM_ELABORAÇÃO; congela ao oficializar. |
+> | **Totais (Semáforo/US-118/US-008a)** | Exibir **"valor sem imposto" e "valor com imposto" lado a lado** — não substituir o bruto. |
+> | **Dados existentes (pergunta 6)** | **Em aberto** — o Tech Lead decide na reescrita: grandfather / recalcular na edição / migração. |
+>
+> Escopo confirmado: **não** é módulo novo; é a evolução do rateio, por Proposta × Versão × Conta.
+> O Tech Lead deve reescrever este ADR fechando a modelagem (nova coluna vs novo modelo; gatilho
+> de recálculo; qual valor dirige o Semáforo; destino dos `RateioImpostoGrade` manuais; e o
+> impacto no reaproveitamento do ADR-040 por Premissas/Reajustes).
 
 ## Contexto
 
