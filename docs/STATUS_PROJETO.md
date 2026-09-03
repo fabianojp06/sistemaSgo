@@ -64,11 +64,13 @@
 
 ## Próximo passo combinado
 
-**US-142** (Cronograma de Desembolso por parcelas, layout APÊNDICE J) — refinada 2026-09-02
-(`docs/US-142 ...md`). Decisões do usuário: parcelas DERIVADAS (3/ano jan-mai-set), Etapa=Meta,
-substitui a grade mensal atual. **Bloqueada por ADR** — 7 GAPs abertos (regra de repasse,
-texto da descrição, 1ª parcela, rateio por Meta em CONSOLIDADA/imposto, "valor repassado 12
-meses", Viagem sem data, exportação). Próximo: `techlead-fsg` faz o ADR.
+**US-142** (Cronograma de Desembolso por parcelas, layout APÊNDICE J) — **refinada + ADR-049
+aceito** (2026-09-02). `docs/US-142 ...md` + `docs/ADR-049 ...md`. Decisões: calendário de
+repasse configurável na Proposta (`parcelasPorAno`/`mesInicialRepasse`, 2 campos novos, migration
+aditiva), parcela de entrada em `dataInicio`, sub-linha "Meta Única", camada `agregarEmParcelas`
+sobre o motor mensal preservado, tela read-only + filtro de período, substitui a grade mensal.
+CD-06 (Viagem sem data) aceito como limitação → US-143 futura. **Pronta para o `fullstack-dev`**
+(branch + PR + `/code-review`; migration aplicada junto do merge).
 
 Outros candidatos: (a) build de `/orcamentario/acompanhamento` (pendência #1); (b) follow-up
 leve da US-141 (pendência #7); (c) tradução EN-US; (d) US-127; (e) desbloquear US-140.

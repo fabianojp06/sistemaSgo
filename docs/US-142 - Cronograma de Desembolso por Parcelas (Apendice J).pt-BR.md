@@ -4,7 +4,10 @@
 **Épico:** EP48/26 — Módulo Orçamentário
 **Prioridade:** Alta
 **Estimativa:** G (~3–4 dias) — muda o motor de cálculo, o schema (2 campos) e a tela
-**Status:** 🔜 Refinada — **todos os GAPs de negócio fechados** (2026-09-02). Falta só o **ADR-049** (`techlead-fsg`): modelagem (migration dos 2 campos em `Proposta`, estrutura `agregarEmParcelas`, filtro de período da tela) e a decisão técnica de CD-06 (viagem sem data).
+**Status:** 🔜 **Pronta para implementar.** GAPs de negócio fechados + **ADR-049 aceito**
+(`docs/ADR-049 ...md`): 2 campos em `Proposta` (`parcelasPorAno`/`mesInicialRepasse`, nullable +
+default 3/1), camada `agregarEmParcelas` sobre o motor mensal, CD-06 aceito como limitação
+(→ US-143 futura), filtro de período client-side, DDL da migration pronto.
 **Origem:** 2026-09-02, documento-alvo "APÊNDICE J — CRONOGRAMA DE DESEMBOLSO" fornecido pelo usuário
 **Substitui:** a visão mensal atual de UC04.01 / US-138 (a grade "Mês 1, Mês 2..." sai)
 
