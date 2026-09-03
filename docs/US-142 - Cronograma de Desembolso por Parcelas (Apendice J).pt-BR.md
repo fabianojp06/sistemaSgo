@@ -3,8 +3,8 @@
 **Módulo:** Orçamentário — Cronograma de Desembolso (`/propostas/{id}/cronograma-desembolso`)
 **Épico:** EP48/26 — Módulo Orçamentário
 **Prioridade:** Alta
-**Estimativa:** G (~3–4 dias) — muda o motor de cálculo e a tela; ADR necessário antes de codar
-**Status:** 🔜 Refinada, com GAPs abertos (ver seção própria) — depende de ADR
+**Estimativa:** G (~3–4 dias) — muda o motor de cálculo, o schema (2 campos) e a tela
+**Status:** 🔜 Refinada — GAPs de negócio fechados (2026-09-02); depende do ADR-049 (`techlead-fsg`) fechar a modelagem
 **Origem:** 2026-09-02, documento-alvo "APÊNDICE J — CRONOGRAMA DE DESEMBOLSO" fornecido pelo usuário
 **Substitui:** a visão mensal atual de UC04.01 / US-138 (a grade "Mês 1, Mês 2..." sai)
 
@@ -43,66 +43,75 @@ total geral**, e não há conceito de "parcela" ou "Etapa".
 | **% Financeiro Acumulado** | RN0252 — Acumulado ÷ Valor Global × 100, 2 casas, Half-Even. |
 | **Valor Repassado a cada 12 meses de execução** | Preenchido só nas linhas de fronteira de ciclo anual (RN0253, adaptada: "ciclo" agora é o ano da parcela, não o 12º mês). |
 
-### Decisões já tomadas com o usuário (AskUserQuestion, 2026-09-02)
+### Decisões de negócio fechadas com o usuário (AskUserQuestion, 2026-09-02)
 
-1. **As parcelas são DERIVADAS pelo sistema** — não há cadastro manual de cronograma
-   físico-financeiro. O sistema pega o custo total já calculado (mesmas fontes de hoje:
-   Empregado, Viagem, ItemPatrimonial, RateioImpostoGrade) e o distribui em parcelas seguindo
-   uma **regra fixa de repasse**: 3 parcelas por ano, nos meses de **janeiro, maio e setembro**.
-2. **"Etapa" = "Meta"** — o agrupamento por Meta ("Evento Tn Meta U") é o detalhamento por Meta
-   dentro de cada parcela. (O texto "Etapa M" é discutido nos GAPs — ver abaixo.)
-3. **A grade mensal atual é SUBSTITUÍDA** pela visão de parcelas. Não há duas telas.
+| GAP | Decisão |
+|---|---|
+| **CD-01** — calendário de repasse | **Configurável por Proposta**, via 2 campos: **nº de parcelas por ano** + **mês inicial de repasse**. Ex.: "3/ano a partir de janeiro" → jan/mai/set (espaçamento 12÷3 = 4 meses); "2/ano a partir de março" → mar/set. Não há mais "regra fixa jan/mai/set". |
+| **CD-03** — 1ª parcela | **Há uma parcela de entrada (T1) no mês de `dataInicio`**, mesmo que não seja um mês de repasse. As demais parcelas seguem o calendário configurado. Se `dataInicio` coincidir com um mês de repasse, T1 acumula os dois papéis. |
+| **CD-04** — rateio por Meta | **Meta única.** Na CTCEA, Termo de Parceria = 1 Meta / Proposta CONSOLIDADA. Cada parcela tem **uma** sub-linha "Meta Única" com o valor cheio da parcela — sem rateio entre múltiplas Metas, sem tratamento especial de imposto (entra no total normalmente). |
+| **CD-02** — texto da Etapa | **Etapa M = número sequencial da parcela.** T1 → "1ª parcela relativa à Etapa 1 do Cronograma Físico-Financeiro."; T2 → "2ª parcela relativa à Etapa 2..."; e assim por diante. |
+| **CD-05** — "Valor Repassado a cada 12 meses de execução" | **Ciclo de 12 meses contados de `dataInicio`** (não ano civil). O valor aparece na parcela que fecha cada 12º mês de execução (mês 12, 24, 36...) e é o somatório dos desembolsos daquele ciclo — mesma lógica da RN0253 atual. |
+| **Escopo da tela** | A grade mensal atual é **SUBSTITUÍDA** pela visão de parcelas. Não há duas telas. |
 
-### Regra de derivação das parcelas (proposta desta US — sujeita ao ADR)
+### Regra de derivação das parcelas (fechada — o ADR só decide a modelagem)
 
-1. O motor mês a mês atual continua sendo a **base de cálculo** (é a "verdade" do custo por
-   competência). A US-142 adiciona uma etapa de **agregação em parcelas** por cima dele.
-2. **Datas das parcelas:** a partir do mês de `Proposta.dataInicio`, gerar as datas
-   jan / mai / set que caem dentro de `[dataInicio, dataFim]`. A 1ª parcela é a primeira
-   dessas datas ≥ `dataInicio` (no exemplo: proposta começa em 2018 → 1ª parcela set/2018).
-3. **Período coberto por cada parcela:** da data da parcela anterior (exclusive) até a data
-   desta parcela (inclusive). A 1ª parcela cobre de `dataInicio` até a sua data.
+1. **Base de cálculo:** o motor mês a mês atual (`montarCronogramaDesembolso.ts`) continua sendo
+   a "verdade" do custo por competência. A US-142 adiciona uma camada de **agregação em
+   parcelas** por cima dele.
+2. **Datas das parcelas:**
+   - T1 = mês de `Proposta.dataInicio` (parcela de entrada).
+   - Demais: a partir do `mesInicialRepasse`, espaçadas de `12 ÷ parcelasPorAno` meses,
+     repetindo a cada ano, mantendo apenas as datas dentro de `(dataInicio, dataFim]`.
+   - Ordenar cronologicamente e renumerar T1, T2, ... Tn.
+3. **Período coberto por cada parcela:** da data da parcela anterior (exclusive) até a data desta
+   parcela (inclusive). T1 cobre de `dataInicio` até seu próprio mês.
 4. **Valor da parcela:** soma dos `desembolsoMensal` (motor atual) dos meses do seu período.
-5. **Rateio por Meta (sub-linhas):** cada fonte de custo é atribuída à sua Meta —
-   `EmpregadoHeadcount.metaId`, `Viagem.metaId`, `ItemPatrimonial.metaId`. O que não tem Meta
-   (Proposta CONSOLIDADA; RateioImpostoGrade) → ver GAP-CD-04.
-6. **Total geral = Valor Global da Proposta** (RN_CD_002 — a soma de todas as parcelas deve
-   bater exatamente com o Custo Total; qualquer diferença de arredondamento vai para a última
-   parcela).
+5. **Sub-linha por parcela:** uma linha "Meta Única" = valor cheio da parcela.
+6. **Total geral = Valor Global da Proposta** (RN_CD_002). Resíduo de arredondamento (centavos)
+   vai para a última parcela.
+7. **Subtotais anuais:** linha `ANO XXXX / TOTAL A DESEMBOLSAR EM XXXX` ao fim de cada **ano
+   civil** com parcelas — total do ano, acumulado e % ao fim do ano.
+8. **Coluna "Valor Repassado a cada 12 meses":** só na parcela que fecha cada 12º mês de
+   execução; valor = soma dos desembolsos do ciclo de 12 meses.
 
 ---
 
-## 🔴 GAPs abertos (decisão do usuário / Tech Lead antes de implementar)
+## GAPs — situação
 
-| # | GAP | Por que trava | Quem decide |
+CD-01, CD-02, CD-03, CD-04, CD-05 **fechados** (ver tabela de decisões acima). Restam:
+
+| # | GAP | Situação | Quem decide |
 |---|---|---|---|
-| GAP-CD-01 | **Meses de repasse fixos (jan/mai/set)?** Confirmar se é sempre isso ou se varia por Termo de Parceria / concedente. Se varia, vira parâmetro (`ParametroSistema`) ou campo na Proposta. | Muda o nº de linhas e as datas de todo o cronograma. | Usuário |
-| GAP-CD-02 | **Texto "Nª parcela relativa à Etapa M..."** — como numerar M? No exemplo, T1→Etapa 1, T2→Etapa 3, T3→Etapa 4, T4→Etapa 5... (pula de 1 para 3). Se "Etapa = Meta" e há várias Metas, "Etapa M" pode ser um índice global de (parcela × meta). Precisa da regra exata do texto. | É texto de documento oficial [RN_CD_001 — descrição gerada pelo servidor, sem input]. | Usuário / autor do APÊNDICE J |
-| GAP-CD-03 | **1ª parcela.** Proposta que começa em, ex., março: a 1ª parcela é maio (próxima data de repasse) acumulando março+abril+maio, ou existe uma parcela "de entrada" na data de início? | Define o alinhamento de todo o cronograma. | Usuário |
-| GAP-CD-04 | **Rateio por Meta do que não tem Meta.** Proposta CONSOLIDADA não tem Meta nenhuma — as sub-linhas "Evento Tn Meta U" não existem? E o RateioImpostoGrade (imposto), que não tem `metaId`, entra em qual sub-linha? Rateio proporcional ao custo das Metas? | Define se a US atende CONSOLIDADA e como as sub-linhas se comportam. | Usuário / Tech Lead |
-| GAP-CD-05 | **"Valor Repassado a cada 12 meses de execução".** Hoje é RN0253 (só nos meses múltiplos de 12). No APÊNDICE J parece ser o total do **ano civil** (aparece nas linhas ANO XXXX). Confirmar: é o total do ano civil, ou o total de cada ciclo de 12 meses contados da data de início? | Muda o valor e onde ele aparece. | Usuário |
-| GAP-CD-06 | **Viagem sem data (limitação herdada).** Hoje todo o custo de Viagem cai no 1º mês. Com parcelas, isso joga toda a Viagem na 1ª parcela. A US-141 já persiste... nada de data de viagem. Aceitar a limitação ou exige a US de "data da viagem" antes? | Distorce a 1ª parcela se houver muita viagem. | Usuário / Tech Lead |
-| GAP-CD-07 | **Exportação.** O PDF/XLSX (ADR-037, client-side) hoje exporta a lista plana. Precisa passar a exportar com as linhas de subtotal anual e total geral, no layout do APÊNDICE J (inclusive o cabeçalho "APÊNDICE J"). | Escopo da entrega. | AN/PO (já assumido: sim, incluir) |
+| GAP-CD-06 | **Viagem sem data (limitação herdada).** Hoje todo o custo de Viagem cai no 1º mês → com parcelas, toda a Viagem entra em T1 (parcela de entrada). Aceitar a limitação nesta US, ou exigir antes uma US de "data da viagem"? | Aberto — decisão do Tech Lead no ADR-049. Recomendação AN/PO: **aceitar como limitação conhecida** (documentar), tratar "data da viagem" como US futura. | Tech Lead |
+| GAP-CD-07 | **Exportação PDF/XLSX** com subtotais anuais + total geral + cabeçalho "APÊNDICE J". | Fechado: **incluído no escopo** desta US. | — |
+| GAP-CD-08 | **Onde ficam os 2 campos de config** (`parcelasPorAno`, `mesInicialRepasse`) — em `Proposta` ou `VersaoProposta`? E em qual tela o usuário os edita (capa da Proposta? painel do próprio Cronograma?). Defaults? | Aberto — **modelagem do ADR-049.** Recomendação AN/PO: em `Proposta` (é característica contratual do TP, não da versão); editável na capa/edição da Proposta; default `parcelasPorAno=3`, `mesInicialRepasse=1` (o caso mais comum). | Tech Lead |
 
 ---
 
-## Critérios de Aceite (rascunho — válidos após fechar GAP-CD-01/03/05)
-
-> Suposições de rascunho: repasses em jan/mai/set; 1ª parcela = 1ª data de repasse ≥ dataInicio,
-> acumulando os meses desde dataInicio; "Valor Repassado a cada 12 meses" = total do ano civil.
+## Critérios de Aceite
 
 **Cenário 1 — Geração do cronograma por parcelas**
 ```gherkin
 Dado que a Proposta tem versão ativa, dados financeiros cadastrados e Valor Global > 0
-E a vigência vai de 2018-07 a 2023-06
+E a vigência vai de 2018-07-01 a 2023-06-30
+E a Proposta está configurada com parcelasPorAno = 3 e mesInicialRepasse = 1 (janeiro)
 Quando o usuário abre a guia Cronograma de Desembolso
-Então o sistema deriva as parcelas nas datas de repasse (set/2018, jan/2019, mai/2019, set/2019, ...)
-E cada parcela Tn exibe: rótulo "Tn", data, descrição "Nª parcela relativa à Etapa M do Cronograma Físico-Financeiro.", valor da parcela, acumulado, % financeiro acumulado
-E abaixo de cada parcela há uma sub-linha por Meta ("Evento Tn Meta <nome>") com o valor rateado
-E ao fim de cada ano civil há a linha "ANO XXXX / TOTAL A DESEMBOLSAR EM XXXX" com o total do ano, o acumulado e o % ao fim do ano
+Então o sistema deriva: T1 = jul/2018 (parcela de entrada), T2 = set/2018, T3 = jan/2019, T4 = mai/2019, T5 = set/2019, ...
+E cada parcela Tn exibe: rótulo "Tn", data, descrição "Nª parcela relativa à Etapa n do Cronograma Físico-Financeiro." (n = número da parcela), valor da parcela, acumulado, % financeiro acumulado
+E abaixo de cada parcela há uma sub-linha "Evento Tn — Meta Única" com o valor cheio da parcela
+E ao fim de cada ano civil com parcelas há a linha "ANO XXXX / TOTAL A DESEMBOLSAR EM XXXX" com o total do ano, o acumulado e o % ao fim do ano
 E a última linha é "ANOS 2018 ... E 2023 / TOTAL A DESEMBOLSAR EM ..." com valor igual ao Valor Global
 E nenhum campo é editável [ORIGEM BLINDADA / RN_CD_001]
 E a operação é registrada em HistoricoOperacao
+```
+
+**Cenário 1b — Calendário de repasse configurado diferente**
+```gherkin
+Dado que a Proposta tem parcelasPorAno = 2 e mesInicialRepasse = 3 (março)
+E dataInicio em 2020-05
+Quando o cronograma é gerado
+Então T1 = mai/2020 (entrada), e as demais parcelas caem em set/2020, mar/2021, set/2021, ... (espaçamento de 6 meses a partir de março)
 ```
 
 **Cenário 2 — Soma das parcelas bate com o Custo Total (RN_CD_002)**
@@ -136,11 +145,20 @@ Então o arquivo gerado tem o cabeçalho "APÊNDICE J — CRONOGRAMA DE DESEMBOL
 E a operação é registrada em HistoricoOperacao [RN0232]
 ```
 
-**Cenário 6 — Proposta CONSOLIDADA (sem Meta)** — *pendente GAP-CD-04*
+**Cenário 6 — Config de repasse ausente (bloqueio ou default)**
 ```gherkin
-Dado que a Proposta é CONSOLIDADA (não tem Meta)
+Dado que a Proposta não tem parcelasPorAno / mesInicialRepasse preenchidos
+Quando o usuário abre a guia Cronograma de Desembolso
+Então [ADR-049 decide: aplicar o default 3/janeiro, OU bloquear com "Configure o calendário de repasse do Termo de Parceria."]
+```
+
+**Cenário 7 — "Valor Repassado a cada 12 meses de execução" (GAP-CD-05)**
+```gherkin
+Dado que a Proposta começa em jul/2018 e tem parcelas mensais de custo
 Quando o cronograma é gerado
-Então [comportamento a definir no GAP-CD-04 — provavelmente sem as sub-linhas "Evento Tn Meta", só as parcelas]
+Então a coluna "Valor Repassado a cada 12 meses de execução" só é preenchida na parcela cujo período cobre o 12º mês de execução (jun/2019), o 24º (jun/2020), etc.
+E o valor é o somatório dos desembolsos daquele ciclo de 12 meses
+E nas demais parcelas a célula fica vazia / com hífen [RN0253]
 ```
 
 ---
@@ -150,8 +168,9 @@ Então [comportamento a definir no GAP-CD-04 — provavelmente sem as sub-linhas
 | Aspecto | Detalhe |
 |---|---|
 | Domínio | `montarCronogramaDesembolso.ts` ganha uma camada de agregação: das linhas mensais para linhas de parcela. Provável função nova `agregarEmParcelas(linhasMensais, regraRepasse, metas)` → `LinhaParcela[]` + `SubtotalAnual[]` + `TotalGeral`. O cálculo mês a mês continua sendo a base (não jogar fora). |
-| Rateio por Meta | Precisa carregar `metaId` de Empregado/Viagem/ItemPatrimonial e agregar por Meta dentro de cada período de parcela. |
-| Schema | **Provavelmente nenhuma migration** (parcelas são derivadas, não persistidas) — a menos que GAP-CD-01 torne os meses de repasse configuráveis (aí um campo em `Proposta` ou `ParametroSistema`). |
+| Sub-linha "Meta Única" | Sem rateio entre Metas — uma sub-linha por parcela com o valor cheio. |
+| Schema | **Migration aditiva** — `Proposta` ganha `parcelasPorAno Int?` e `mesInicialRepasse Int?` (1–12). Nullable, com default de aplicação `3` / `1` (ou bloqueio — ADR-049). |
+| UI de config | Os 2 campos entram na tela de cadastro/edição da Proposta (ou num painel de config no próprio Cronograma) — ADR-049 decide. |
 | `page.tsx` (guia cronograma-desembolso) | Passa a montar/serializar a estrutura de parcelas + subtotais. |
 | `CronogramaDesembolsoPanel.tsx` | Reescrito: tabela de parcelas com sub-linhas por Meta, linhas de subtotal anual, linha de total geral. Remove a grade "Mês N". |
 | `exportarRelatorio.ts` (PDF/XLSX) | Suportar linhas de subtotal/total com formatação distinta e o cabeçalho "APÊNDICE J". |
