@@ -14,20 +14,26 @@
 > **Regra:** ao encerrar uma sessão com mudança relevante de estado, atualize este arquivo E
 > `CONTEXTO_SESSOES.md`, e faça commit (fluxo Git híbrido do `CLAUDE.md`).
 
-**Última atualização:** 2026-09-02 (US-141 mergeada)
+**Última atualização:** 2026-09-02 (fim da sessão — Cronograma de Desembolso + frente Impostos refinados; usuário vai continuar de outro computador)
 
 ---
 
 ## Onde estamos
 
-- **Branch:** `master` sincronizada com `origin/master` (`54d5298`, merge do PR #17). Sem branch de feature ativa.
+- **Branch:** `master` sincronizada com `origin/master` (`7e445f6`). Working tree limpo, tudo
+  commitado e enviado. Branch `feature/us-141-municipio-ibge-viagem` ainda existe mas já foi
+  mergeada (PR #17) — pode apagar.
+- **Nenhuma implementação de código pendente.** A sessão foi toda de refinamento/documentação.
+  3 frentes **prontas para o `fullstack-dev`** (ver "Próximo passo").
 - **Suíte de testes:** validação local impossível nesta rede (npm bloqueado por self-signed
-  cert). As mudanças da tela de Viagens (PRs #16, #17) passaram só pelo CI do GitHub Actions.
-- **Ambiente atual:** container efêmero sem `.env` e **sem `node_modules`**; `npm install` falha
-  com `SELF_SIGNED_CERT_IN_CHAIN` (mesma restrição de rede do MCP do Supabase). Não dá para rodar
-  `tsc`/`eslint`/`vitest`/`next` aqui — depende do CI. Migrations são escritas à mão e aplicadas
-  pelo usuário via SQL Editor do Supabase — **nunca** `prisma migrate dev`/`migrate diff` contra
-  produção (ver incidente 2026-08-14 no `CLAUDE.md`).
+  cert). Tudo depende do CI do GitHub Actions.
+- **Ambiente:** sem `.env` e **sem `node_modules`**; `npm install` falha com
+  `SELF_SIGNED_CERT_IN_CHAIN` (proxy/segurança corporativa). **Ao retomar em outro computador:**
+  resolver com `NODE_EXTRA_CA_CERTS` (CA da empresa) ou `NODE_TLS_REJECT_UNAUTHORIZED=0` **antes**
+  de `npm install`; depois `npm run prisma:generate`. Migrations continuam sendo escritas à mão e
+  aplicadas via SQL Editor do Supabase — **nunca** `prisma migrate dev`/`migrate diff` contra
+  produção (incidente 2026-08-14). **PR com migration → aplicar o SQL junto do merge** (lição da
+  US-141: senão dá 500 em produção).
 
 ## Módulos e frentes
 
@@ -36,7 +42,7 @@
 | **Autenticação / Tela Principal (UC01)** | Encerrado como resolvido (decisão 2026-07-26). Login prod OK. Suíte E2E Playwright existe mas nunca foi executada — não retomar sem pedido explícito. |
 | **Módulo de Cadastros (EP118-24)** | US-001 a US-118 concluídas; US-123 a US-139 concluídas. Ver kanban. Fila priorizada quase vazia (só US-127 — cadastro rápido de imposto no rateio, prioridade baixa). |
 | **Cargos / Tabela Salarial** | US-131 a US-139 entregues (Tabela Salarial, integração Rubi, Grade Salarial CTCEA persistida, Periculosidade/Insalubridade, Catálogo de Cargo de Mercado). PRs #5–#15 mergeados. |
-| **Módulo Orçamentário (`/orcamentario`)** | Frente nova. US-138 (Relatório de Cronograma de Desembolso) entregue. Landing em grade de tiles + telas iniciais de Acompanhamento e Orçado (`b20b927`/`13dd8a4`). |
+| **Módulo Orçamentário (`/orcamentario`)** | US-138 (Relatório de Cronograma de Desembolso) entregue. Landing em grade de tiles + telas iniciais de Acompanhamento/Orçado. **2026-09-02:** **US-142** (Cronograma por parcelas, layout ANEXO 9) + **ADR-049** refinados/aceitos, prontos p/ implementar. **Frente Impostos** nova (épico + ADR-050 + US-144/145/146) — ver seção própria abaixo. |
 | **Tela de Viagens (US-109)** | 2026-09-01: rótulos + faixa TOTAL PASSAGENS/DIÁRIAS/GERAL (`4484882`); editar Viagem pela tela (PR #16). 2026-09-02: **US-141 mergeada** (PR #17, `54d5298`) — seletor de município IBGE (catálogo embutido 5571 municípios, `src/infrastructure/integrations/municipios-br/`), `descricao` → "Motivo/Complemento" opcional, snapshot nome/uf + lat/long. Migration `20260902120000_add_municipio_ibge_viagem` **aplicada em produção** (deu 500 até aplicar). ADR-048. **US-140** (transporte por média histórica) 🔴 bloqueada. |
 | **Tradução EN-US da documentação** | 19/43 arquivos. Última: US-106, US-107, US-107a (`55cabfa`). Tarefa de menor esforço sempre disponível. |
 
@@ -79,8 +85,20 @@ exige suíte de regressão do `CalcularValorRealizadoUseCase` antes) → **US-14
 
 ## Próximo passo combinado
 
-**US-142** (Cronograma de Desembolso por parcelas, layout **ANEXO 9** — PDF real do TP
-PAME-RJ/CTCEA/2025) — **refinada + ADR-049 aceito** (2026-09-02). `docs/US-142 ...md` +
+> **Retomando de outro computador:** leia este arquivo + `docs/CONTEXTO_SESSOES.md` (bloco
+> "2026-09-02 (cont. 2)"). Nada de código pendente — 3 frentes prontas para o `fullstack-dev`:
+>
+> 1. **US-142** — Cronograma de Desembolso por parcelas (ADR-049 aceito). `docs/US-142 ...md`.
+> 2. **US-144** — Motor de imposto automático, conta analítica (ADR-050 aceito, MVP do épico
+>    Impostos). `docs/US-144 ...md` + `docs/BACKLOG - Epico Impostos.pt-BR.md`.
+> 3. Follow-up leve da US-141 (pendência #7 abaixo) — não urgente.
+>
+> Antes de qualquer `npm install`: resolver o certificado (`NODE_EXTRA_CA_CERTS`).
+
+### US-142 — Cronograma de Desembolso por Parcelas
+
+**US-142** (layout **ANEXO 9** — PDF real do TP PAME-RJ/CTCEA/2025) — **refinada + ADR-049
+aceito** (2026-09-02). `docs/US-142 ...md` +
 `docs/ADR-049 ...md`. Decisões: calendário configurável na Proposta
 (`parcelasPorAno`/`mesInicialRepasse`, 2 campos + migration aditiva); parcela de entrada em
 `dataInicio` (funde com o 1º repasse → "Etapas 1 e 2" quando coincidem); período **antecipado**

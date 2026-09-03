@@ -1135,6 +1135,83 @@ CI é o gate.
 
 **Lição:** PR com migration → aplicar o SQL no Supabase junto do merge, não depois do 500.
 
+## 2026-09-02 (cont. 2) — Cronograma de Desembolso (US-142 / ADR-049) + frente Impostos (épico / ADR-050 / US-144-146)
+
+Sessão longa, toda de **refinamento/documentação** (nenhum código novo). Ambiente sem
+`node_modules` (npm bloqueado por `SELF_SIGNED_CERT_IN_CHAIN` — proxy/segurança corporativa na
+rede do usuário; o usuário ainda **não** aplicou a correção: `NODE_EXTRA_CA_CERTS` com o CA da
+empresa, ou `NODE_TLS_REJECT_UNAUTHORIZED=0`). Todos os commits desta parte são `docs(...)` em
+`origin/master`.
+
+### A) Cronograma de Desembolso — US-142 + ADR-049 (PRONTO PARA IMPLEMENTAR)
+
+O usuário forneceu 2 documentos-alvo: primeiro "APÊNDICE J", depois o definitivo
+**`ANEXO 9 - CRONOGRAMA DESEMBOLSO 15.08.25.pdf`** (TP PAME-RJ/CTCEA/2025). A tela atual
+(`montarCronogramaDesembolso.ts` + `CronogramaDesembolsoPanel.tsx`) é uma **grade mês a mês** —
+o alvo é uma **tabela de parcelas T1..Tn** agrupadas por ano.
+
+Decisões de negócio (AskUserQuestion), todas em `docs/US-142 - Cronograma de Desembolso por Parcelas (ANEXO 9).pt-BR.md`:
+- Calendário de repasse **configurável na Proposta**: 2 campos novos `parcelasPorAno` (1/2/3/4/6/12)
+  + `mesInicialRepasse` (1-12). Ex.: 3/janeiro → jan/mai/set.
+- **Parcela de entrada** (T1) no mês de `dataInicio`; quando coincide com o 1º repasse (caso
+  ANEXO 9), T1 = "Etapas 1 e 2" e Tn (n≥2) → Etapa (n+1); sem coincidência, Tn → Etapa n.
+- Período **ANTECIPADO**: Tk paga o bloco `[Dk, D(k+1)−1]`; última parcela até `dataFim`.
+- Sub-linha única **"Evento Tn Meta 01"** (meta única — CONSOLIDADA na prática).
+- Coluna 7 = **"VALOR ACUMULADO POR ANO DO TERMO DE PARCERIA"** (só nas linhas "TOTAL A
+  DESEMBOLSAR EM XXXX" = acumulado ao fim do ano civil). A RN0253/"repassado a cada 12 meses" **saiu**.
+- Tela = **só leitura** + filtro de período (client-side, não recalcula).
+- Substitui a grade mensal. Export PDF/XLSX no layout ANEXO 9.
+
+**ADR-049 aceito** (`docs/ADR-049 - Cronograma de Desembolso por Parcelas.pt-BR.md`): migration
+aditiva dos 2 campos + CHECK (DDL pronto); camada `agregarEmParcelas()` pura sobre o motor mensal
+**preservado**; algoritmo de datas + Etapas; filtro client-side; **CD-06** (Viagem sem data infla
+T1) aceito como limitação → **US-143 futura**. Maior risco: RN_CD_002 (Σ parcelas = Valor Global
+exato) — teste de regressão reproduzindo os números do ANEXO 9 (Global R$ 194.981.162,00).
+**Próximo:** `fullstack-dev` implementa (branch + PR + `/code-review`; migration junto do merge).
+
+### B) Frente Impostos — ÉPICO + ADR-050 + US-144/145/146 (PRONTO PARA IMPLEMENTAR US-144)
+
+O usuário pediu "módulo impostos, aplicar sobre analíticas e/ou sintéticas". Na descoberta,
+esclarecido que **não é módulo novo** — é a evolução do Rateio de Impostos: o `valorDeclarado`
+digitado à mão vira **cálculo automático** `imposto = base × alíquota%`.
+
+**`docs/EPICO - Aplicacao Automatica de Impostos sobre Contas.pt-BR.md`** — 8 decisões (todas do
+usuário via AskUserQuestion): base A1 (Empregado+Viagem+Bem, sem o próprio imposto); **sem
+cascata** (impostos somam sobre a mesma base); sintética **C1** (ajusta a própria); congela
+pós-oficialização **D1**; exibir "sem imposto" + "com imposto"; imunidade TP preservada.
+
+**ADR-050 aceito** (`docs/ADR-050 ...md`) — **substitui o ADR-039** (que virou registro
+histórico; o título "Composto" não vale mais). Decisões: modelo **A1** — `RateioImpostoGrade`
+ganha `modoValor` (DECLARADO|CALCULADO) + `valorBaseSnapshot`; `AliquotaImpostoParametro` ganha
+`categoria` (TRIBUTO|INDICE_REAJUSTE) — resolve a ambiguidade com o reaproveitamento de Reajustes
+(ADR-040), que fica **intacto**. Gatilho = **botão "Gerar Impostos da Versão"** (não síncrono) +
+aviso de "stale". Dados existentes = **grandfather total** (migração não recalcula nada).
+Semáforo/Valor Global seguem "com imposto" (como hoje); "sem imposto" é número novo ao lado
+(US-008a/ADR-032 não reabrem). `contaId` passa a aceitar sintética — quebra a invariante
+"sintética = soma das filhas" (mitigada por flag `temImpostoDireto` + nota na tela).
+
+**US escritas** (Gherkin completo): `docs/US-144` (motor, analítica — MVP, G), `docs/US-145`
+(sintética, C1 — M, **maior risco**), `docs/US-146` (exibir os 2 valores — M, baixo risco).
+**Backlog priorizado:** `docs/BACKLOG - Epico Impostos.pt-BR.md` — ordem **US-144 → US-145 →
+US-146**; roadmap de 4 iterações; US-147 (separar tributo de índice) = opcional. Mitigação
+obrigatória antes da US-145: blindar `CalcularValorRealizadoUseCase`/`ValorRealizadoService` com
+testes de regressão da agregação bottom-up.
+
+### Estado ao pausar (para retomar de outro computador)
+
+- `origin/master` = `7e445f6`. Working tree limpo, tudo sincronizado.
+- Branch `feature/us-141-municipio-ibge-viagem` ainda existe (local e remoto) mas **já foi
+  mergeada** via PR #17 — pode apagar (`git branch -d` + `git push origin --delete`), não é urgente.
+- **Nenhuma implementação pendente de código.** 3 frentes prontas para o `fullstack-dev`, em
+  ordem de prioridade sugerida:
+  1. **US-142** (Cronograma de Desembolso por parcelas) — ADR-049 aceito, migration de 2 campos.
+  2. **US-144** (motor de imposto automático, analítica) — ADR-050 aceito, migration de 3 colunas.
+  3. Follow-up leve da US-141 (pendência #7 do STATUS) — não urgente.
+- Pendências herdadas em aberto: build `/orcamentario/acompanhamento` (500, `publishableKey` do
+  Clerk); confirmar reset da senha do Postgres (2026-08-26); dívida do lock-por-tenant.
+- **Ambiente:** o próximo computador provavelmente terá o mesmo bloqueio de npm (cert corporativo)
+  — resolver com `NODE_EXTRA_CA_CERTS` antes de tentar `npm install`.
+
 ---
 
 ## Como usar este arquivo em sessões futuras
