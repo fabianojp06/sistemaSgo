@@ -4,7 +4,7 @@
 **Épico:** EP48/26 — Módulo Orçamentário
 **Prioridade:** Alta
 **Estimativa:** G (~3–4 dias) — muda o motor de cálculo, o schema (2 campos) e a tela
-**Status:** 🔜 Refinada — GAPs de negócio fechados (2026-09-02); depende do ADR-049 (`techlead-fsg`) fechar a modelagem
+**Status:** 🔜 Refinada — **todos os GAPs de negócio fechados** (2026-09-02). Falta só o **ADR-049** (`techlead-fsg`): modelagem (migration dos 2 campos em `Proposta`, estrutura `agregarEmParcelas`, filtro de período da tela) e a decisão técnica de CD-06 (viagem sem data).
 **Origem:** 2026-09-02, documento-alvo "APÊNDICE J — CRONOGRAMA DE DESEMBOLSO" fornecido pelo usuário
 **Substitui:** a visão mensal atual de UC04.01 / US-138 (a grade "Mês 1, Mês 2..." sai)
 
@@ -52,6 +52,7 @@ total geral**, e não há conceito de "parcela" ou "Etapa".
 | **CD-04** — rateio por Meta | **Meta única.** Na CTCEA, Termo de Parceria = 1 Meta / Proposta CONSOLIDADA. Cada parcela tem **uma** sub-linha "Meta Única" com o valor cheio da parcela — sem rateio entre múltiplas Metas, sem tratamento especial de imposto (entra no total normalmente). |
 | **CD-02** — texto da Etapa | **Etapa M = número sequencial da parcela.** T1 → "1ª parcela relativa à Etapa 1 do Cronograma Físico-Financeiro."; T2 → "2ª parcela relativa à Etapa 2..."; e assim por diante. |
 | **CD-05** — "Valor Repassado a cada 12 meses de execução" | **Ciclo de 12 meses contados de `dataInicio`** (não ano civil). O valor aparece na parcela que fecha cada 12º mês de execução (mês 12, 24, 36...) e é o somatório dos desembolsos daquele ciclo — mesma lógica da RN0253 atual. |
+| **Adiantamento 1ª+2ª parcela** | **Fora de escopo.** Na prática de caixa a 1ª parcela costuma ser paga junto com a 2ª (o próximo recebimento real fica ~8 meses depois, por pular uma data do calendário). Mas o **cronograma do documento/tela segue as datas teóricas** — T1 na entrada, T2 na 1ª data regular, T3 na seguinte, espaçadas normalmente. O sistema **não** modela antecipação de caixa. |
 | **Escopo da tela** | A grade mensal atual é **SUBSTITUÍDA** pela visão de parcelas. Não há duas telas. |
 
 ### Regra de derivação das parcelas (fechada — o ADR só decide a modelagem)
