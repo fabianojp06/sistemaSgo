@@ -71,10 +71,11 @@ sobre Contas.pt-BR.md`. **ADR-050 aceito** (substitui o ADR-039): modelo A1 (`Ra
 total (1 linha/conta×alíquota, competência = dataInicio), gatilho = **botão "Gerar Impostos"**
 (não síncrono) + aviso de stale, dados existentes = grandfather (zero recálculo), Semáforo/Valor
 Global seguem "com imposto" + "sem imposto" novo ao lado, reajuste (ADR-040) intacto +
-`AliquotaImpostoParametro.categoria` (TRIBUTO/INDICE_REAJUSTE). **US-144/145/146 escritas**
-(`docs/US-144/145/146 ...md`, Gherkin completo). **US-144 (MVP) pronta para o `fullstack-dev`** —
-motor de cálculo sobre analítica + botão "Gerar Impostos" + migration aditiva. US-145 (sintética)
-e US-146 (exibir os 2 valores) dependem da US-144.
+`AliquotaImpostoParametro.categoria` (TRIBUTO/INDICE_REAJUSTE). **US-144/145/146 escritas** +
+**backlog do épico** priorizado: `docs/BACKLOG - Epico Impostos.pt-BR.md`. Ordem: **US-144**
+(motor, analítica — MVP, pronta p/ `fullstack-dev`) → **US-145** (sintética, C1 — maior risco,
+exige suíte de regressão do `CalcularValorRealizadoUseCase` antes) → **US-146** (exibir "Custo"/
+"Custo c/ Impostos" — menor risco). US-147 (separar tributo de índice de reajuste) = opcional.
 
 ## Próximo passo combinado
 
