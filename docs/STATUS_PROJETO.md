@@ -64,13 +64,15 @@
 
 ## Próximo passo combinado
 
-**US-142** (Cronograma de Desembolso por parcelas, layout APÊNDICE J) — **refinada + ADR-049
-aceito** (2026-09-02). `docs/US-142 ...md` + `docs/ADR-049 ...md`. Decisões: calendário de
-repasse configurável na Proposta (`parcelasPorAno`/`mesInicialRepasse`, 2 campos novos, migration
-aditiva), parcela de entrada em `dataInicio`, sub-linha "Meta Única", camada `agregarEmParcelas`
-sobre o motor mensal preservado, tela read-only + filtro de período, substitui a grade mensal.
-CD-06 (Viagem sem data) aceito como limitação → US-143 futura. **Pronta para o `fullstack-dev`**
-(branch + PR + `/code-review`; migration aplicada junto do merge).
+**US-142** (Cronograma de Desembolso por parcelas, layout **ANEXO 9** — PDF real do TP
+PAME-RJ/CTCEA/2025) — **refinada + ADR-049 aceito** (2026-09-02). `docs/US-142 ...md` +
+`docs/ADR-049 ...md`. Decisões: calendário configurável na Proposta
+(`parcelasPorAno`/`mesInicialRepasse`, 2 campos + migration aditiva); parcela de entrada em
+`dataInicio` (funde com o 1º repasse → "Etapas 1 e 2" quando coincidem); período **antecipado**
+(Tk paga o bloco que começa na data dela); sub-linha "Evento Tn Meta 01"; coluna 7 = "Valor
+Acumulado por Ano do TP" (só nas linhas de ano); camada `agregarEmParcelas` sobre o motor mensal
+preservado; tela read-only + filtro de período. CD-06 (Viagem sem data) → US-143 futura.
+**Pronta para o `fullstack-dev`** (branch + PR + `/code-review`; migration aplicada junto do merge).
 
 Outros candidatos: (a) build de `/orcamentario/acompanhamento` (pendência #1); (b) follow-up
 leve da US-141 (pendência #7); (c) tradução EN-US; (d) US-127; (e) desbloquear US-140.

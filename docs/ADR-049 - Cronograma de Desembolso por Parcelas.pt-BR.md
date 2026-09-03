@@ -5,12 +5,13 @@
 **Módulo SGO**: Orçamentário — Cronograma de Desembolso (US-142, UC04.01)
 
 **Contexto**: a US-142 troca a apresentação do Cronograma de Desembolso — de uma **grade mês a
-mês** (US-138) para uma **tabela de parcelas T1..Tn** no layout do APÊNDICE J exigido pelo
-concedente: parcelas periódicas com data e descrição próprias, sub-linha "Meta Única" por
-parcela, subtotais por ano civil e linha de total geral. Todas as decisões de negócio já estão
-fechadas (ver `docs/US-142 ...md`). Este ADR fecha a modelagem: onde vive a config do calendário
-de repasse, como o motor de cálculo é estruturado, o algoritmo de datas, o filtro da tela, e o
-tratamento da limitação "Viagem sem data".
+mês** (US-138) para uma **tabela de parcelas T1..Tn** no layout do **ANEXO 9** exigido pelo
+concedente (`ANEXO 9 - CRONOGRAMA DESEMBOLSO 15.08.25.pdf`, TP PAME-RJ/CTCEA/2025): parcelas com
+data e descrição próprias, sub-linha "Evento Tn Meta 01" por parcela, subtotais por ano civil,
+linha de total geral, e a coluna "Valor Acumulado por Ano do TP". Todas as decisões de negócio
+estão fechadas (ver `docs/US-142 ...md`). Este ADR fecha a modelagem: config do calendário de
+repasse, estrutura do motor, algoritmo de datas + Etapas, período coberto (antecipado), filtro
+da tela, e a limitação "Viagem sem data".
 
 Restrições que pesam: (1) o motor mensal atual (`montarCronogramaDesembolso.ts`, [ORIGEM
 BLINDADA]) é a **verdade do custo por competência** e não deve ser jogado fora; (2) ambiente de
@@ -83,16 +84,15 @@ agregarEmParcelas(linhasMensais, { dataInicio, dataFim, parcelasPorAno, mesInici
 Arquivo novo: `src/domain/plano-contas/agregarEmParcelas.ts`.
 
 ```ts
-export type SubLinhaParcela = { rotulo: string; valor: Prisma.Decimal }; // hoje sempre "Meta Única"
+export type SubLinhaParcela = { rotulo: string; valor: Prisma.Decimal }; // hoje sempre "Evento Tn Meta 01"
 
 export type ParcelaCronograma = {
   numero: number;                     // 1..n
   data: Date;                         // primeiro dia do mês da parcela
-  descricao: string;                  // "Nª parcela relativa à Etapa n do Cronograma Físico-Financeiro."
-  desembolso: Prisma.Decimal;         // soma dos meses do período da parcela
+  descricao: string;                  // "Nª parcela relativa à Etapa M do Cronograma Físico" (T1 pode ser "às Etapas 1 e 2")
+  desembolso: Prisma.Decimal;         // soma dos meses do período ANTECIPADO da parcela
   desembolsoAcumulado: Prisma.Decimal;
   percentualFinanceiroAcumulado: Prisma.Decimal; // RN0252 — 2 casas HALF_EVEN
-  valorRepassado12Meses: Prisma.Decimal | null;  // só na parcela que fecha o 12º/24º... mês de execução
   subLinhas: SubLinhaParcela[];
 };
 
@@ -101,6 +101,7 @@ export type SubtotalAnual = {
   totalDoAno: Prisma.Decimal;
   desembolsoAcumulado: Prisma.Decimal;
   percentualFinanceiroAcumulado: Prisma.Decimal;
+  valorAcumuladoPorAnoDoTP: Prisma.Decimal; // ANEXO 9 col. 7 — == desembolsoAcumulado ao fim do ano
 };
 
 export type CronogramaParcelado = {
@@ -142,48 +143,63 @@ na US-142. Registrar **US-143 (futura, não priorizada): "Data/período de ocorr
 
 ---
 
-### D — Algoritmo de geração das datas de parcela
+### D — Algoritmo de datas, período coberto e Etapas
 
 Entrada: `dataInicio`, `dataFim`, `parcelasPorAno` (default 3), `mesInicialRepasse` (default 1).
 
 ```
 espacamento = 12 / parcelasPorAno            // inteiro (garantido pela validação de §A)
-
-// 1. datas regulares: começa no mesInicialRepasse do 1º ano da vigência, anda de `espacamento`
-//    em `espacamento` meses, indefinidamente, mantendo só as que caem em (inicioMes, fimMes].
 inicioMes = primeiroDiaDoMes(dataInicio)
 fimMes    = primeiroDiaDoMes(dataFim)
+
+// 1. datas regulares (Etapa 2, 3, 4, ...): a partir de mesInicialRepasse, de `espacamento` em
+//    `espacamento` meses, mantendo só as que caem em [inicioMes, fimMes].
 regulares = []
-cursor = primeiroDiaDoMes(ano(dataInicio), mesInicialRepasse - 1)
-// recua até antes do início, depois avança
+cursor = primeiroDiaDoMes(ano(dataInicio) - 1, mesInicialRepasse - 1)   // recua 1 ano p/ garantir
 while cursor <= fimMes:
-    if cursor > inicioMes: regulares.push(cursor)
+    if cursor >= inicioMes: regulares.push(cursor)
     cursor = addMeses(cursor, espacamento)
 
-// 2. parcela de entrada: sempre o mês de dataInicio
-datas = ordenarUnico([inicioMes, ...regulares])   // dedup: se inicioMes já é uma data regular, conta uma vez só
+// 2. entrada (Etapa 1) = inicioMes. Lista teórica de Etapas:
+etapas = ordenarUnico([inicioMes, ...regulares])   // se inicioMes ∈ regulares, NÃO deduplica aqui —
+                                                   // a dedup vira "fusão de linha", ver passo 3
+fusaoT1 = regulares.inclui(inicioMes)              // entrada coincide com regular₁?
 
-// 3. numerar
-parcelas = datas.map((data, i) => ({ numero: i + 1, data, ... }))
+// 3. linhas de parcela = etapas SEM a duplicata da entrada:
+datasParcela = fusaoT1 ? [inicioMes, ...regulares.exceto(inicioMes)] : [inicioMes, ...regulares]
+              // (já ordenado e sem repetição)
+parcelas = datasParcela.map((data, i) => T{i+1} @ data)
 ```
 
-- **Borda "dataInicio já é mês de repasse":** o `ordenarUnico` deduplica → T1 é a entrada **e** a
-  1ª regular ao mesmo tempo (não gera duas parcelas no mesmo mês).
-- **Borda "proposta curta":** se não há nenhuma data regular em `(inicioMes, fimMes]`, o
-  cronograma tem só **T1** cobrindo toda a vigência.
-- **`parcelasPorAno` não-divisor de 12:** impossível por construção (validação de §A restringe a
-  `{1,2,3,4,6,12}`). Se um dia houver demanda por 5/ano ou trimestral-deslocado, é **novo ADR**
-  (espaçamento não-uniforme).
-- **Período coberto por cada parcela:** de `addMeses(dataParcelaAnterior, 1)` (ou `dataInicio`
-  para T1) até `dataParcela`, inclusive. O `desembolso` da parcela = soma dos `desembolsoMensal`
-  das `LinhaCronograma` cujos meses caem nesse intervalo.
-- **`valorRepassado12Meses`:** reaproveita a marca `mes % 12 === 0` das `LinhaCronograma`. A
-  parcela cujo período **contém** um mês de execução múltiplo de 12 recebe, nessa coluna, o
-  `valorRepassado12Meses` daquela linha mensal (soma do ciclo de 12 meses). Demais parcelas:
-  `null` / hífen. (RN0253 preservada.)
-- **Subtotais anuais:** agrupar `parcelas` por `data.getUTCFullYear()`; para cada ano com ≥1
-  parcela, emitir `SubtotalAnual` com `totalDoAno` = soma das parcelas do ano,
-  `desembolsoAcumulado` = acumulado até a última parcela do ano, `%` idem.
+- **Fusão de T1 (caso ANEXO 9):** quando `inicioMes` coincide com a 1ª data regular, existe **1
+  linha** T1 nesse mês, mas ela representa **Etapa 1 + Etapa 2**. Descrição: `"1ª parcela relativa
+  às Etapas 1 e 2 do Cronograma Físico"`. As demais linhas Tn (n≥2) recebem `Etapa = n + 1`
+  (deslocamento) → `"nª parcela relativa à Etapa (n+1) do Cronograma Físico"`.
+- **Sem fusão:** T1 = só a entrada = Etapa 1. Tn = Etapa n. `"nª parcela relativa à Etapa n do
+  Cronograma Físico"`.
+- **Proposta curta:** sem nenhuma data regular em `[inicioMes, fimMes]` → só **T1** (Etapa 1),
+  cobrindo toda a vigência.
+- **`parcelasPorAno` ∉ {1,2,3,4,6,12}:** impossível (validação §A). 5/ano ou espaçamento
+  irregular → **novo ADR**.
+
+#### Período coberto — **ANTECIPADO**
+
+- Parcela `Tk` (data `Dk`) paga o bloco **`[Dk, addMeses(D(k+1), −1)]`** — do seu mês até o mês
+  anterior à próxima parcela.
+- **T1** cobre `[inicioMes, addMeses(D2, −1)]`.
+- **Última parcela** `Tn` cobre `[Dn, fimMes]`.
+- `desembolso(Tk)` = soma dos `desembolsoMensal` das `LinhaCronograma` cujos meses caem nesse
+  intervalo. Como o motor mensal joga toda a Viagem (e itens datados no 1º mês) na competência
+  inicial, **T1 concentra a mobilização** — é o comportamento do ANEXO 9 (T1 ≈ 2× T2) e a
+  limitação CD-06.
+
+#### Subtotais anuais e coluna 7
+
+- Agrupar `parcelas` por `data.getUTCFullYear()`. Para cada ano com ≥1 parcela: `SubtotalAnual`
+  com `totalDoAno` = soma das parcelas do ano, `desembolsoAcumulado` = acumulado até a última
+  parcela do ano, `%` idem, e **`valorAcumuladoPorAnoDoTP` = o mesmo `desembolsoAcumulado`**
+  (ANEXO 9 col. 7). Essa coluna é **vazia** em toda linha de parcela e de sub-linha.
+- A antiga RN0253 / "Valor Repassado a cada 12 meses" **sai** — não existe no ANEXO 9.
 
 ---
 
@@ -214,7 +230,7 @@ parcelas = datas.map((data, i) => ({ numero: i + 1, data, ... }))
 |---|---|
 | `CronogramaDesembolsoPanel.tsx` — **tabela** | **Reescrever.** A estrutura de linhas muda por completo (parcela / sub-linha / subtotal-anual / total-geral). |
 | `CronogramaDesembolsoPanel.tsx` — **resto** | **Reusar:** faixa de KPIs (adaptar rótulos: "Nº de Parcelas", "Custo Total do Cronograma", "Duração da Vigência"), painel de "Filtros Aplicados" (RN0200/RN0250), botões de export, estado de bloqueio "sem dados financeiros" (Cenário 8). |
-| `exportarRelatorio.ts` (ADR-037) | **Estender, não reescrever.** Adicionar campo opcional `estiloLinha?: 'normal' \| 'subitem' \| 'subtotal' \| 'total'` em `LinhaRelatorio`. PDF: `didParseCell` aplica negrito/indent/fill por estilo. XLSX: `row.font`/`row.fill`. Ausência do campo = `'normal'` — os outros usos (US-123 alíquotas) não mudam. `titulo` passa a ser `"APÊNDICE J — CRONOGRAMA DE DESEMBOLSO"`. |
+| `exportarRelatorio.ts` (ADR-037) | **Estender, não reescrever.** Adicionar campo opcional `estiloLinha?: 'normal' \| 'subitem' \| 'subtotal' \| 'total'` em `LinhaRelatorio`. PDF: `didParseCell` aplica negrito/indent/fill por estilo. XLSX: `row.font`/`row.fill`. Ausência do campo = `'normal'` — os outros usos (US-123 alíquotas) não mudam. `titulo` passa a ser `"ANEXO 9 — CRONOGRAMA DE DESEMBOLSO"` (subtítulo com o nome do TP / "Programa de Trabalho - Rev.NN"). |
 | `montarCronogramaDesembolso.ts` | **Não tocar.** |
 | `calcularCustoEstimadoViagem.ts` | **Não tocar.** |
 
@@ -236,7 +252,7 @@ parcelas = datas.map((data, i) => ({ numero: i + 1, data, ... }))
 | `page.tsx` (bloco cronograma) | Chama `agregarEmParcelas` após `montarCronogramaDesembolso`; serializa; passa `parcelasPorAno`/`mesInicialRepasse` da Proposta. |
 | `CronogramaDesembolsoPanel.tsx` | Reescrita da tabela + filtro de período + nota. |
 | `exportarRelatorio.ts` | `estiloLinha`. |
-| Testes | `gerarDatasParcela` (configs 1/2/3/4/6/12 × mesInicial × bordas), `agregarEmParcelas` (período de cobertura, soma == valorGlobal + resíduo na última, sub-linha "Meta Única", subtotais anuais, `valorRepassado12Meses`, proposta curta = só T1), validação dos 2 campos na Proposta. |
+| Testes | `gerarDatasParcela` (configs 1/2/3/4/6/12 × mesInicial × com/sem fusão de T1 × proposta curta), `agregarEmParcelas` (período **antecipado**, soma == valorGlobal + resíduo na última, sub-linha "Evento Tn Meta 01", subtotais anuais + coluna 7, texto da Etapa com/sem deslocamento), reprodução dos números do ANEXO 9 como fixture de regressão, validação dos 2 campos na Proposta. |
 
 ---
 
