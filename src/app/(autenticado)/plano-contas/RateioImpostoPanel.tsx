@@ -1,7 +1,12 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { configurarRateioImposto, type RateioImpostoResultado } from './actions';
+import {
+  configurarRateioImposto,
+  gerarImpostosDaVersao,
+  type GerarImpostosResultado,
+  type RateioImpostoResultado,
+} from './actions';
 import { SeletorContaAnalitica } from '@/app/(autenticado)/propostas/SeletorContaAnalitica';
 
 type ContaOpcao = { id: string; label: string };
@@ -17,11 +22,17 @@ export function RateioImpostoPanel({
   contasAnaliticas,
   aliquotas,
   readOnly,
+  gerarImpostosHabilitado = false,
+  avisoStale = false,
 }: {
   versaoId: string;
   contasAnaliticas: ContaOpcao[];
   aliquotas: AliquotaOpcao[];
   readOnly?: boolean;
+  /** US-144 — habilita "Gerar Impostos da Versão" (há ao menos um tributo vinculado). */
+  gerarImpostosHabilitado?: boolean;
+  /** US-144 RN_TAX_13 — fontes de custo mudaram desde o último cálculo de impostos. */
+  avisoStale?: boolean;
 }) {
   const hoje = new Date().toISOString().slice(0, 10);
   const [aliquotaParametroId, setAliquotaParametroId] = useState(aliquotas[0]?.id ?? '');
@@ -31,6 +42,23 @@ export function RateioImpostoPanel({
   const [erro, setErro] = useState<string | null>(null);
   const [resultado, setResultado] = useState<RateioImpostoResultado | null>(null);
   const [pending, startTransition] = useTransition();
+
+  const [gerando, startGeracao] = useTransition();
+  const [erroGeracao, setErroGeracao] = useState<string | null>(null);
+  const [resultadoGeracao, setResultadoGeracao] = useState<GerarImpostosResultado | null>(null);
+
+  function gerarImpostos() {
+    setErroGeracao(null);
+    setResultadoGeracao(null);
+    startGeracao(async () => {
+      const resposta = await gerarImpostosDaVersao({ versaoId });
+      if (!resposta.sucesso) {
+        setErroGeracao(resposta.mensagem);
+        return;
+      }
+      setResultadoGeracao(resposta.dados);
+    });
+  }
 
   function salvar() {
     setErro(null);
@@ -61,6 +89,53 @@ export function RateioImpostoPanel({
   return (
     <div className="flex flex-col gap-3 rounded border p-4">
       <h3 className="font-medium">Rateio de Impostos</h3>
+
+      {/* US-144 — motor de cálculo automático de imposto (base × alíquota%). */}
+      {!readOnly && (
+        <div className="flex flex-col gap-2 rounded bg-slate-50 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="text-sm font-medium text-slate-800">Gerar Impostos da Versão</p>
+              <p className="text-xs text-slate-500">
+                Calcula automaticamente <code>imposto = custo bruto da conta × alíquota%</code> para cada tributo
+                vinculado. Substitui apenas as linhas calculadas anteriormente — linhas digitadas à mão não são
+                tocadas.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={gerarImpostos}
+              disabled={gerando || !gerarImpostosHabilitado}
+              className="shrink-0 rounded bg-blue-600 px-3 py-1.5 text-sm text-white disabled:opacity-50"
+            >
+              {gerando ? 'Gerando...' : 'Gerar Impostos da Versão'}
+            </button>
+          </div>
+
+          {!gerarImpostosHabilitado && (
+            <p className="text-xs text-slate-500">
+              Cadastre custos e vincule ao menos um tributo antes de gerar impostos.
+            </p>
+          )}
+          {avisoStale && (
+            <p className="rounded bg-amber-50 px-2 py-1 text-xs text-amber-800">
+              Os custos desta Versão mudaram desde o último cálculo de impostos. Clique em Gerar Impostos para
+              atualizar.
+            </p>
+          )}
+          {erroGeracao && <p className="text-xs text-red-600">{erroGeracao}</p>}
+          {resultadoGeracao && (
+            <p className="rounded bg-green-50 px-2 py-1 text-xs text-green-800">
+              Impostos gerados: {resultadoGeracao.linhasGeradas} linha(s), R$ {resultadoGeracao.valorTotalImposto}
+              {resultadoGeracao.paresPuladosPorBaseZero > 0 &&
+                ` — ${resultadoGeracao.paresPuladosPorBaseZero} par(es) sem custo ignorado(s)`}
+              {resultadoGeracao.paresPuladosPorDeclarado > 0 &&
+                ` — ${resultadoGeracao.paresPuladosPorDeclarado} par(es) com linha manual preservada(s)`}
+              . Recarregue a página para ver os valores atualizados.
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
         <div>

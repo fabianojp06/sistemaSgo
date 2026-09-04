@@ -19,6 +19,7 @@ import {
   getConfigurarSemaforoContaUseCase,
   getCalcularValorRealizadoUseCase,
   getConfigurarRateioImpostoUseCase,
+  getGerarImpostosDaVersaoUseCase,
   getCadastrarCargoUseCase,
   getEditarCargoUseCase,
   getCadastrarMetaUseCase,
@@ -291,6 +292,49 @@ export async function configurarRateioImposto(input: {
       dados: {
         valorDeclarado: resultado.valorDeclarado.toString(),
         aliquotaAplicadaSnapshot: resultado.aliquotaAplicadaSnapshot.toString(),
+      },
+    };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+export type GerarImpostosResultado = {
+  linhasGeradas: number;
+  valorTotalImposto: string;
+  contasAfetadas: number;
+  paresPuladosPorDeclarado: number;
+  paresPuladosPorBaseZero: number;
+};
+
+/** US-144/ADR-050 — dispara o motor de cálculo automático de imposto para a Versão. */
+export async function gerarImpostosDaVersao(input: {
+  versaoId: string;
+}): Promise<ActionResultComDados<GerarImpostosResultado>> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  if (!input?.versaoId) return { sucesso: false, mensagem: 'Versão inválida.' };
+
+  const temPermissao = await usuarioTemFuncionalidade(
+    prisma,
+    contexto.tenantId,
+    contexto.usuarioId,
+    'plano-contas.configurar-rateio-imposto',
+  );
+  if (!temPermissao) return { sucesso: false, mensagem: 'Perfil sem permissão para gerar impostos.' };
+
+  try {
+    const r = await getGerarImpostosDaVersaoUseCase().execute({ ...contexto, versaoId: input.versaoId });
+    revalidatePath('/', 'layout');
+    return {
+      sucesso: true,
+      dados: {
+        linhasGeradas: r.linhasGeradas,
+        valorTotalImposto: r.valorTotalImposto,
+        contasAfetadas: r.contasAfetadas.length,
+        paresPuladosPorDeclarado: r.paresPuladosPorDeclarado,
+        paresPuladosPorBaseZero: r.paresPuladosPorBaseZero,
       },
     };
   } catch (erro) {

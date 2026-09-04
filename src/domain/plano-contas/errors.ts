@@ -746,6 +746,23 @@ export class ContaRateioImpostoNaoAnaliticaError extends Error {
   }
 }
 
+// US-144/ADR-050 Frente B — contaId do rateio precisa existir e pertencer ao tenant
+// (analítica OU sintética, a partir da US-145). Sucede ContaRateioImpostoNaoAnaliticaError.
+export class ContaRateioImpostoInvalidaError extends Error {
+  constructor() {
+    super('Conta do rateio de imposto não encontrada ou inativa.');
+    this.name = 'ContaRateioImpostoInvalidaError';
+  }
+}
+
+// US-144, Cenário 8 — nenhum custo cadastrado ou nenhum tributo vinculado à Versão.
+export class SemBaseParaGerarImpostosError extends Error {
+  constructor() {
+    super('Cadastre custos e vincule ao menos um tributo antes de gerar impostos.');
+    this.name = 'SemBaseParaGerarImpostosError';
+  }
+}
+
 // UC03.39-42 — CRUD de AliquotaImpostoParametro (Central de Alíquotas de Impostos).
 
 // UC03.40/41, RN_IMP_005 — nome único (case-insensitive) na base de parâmetros fiscais.

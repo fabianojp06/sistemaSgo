@@ -438,13 +438,18 @@ async function RateioImpostoPanelHost({
   contasAnaliticas: { id: string; label: string }[];
   readOnly: boolean;
 }) {
-  const [podeConfigurarRateioImposto, aliquotas] = await Promise.all([
+  const [podeConfigurarRateioImposto, aliquotas, rateiosDaVersao, versaoDaProposta] = await Promise.all([
     usuarioTemFuncionalidade(prisma, tenantId, usuarioId, 'plano-contas.configurar-rateio-imposto'),
     prisma.aliquotaImpostoParametro.findMany({
       where: { tenantId },
       orderBy: { nome: 'asc' },
       select: { id: true, nome: true, aliquotaPct: true },
     }),
+    prisma.rateioImpostoGrade.findMany({
+      where: { tenantId, versaoId, ativo: true },
+      select: { modoValor: true, updatedAt: true },
+    }),
+    prisma.versaoProposta.findFirst({ where: { tenantId, id: versaoId }, select: { propostaId: true } }),
   ]);
 
   if (!podeConfigurarRateioImposto) {
@@ -453,8 +458,39 @@ async function RateioImpostoPanelHost({
 
   const aliquotasOpcoes = aliquotas.map((a) => ({ id: a.id, label: `${a.nome} (${Number(a.aliquotaPct)}%)` }));
 
+  // US-144 Cenário 8 — só habilita "Gerar Impostos" com ao menos um tributo vinculado.
+  const gerarImpostosHabilitado = rateiosDaVersao.length > 0;
+
+  // US-144 Cenário 9 / RN_TAX_13 — aviso de "stale": fontes de custo mais novas que o último cálculo.
+  const ultimoCalculado = rateiosDaVersao
+    .filter((r) => r.modoValor === 'CALCULADO')
+    .reduce<Date | null>((max, r) => (max === null || r.updatedAt > max ? r.updatedAt : max), null);
+  let avisoStale = false;
+  if (ultimoCalculado && versaoDaProposta) {
+    const [maiorViagem, maiorItem, maiorEmpregado] = await Promise.all([
+      prisma.viagem.findFirst({ where: { tenantId, versaoId, ativo: true }, orderBy: { updatedAt: 'desc' }, select: { updatedAt: true } }),
+      prisma.itemPatrimonial.findFirst({ where: { tenantId, versaoId, ativo: true }, orderBy: { updatedAt: 'desc' }, select: { updatedAt: true } }),
+      prisma.empregadoHeadcount.findFirst({
+        where: { tenantId, propostaId: versaoDaProposta.propostaId, ativo: true },
+        orderBy: { updatedAt: 'desc' },
+        select: { updatedAt: true },
+      }),
+    ]);
+    const maisRecenteFonte = [maiorViagem?.updatedAt, maiorItem?.updatedAt, maiorEmpregado?.updatedAt]
+      .filter((d): d is Date => d instanceof Date)
+      .reduce<Date | null>((max, d) => (max === null || d > max ? d : max), null);
+    avisoStale = maisRecenteFonte !== null && maisRecenteFonte > ultimoCalculado;
+  }
+
   return (
-    <RateioImpostoPanel versaoId={versaoId} contasAnaliticas={contasAnaliticas} aliquotas={aliquotasOpcoes} readOnly={readOnly} />
+    <RateioImpostoPanel
+      versaoId={versaoId}
+      contasAnaliticas={contasAnaliticas}
+      aliquotas={aliquotasOpcoes}
+      readOnly={readOnly}
+      gerarImpostosHabilitado={gerarImpostosHabilitado}
+      avisoStale={avisoStale}
+    />
   );
 }
 
