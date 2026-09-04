@@ -11,11 +11,15 @@ import {
   getCadastrarAliquotaImpostoUseCase,
   getEditarAliquotaImpostoUseCase,
   getExcluirAliquotaImpostoUseCase,
+  getConfigurarRateioImpostoUseCase,
 } from '@/application/use-cases/plano-contas/container';
 import type { StatusAliquotaImposto } from '@/application/use-cases/plano-contas/ListarAliquotasImpostoUseCase';
 import { normalizarValorMonetario } from '@/lib/decimal/normalizarValorMonetario';
 
-type ActionResult = { sucesso: true } | { sucesso: false; mensagem: string };
+// `aviso` carrega um sucesso parcial não-bloqueante (ex: alíquota criada, mas o
+// vínculo opcional com a Proposta falhou — o usuário faz o vínculo manualmente
+// depois, na tela de Rateio de Impostos).
+type ActionResult = { sucesso: true; aviso?: string } | { sucesso: false; mensagem: string };
 
 type ActionResultComDados<T> = { sucesso: true; dados: T } | { sucesso: false; mensagem: string };
 
@@ -109,6 +113,19 @@ const AliquotaImpostoFormSchema = z
     observacao: z.string().max(500).optional().nullable(),
     contaSinteticaId: z.string().optional().nullable(),
     periodicidadeReajuste: z.enum(['MENSAL', 'TRIMESTRAL', 'SEMESTRAL', 'ANUAL']).optional(),
+    // Atalho de UX (2026-09-04): ao salvar a alíquota, já vincula (Rateio de
+    // Impostos, US-101) a uma conta analítica de uma Versão de Proposta. A
+    // alíquota continua sendo um catálogo global do tenant — isto só cria/
+    // atualiza a linha de RateioImpostoGrade correspondente, opcionalmente.
+    vinculo: z
+      .object({
+        versaoId: z.string().min(1),
+        contaId: z.string().min(1),
+        competencia: z.coerce.date(),
+        valorDeclarado: z.string().optional(),
+      })
+      .optional()
+      .nullable(),
   })
   .transform((v) => ({
     ...v,
@@ -119,6 +136,9 @@ const AliquotaImpostoFormSchema = z
     observacao: v.observacao || null,
     contaSinteticaId: v.contaSinteticaId || null,
     dataFimVigencia: v.dataFimVigencia ?? null,
+    vinculo: v.vinculo
+      ? { ...v.vinculo, valorDeclarado: normalizarValorMonetario(v.vinculo.valorDeclarado || '0') }
+      : null,
   }));
 
 type AliquotaImpostoFormInput = {
@@ -132,7 +152,24 @@ type AliquotaImpostoFormInput = {
   observacao?: string | null;
   contaSinteticaId?: string | null;
   periodicidadeReajuste?: 'MENSAL' | 'TRIMESTRAL' | 'SEMESTRAL' | 'ANUAL';
+  vinculo?: { versaoId: string; contaId: string; competencia: string; valorDeclarado?: string } | null;
 };
+
+/** Tenta criar/atualizar o vínculo (Rateio de Impostos) sem derrubar o cadastro da alíquota. */
+async function tentarVincularRateio(
+  contexto: { tenantId: string; usuarioId: string },
+  aliquotaParametroId: string,
+  vinculo: { versaoId: string; contaId: string; competencia: Date; valorDeclarado: string },
+): Promise<string | undefined> {
+  try {
+    await getConfigurarRateioImpostoUseCase().execute({ ...contexto, aliquotaParametroId, ...vinculo });
+    return undefined;
+  } catch (erro) {
+    return `Alíquota salva, mas não foi possível vinculá-la à Proposta escolhida: ${
+      erro instanceof Error ? erro.message : 'erro desconhecido'
+    } Vincule manualmente em Rateio de Impostos.`;
+  }
+}
 
 /** UC03.40 — Cadastrar Alíquota de Imposto. */
 export async function cadastrarAliquotaImposto(input: AliquotaImpostoFormInput): Promise<ActionResult> {
@@ -148,9 +185,17 @@ export async function cadastrarAliquotaImposto(input: AliquotaImpostoFormInput):
   if (!temPermissao) return { sucesso: false, mensagem: 'Perfil sem permissão para cadastrar alíquotas de impostos.' };
 
   try {
-    await getCadastrarAliquotaImpostoUseCase().execute({ ...contexto, ...entrada.data });
+    const { vinculo, ...dadosAliquota } = entrada.data;
+    const criada = await getCadastrarAliquotaImpostoUseCase().execute({ ...contexto, ...dadosAliquota });
+
+    let aviso: string | undefined;
+    if (vinculo) {
+      aviso = await tentarVincularRateio(contexto, criada.id, vinculo);
+    }
+
     revalidatePath('/aliquotas-impostos');
-    return { sucesso: true };
+    revalidatePath('/', 'layout');
+    return { sucesso: true, aviso };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
   }
@@ -174,14 +219,22 @@ export async function editarAliquotaImposto(
   if (!temPermissao) return { sucesso: false, mensagem: 'Perfil sem permissão para editar alíquotas de impostos.' };
 
   try {
+    const { vinculo, ...dadosAliquota } = entrada.data;
     await getEditarAliquotaImpostoUseCase().execute({
       ...contexto,
       aliquotaImpostoParametroId,
       version,
-      ...entrada.data,
+      ...dadosAliquota,
     });
+
+    let aviso: string | undefined;
+    if (vinculo) {
+      aviso = await tentarVincularRateio(contexto, aliquotaImpostoParametroId, vinculo);
+    }
+
     revalidatePath('/aliquotas-impostos');
-    return { sucesso: true };
+    revalidatePath('/', 'layout');
+    return { sucesso: true, aviso };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
   }
