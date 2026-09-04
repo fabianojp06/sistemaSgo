@@ -12,6 +12,7 @@ import { exportarParaPDF, exportarParaXLSX } from '@/lib/export/exportarRelatori
 import { SeletorContaAnalitica } from '@/app/(autenticado)/propostas/SeletorContaAnalitica';
 
 type ContaOpcao = { id: string; label: string };
+type PropostaOpcao = { id: string; label: string; versaoVigenteId: string; dataInicio: string };
 type TipoIncidencia = 'CONTRATO' | 'TERMO_DE_PARCERIA' | 'AMBOS';
 type StatusFiltro = 'ATIVO' | 'INATIVO' | 'EXPIRADA';
 type Periodicidade = 'MENSAL' | 'TRIMESTRAL' | 'SEMESTRAL' | 'ANUAL';
@@ -68,6 +69,11 @@ type FormState = {
   observacao: string;
   contaSinteticaId: string;
   periodicidadeReajuste: Periodicidade;
+  // Atalho de UX (2026-09-04) — vincular já a uma Proposta (Rateio de Impostos, US-101).
+  propostaId: string;
+  contaVinculoId: string;
+  competenciaVinculo: string;
+  valorDeclaradoVinculo: string;
 };
 
 const FORM_VAZIO: FormState = {
@@ -81,6 +87,10 @@ const FORM_VAZIO: FormState = {
   observacao: '',
   contaSinteticaId: '',
   periodicidadeReajuste: 'MENSAL',
+  propostaId: '',
+  contaVinculoId: '',
+  competenciaVinculo: '',
+  valorDeclaradoVinculo: '0',
 };
 
 // Datas de vigência são calendário puro (sem hora), persistidas como meia-noite UTC.
@@ -99,12 +109,17 @@ function formatarData(iso: string | null) {
 export function AliquotaImpostoListPanel({
   aliquotasIniciais,
   opcoesContaSugerida,
+  opcoesContaAnalitica,
+  opcoesProposta,
   podeCriar,
   podeEditar,
   podeExcluir,
 }: {
   aliquotasIniciais: AliquotaImpostoResultado[];
   opcoesContaSugerida: ContaOpcao[];
+  /** US-144 (atalho de vínculo) — só contas analíticas, exigido pelo Rateio (ADR-027). */
+  opcoesContaAnalitica: ContaOpcao[];
+  opcoesProposta: PropostaOpcao[];
   podeCriar: boolean;
   podeEditar: boolean;
   podeExcluir: boolean;
@@ -120,6 +135,7 @@ export function AliquotaImpostoListPanel({
   const [editandoVersion, setEditandoVersion] = useState(0);
   const [form, setForm] = useState<FormState>(FORM_VAZIO);
   const [erroForm, setErroForm] = useState<string | null>(null);
+  const [avisoForm, setAvisoForm] = useState<string | null>(null);
 
   const [confirmandoExclusaoId, setConfirmandoExclusaoId] = useState<string | null>(null);
   const [erroExclusao, setErroExclusao] = useState<string | null>(null);
@@ -157,6 +173,10 @@ export function AliquotaImpostoListPanel({
       observacao: a.observacao ?? '',
       contaSinteticaId: a.contaSinteticaId ?? '',
       periodicidadeReajuste: a.periodicidadeReajuste,
+      propostaId: '',
+      contaVinculoId: '',
+      competenciaVinculo: '',
+      valorDeclaradoVinculo: '0',
     });
     setErroForm(null);
     setModalAberto('editar');
@@ -169,7 +189,9 @@ export function AliquotaImpostoListPanel({
 
   function salvar() {
     setErroForm(null);
+    setAvisoForm(null);
     startTransition(async () => {
+      const propostaEscolhida = opcoesProposta.find((p) => p.id === form.propostaId);
       const payload = {
         nome: form.nome,
         aliquotaPct: form.aliquotaPct,
@@ -181,6 +203,15 @@ export function AliquotaImpostoListPanel({
         observacao: form.observacao || null,
         contaSinteticaId: form.contaSinteticaId || null,
         periodicidadeReajuste: form.periodicidadeReajuste,
+        vinculo:
+          propostaEscolhida && form.contaVinculoId
+            ? {
+                versaoId: propostaEscolhida.versaoVigenteId,
+                contaId: form.contaVinculoId,
+                competencia: form.competenciaVinculo || propostaEscolhida.dataInicio,
+                valorDeclarado: form.valorDeclaradoVinculo || '0',
+              }
+            : null,
       };
       const resposta =
         modalAberto === 'editar' && editandoId
@@ -190,6 +221,9 @@ export function AliquotaImpostoListPanel({
       if (!resposta.sucesso) {
         setErroForm(resposta.mensagem);
         return;
+      }
+      if (resposta.aviso) {
+        setAvisoForm(resposta.aviso);
       }
       fecharModal();
       pesquisar();
@@ -265,6 +299,14 @@ export function AliquotaImpostoListPanel({
 
   return (
     <div className="flex flex-col gap-4">
+      {avisoForm && (
+        <div className="flex items-start justify-between gap-3 rounded border border-amber-300 bg-amber-50 px-4 py-2 text-xs text-amber-800">
+          <span>{avisoForm}</span>
+          <button type="button" onClick={() => setAvisoForm(null)} className="shrink-0 font-medium hover:underline">
+            Fechar
+          </button>
+        </div>
+      )}
       <div className="flex flex-wrap items-end gap-3 rounded border p-4">
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-600">Nome do Imposto</label>
@@ -497,6 +539,72 @@ export function AliquotaImpostoListPanel({
                 />
               </div>
 
+              <div className="md:col-span-2 rounded border border-dashed border-gray-300 p-3">
+                <p className="mb-2 text-xs font-medium text-gray-700">
+                  Vincular já a uma Proposta (opcional — cria/atualiza o Rateio de Impostos)
+                </p>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">Proposta</label>
+                    <select
+                      value={form.propostaId}
+                      onChange={(e) => {
+                        const p = opcoesProposta.find((x) => x.id === e.target.value);
+                        setForm({
+                          ...form,
+                          propostaId: e.target.value,
+                          competenciaVinculo: form.competenciaVinculo || p?.dataInicio || '',
+                        });
+                      }}
+                      className="w-full rounded border px-2 py-1 text-sm"
+                    >
+                      <option value="">— Nenhuma —</option>
+                      {opcoesProposta.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {form.propostaId && (
+                    <>
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-gray-600">Conta Analítica *</label>
+                        <SeletorContaAnalitica
+                          contas={opcoesContaAnalitica}
+                          value={form.contaVinculoId}
+                          onChange={(id) => setForm({ ...form, contaVinculoId: id })}
+                          placeholder="Buscar conta analítica por nome ou código..."
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-gray-600">Competência</label>
+                        <input
+                          type="date"
+                          value={form.competenciaVinculo}
+                          onChange={(e) => setForm({ ...form, competenciaVinculo: e.target.value })}
+                          className="w-full rounded border px-2 py-1 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-gray-600">
+                          Valor Declarado (R$) — deixe 0,00 para calcular depois em &quot;Gerar Impostos&quot;
+                        </label>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={form.valorDeclaradoVinculo}
+                          onChange={(e) => setForm({ ...form, valorDeclaradoVinculo: e.target.value })}
+                          placeholder="0,00"
+                          className="w-full rounded border px-2 py-1 text-sm"
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
               <div className="md:col-span-2">
                 <label className="mb-1 block text-xs font-medium text-gray-600">Observação</label>
                 <textarea
@@ -518,7 +626,13 @@ export function AliquotaImpostoListPanel({
               <button
                 type="button"
                 onClick={salvar}
-                disabled={pending || !form.nome.trim() || !form.aliquotaPct.trim() || !form.dataInicioVigencia}
+                disabled={
+                  pending ||
+                  !form.nome.trim() ||
+                  !form.aliquotaPct.trim() ||
+                  !form.dataInicioVigencia ||
+                  (!!form.propostaId && !form.contaVinculoId)
+                }
                 className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white disabled:opacity-50"
               >
                 {pending ? 'Salvando...' : 'Salvar'}
