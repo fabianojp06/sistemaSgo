@@ -391,6 +391,14 @@ model Proposta {
   dataInicio DateTime
   dataFim    DateTime
   status     StatusProposta    @default(RASCUNHO)
+
+  // Calendário de repasse do Termo de Parceria — alimenta o Cronograma de
+  // Desembolso por parcelas (layout ANEXO 9) [US-142/ADR-049]. Os dois campos
+  // andam juntos: ambos preenchidos ou ambos nulos (CHECK em SQL na migration).
+  // parcelasPorAno ∈ {1,2,3,4,6,12}; mesInicialRepasse 1..12.
+  parcelasPorAno    Int?
+  mesInicialRepasse Int?
+
   createdAt  DateTime          @default(now())
   updatedAt  DateTime          @updatedAt
 
