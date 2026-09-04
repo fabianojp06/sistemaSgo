@@ -14,20 +14,35 @@
 > **Regra:** ao encerrar uma sessão com mudança relevante de estado, atualize este arquivo E
 > `CONTEXTO_SESSOES.md`, e faça commit (fluxo Git híbrido do `CLAUDE.md`).
 
-**Última atualização:** 2026-09-04 (US-142 implementada, PR #18 mergeado, migration aplicada em produção)
+**Última atualização:** 2026-09-04 (US-142 + US-144 entregues e em produção; atalho de vínculo Alíquota↔Proposta também entregue)
 
 ---
 
 ## Onde estamos
 
-- **Branch:** `master` (`8879d27`). **US-142 entregue** (PR #18 mergeado): Cronograma de
-  Desembolso por parcelas no layout ANEXO 9, config de calendário de repasse na Proposta
-  (`parcelasPorAno`/`mesInicialRepasse`) — cadastro + mini-form na capa, export PDF/XLSX com
-  `estiloLinha`. Migration `20260904120000_add_calendario_repasse_proposta` **aplicada em
-  produção** (deu 500 até aplicar — lição US-141 repetida). Falta: `prisma migrate resolve
-  --applied 20260904120000_...` (mesma pendência tipo #7c).
-- **Próxima frente pronta p/ `fullstack-dev`:** US-144 (motor de imposto automático, conta
-  analítica — MVP do épico Impostos, ADR-050 aceito).
+- **Branch:** `master` (`e5802d4`). Três entregas nesta sessão, todas mergeadas e com
+  migration aplicada em produção:
+  1. **US-142** (PR #18) — Cronograma de Desembolso por parcelas, layout ANEXO 9. Config de
+     calendário de repasse na Proposta (`parcelasPorAno`/`mesInicialRepasse`) — cadastro +
+     mini-form na capa, export PDF/XLSX com `estiloLinha`. Migration
+     `20260904120000_add_calendario_repasse_proposta` aplicada.
+  2. **US-144** (PR #19) — MVP do épico Impostos (ADR-050): motor de cálculo automático de
+     imposto sobre conta analítica. `RateioImpostoGrade` +`modoValor`(DECLARADO|CALCULADO)
+     +`valorBaseSnapshot`; `AliquotaImpostoParametro` +`categoria`(TRIBUTO|INDICE_REAJUSTE);
+     botão "Gerar Impostos da Versão" na tela de Rateio de Impostos + aviso de stale.
+     Migration `20260904160000_add_modo_valor_rateio_imposto_e_categoria_aliquota`
+     **aplicada** (confirmado pelo usuário).
+  3. **Atalho de UX** (PR #20, fora do épico Impostos, sem migration) — form de
+     Cadastrar/Alterar Alíquota ganhou seção opcional "Vincular já a uma Proposta": ao
+     salvar, além da alíquota, já cria/atualiza a linha de Rateio de Impostos (compõe com
+     `ConfigurarRateioImpostoUseCase`, US-101). `AliquotaImpostoParametro` continua catálogo
+     global do tenant (ADR-014 intacta) — decisão explícita do usuário entre 3 opções.
+- **Pendência nova:** `prisma migrate resolve --applied` das 3 últimas migrations (US-141,
+  US-142, US-144) — histórico do Prisma fora de sincronia com o banco (mesmo padrão da
+  pendência #7c, nunca bloqueou nada até agora).
+- **Próxima frente pronta p/ `fullstack-dev`:** **US-145** (imposto sobre conta sintética —
+  maior risco, ADR-050 Frente B; exige suíte de regressão do `CalcularValorRealizadoUseCase`
+  antes) → depois **US-146** (exibir "Custo" vs "Custo c/ Impostos").
 - **Suíte de testes:** validação local impossível nesta rede (npm bloqueado por self-signed
   cert). Tudo depende do CI do GitHub Actions.
 - **Ambiente:** sem `.env` e **sem `node_modules`**; `npm install` falha com
@@ -45,7 +60,7 @@
 | **Autenticação / Tela Principal (UC01)** | Encerrado como resolvido (decisão 2026-07-26). Login prod OK. Suíte E2E Playwright existe mas nunca foi executada — não retomar sem pedido explícito. |
 | **Módulo de Cadastros (EP118-24)** | US-001 a US-118 concluídas; US-123 a US-139 concluídas. Ver kanban. Fila priorizada quase vazia (só US-127 — cadastro rápido de imposto no rateio, prioridade baixa). |
 | **Cargos / Tabela Salarial** | US-131 a US-139 entregues (Tabela Salarial, integração Rubi, Grade Salarial CTCEA persistida, Periculosidade/Insalubridade, Catálogo de Cargo de Mercado). PRs #5–#15 mergeados. |
-| **Módulo Orçamentário (`/orcamentario`)** | US-138 (Relatório de Cronograma de Desembolso) entregue. Landing em grade de tiles + telas iniciais de Acompanhamento/Orçado. **2026-09-02:** **US-142** (Cronograma por parcelas, layout ANEXO 9) + **ADR-049** refinados/aceitos, prontos p/ implementar. **Frente Impostos** nova (épico + ADR-050 + US-144/145/146) — ver seção própria abaixo. |
+| **Módulo Orçamentário (`/orcamentario`)** | US-138 (Relatório de Cronograma de Desembolso) entregue. Landing em grade de tiles + telas iniciais de Acompanhamento/Orçado. **2026-09-04: US-142 entregue** (Cronograma por parcelas, layout ANEXO 9, PR #18). **Frente Impostos:** **US-144 entregue** (motor automático, PR #19) + atalho de vínculo Alíquota↔Proposta (PR #20); US-145/146 pendentes — ver seção própria abaixo. |
 | **Tela de Viagens (US-109)** | 2026-09-01: rótulos + faixa TOTAL PASSAGENS/DIÁRIAS/GERAL (`4484882`); editar Viagem pela tela (PR #16). 2026-09-02: **US-141 mergeada** (PR #17, `54d5298`) — seletor de município IBGE (catálogo embutido 5571 municípios, `src/infrastructure/integrations/municipios-br/`), `descricao` → "Motivo/Complemento" opcional, snapshot nome/uf + lat/long. Migration `20260902120000_add_municipio_ibge_viagem` **aplicada em produção** (deu 500 até aplicar). ADR-048. **US-140** (transporte por média histórica) 🔴 bloqueada. |
 | **Tradução EN-US da documentação** | 19/43 arquivos. Última: US-106, US-107, US-107a (`55cabfa`). Tarefa de menor esforço sempre disponível. |
 
@@ -70,53 +85,50 @@
    irrelevante hoje pois o catálogo é pinado, mas viola o "congelado" do ADR-048; (c)
    `prisma migrate resolve --applied 20260902120000_add_municipio_ibge_viagem` ainda não rodado
    (histórico do Prisma fora de sincronia com o banco). Ver `docs/CONTEXTO_SESSOES.md`.
+8. **`prisma migrate resolve --applied` pendente para 3 migrations** (não urgente, mesmo padrão
+   do item 7c): `20260902120000_add_municipio_ibge_viagem` (US-141),
+   `20260904120000_add_calendario_repasse_proposta` (US-142),
+   `20260904160000_add_modo_valor_rateio_imposto_e_categoria_aliquota` (US-144). Todas já
+   aplicadas em produção via SQL Editor — só o histórico local do Prisma está desatualizado.
 
-### Frente nova — Impostos (2026-09-02)
+### Frente Impostos (épico) — status por US
 
 Cálculo **automático** de imposto (`base × alíquota%`) sobre contas analíticas **e sintéticas**,
-por Proposta × Versão × Conta. Descoberta + épico: `docs/EPICO - Aplicacao Automatica de Impostos
-sobre Contas.pt-BR.md`. **ADR-050 aceito** (substitui o ADR-039): modelo A1 (`RateioImpostoGrade`
-+`modoValor`+`valorBaseSnapshot`, sem modelo novo), contaId analítica ou sintética, base = custo
-total (1 linha/conta×alíquota, competência = dataInicio), gatilho = **botão "Gerar Impostos"**
-(não síncrono) + aviso de stale, dados existentes = grandfather (zero recálculo), Semáforo/Valor
-Global seguem "com imposto" + "sem imposto" novo ao lado, reajuste (ADR-040) intacto +
-`AliquotaImpostoParametro.categoria` (TRIBUTO/INDICE_REAJUSTE). **US-144/145/146 escritas** +
-**backlog do épico** priorizado: `docs/BACKLOG - Epico Impostos.pt-BR.md`. Ordem: **US-144**
-(motor, analítica — MVP, pronta p/ `fullstack-dev`) → **US-145** (sintética, C1 — maior risco,
-exige suíte de regressão do `CalcularValorRealizadoUseCase` antes) → **US-146** (exibir "Custo"/
-"Custo c/ Impostos" — menor risco). US-147 (separar tributo de índice de reajuste) = opcional.
+por Proposta × Versão × Conta. Épico + ADR-050 aceito:
+`docs/EPICO - Aplicacao Automatica de Impostos sobre Contas.pt-BR.md`,
+`docs/ADR-050 ...md`, backlog: `docs/BACKLOG - Epico Impostos.pt-BR.md`.
+
+- ✅ **US-144 entregue** (2026-09-04, PR #19) — motor automático, conta analítica. Ver "Onde
+  estamos" acima.
+- ✅ **Atalho de UX entregue** (2026-09-04, PR #20) — vincular Alíquota↔Proposta direto no
+  cadastro/edição da alíquota (fora do épico formal, decisão pontual do usuário).
+- 🔜 **US-145** (próxima) — imposto sobre conta sintética (ADR-050 Frente B, `contaId` aceita
+  sintética; nova fase de agregação no `CalcularValorRealizadoUseCase`; invariante "sintética =
+  soma das filhas" passa a ter exceção com flag `temImpostoDireto`). **Maior risco** — escrever
+  suíte de regressão do `CalcularValorRealizadoUseCase` antes de mexer.
+- 🔜 **US-146** — exibir "Custo" vs "Custo c/ Impostos" (Semáforo, dashboard US-118, guia Valor
+  Orçado). Menor risco, depende de US-145 para fazer sentido completo (mas pode ir isolada).
+- ⏸️ **US-147** (opcional) — separar tributo de índice de reajuste em modelos distintos; dívida
+  técnica registrada, não bloqueia nada.
 
 ## Próximo passo combinado
 
 > **Retomando de outro computador:** leia este arquivo + `docs/CONTEXTO_SESSOES.md` (bloco
-> "2026-09-02 (cont. 2)"). Nada de código pendente — 3 frentes prontas para o `fullstack-dev`:
+> "2026-09-04"). Nada de código pendente no momento — 2 PRs desta sessão já mergeados e com
+> migration aplicada. Próxima frente natural: **US-145** (imposto sobre conta sintética,
+> `docs/US-145 ...md`, ADR-050 Frente B) — maior risco do épico, começar pela suíte de
+> regressão do `CalcularValorRealizadoUseCase`.
 >
-> 1. **US-142** — Cronograma de Desembolso por parcelas (ADR-049 aceito). `docs/US-142 ...md`.
-> 2. **US-144** — Motor de imposto automático, conta analítica (ADR-050 aceito, MVP do épico
->    Impostos). `docs/US-144 ...md` + `docs/BACKLOG - Epico Impostos.pt-BR.md`.
-> 3. Follow-up leve da US-141 (pendência #7 abaixo) — não urgente.
+> Outros candidatos, sem urgência: (a) build de `/orcamentario/acompanhamento` (pendência #1);
+> (b) follow-up leve da US-141 (pendência #7); (c) `prisma migrate resolve --applied` das 3
+> migrations pendentes (US-141/142/144); (d) tradução EN-US; (e) US-127; (f) desbloquear US-140.
 >
 > Antes de qualquer `npm install`: resolver o certificado (`NODE_EXTRA_CA_CERTS`).
 
-### US-142 — Cronograma de Desembolso por Parcelas
-
-**US-142** (layout **ANEXO 9** — PDF real do TP PAME-RJ/CTCEA/2025) — **refinada + ADR-049
-aceito** (2026-09-02). `docs/US-142 ...md` +
-`docs/ADR-049 ...md`. Decisões: calendário configurável na Proposta
-(`parcelasPorAno`/`mesInicialRepasse`, 2 campos + migration aditiva); parcela de entrada em
-`dataInicio` (funde com o 1º repasse → "Etapas 1 e 2" quando coincidem); período **antecipado**
-(Tk paga o bloco que começa na data dela); sub-linha "Evento Tn Meta 01"; coluna 7 = "Valor
-Acumulado por Ano do TP" (só nas linhas de ano); camada `agregarEmParcelas` sobre o motor mensal
-preservado; tela read-only + filtro de período. CD-06 (Viagem sem data) → US-143 futura.
-**Pronta para o `fullstack-dev`** (branch + PR + `/code-review`; migration aplicada junto do merge).
-
-Outros candidatos: (a) build de `/orcamentario/acompanhamento` (pendência #1); (b) follow-up
-leve da US-141 (pendência #7); (c) tradução EN-US; (d) US-127; (e) desbloquear US-140.
-
-> **Lição desta sessão (2026-09-02):** migration aditiva mergeada sem ser aplicada = **500 em
-> produção** assim que o Server Component consultou as colunas novas. Ao mergear qualquer PR com
-> migration, aplicar o SQL no Supabase **antes ou imediatamente após** o merge — não depois que o
-> usuário reclama.
+> **Lição reforçada nesta sessão (2026-09-04, 2 vezes):** migration aditiva mergeada sem ser
+> aplicada = **500 em produção** assim que o Server Component consultou as colunas novas (já
+> aconteceu nas US-141, US-142 e quase na US-144). Ao mergear qualquer PR com migration, aplicar
+> o SQL no Supabase **antes ou imediatamente após** o merge — não depois que o usuário reclama.
 
 ## Convenções operacionais rápidas
 

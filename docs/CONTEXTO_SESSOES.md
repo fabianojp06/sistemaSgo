@@ -1214,6 +1214,80 @@ testes de regressão da agregação bottom-up.
 
 ---
 
+## 2026-09-04 — US-142 e US-144 implementadas e mergeadas; atalho de vínculo Alíquota↔Proposta
+
+Sessão de continuação (outro computador). Retomou de "US-142 (Cronograma de Desembolso por
+parcelas) - vamos" e seguiu até "US-144 — Motor de imposto automático sobre conta analítica -
+vamos", ambas via skill `fullstack-dev`.
+
+### US-142 — Cronograma de Desembolso por Parcelas (ANEXO 9)
+
+Implementada em `feature/us-142-cronograma-parcelas`, PR #18, **mergeado**. Migration
+`20260904120000_add_calendario_repasse_proposta` (2 colunas + 3 CHECK na `Proposta`) aplicada em
+produção — deu **500** até ser aplicada (mesma lição da US-141, registrada de novo). Entregue:
+
+- Domínio puro `gerarDatasParcela` (datas + numeração de Etapa T1..Tn, fusão "Etapas 1 e 2") e
+  `agregarEmParcelas` (camada sobre `montarCronogramaDesembolso`, que **não mudou**) —
+  validados contra a estrutura real do ANEXO 9 antes da implementação.
+- `CronogramaDesembolsoPanel` reescrito no layout ANEXO 9 (parcela + sub-linha "Evento Tn Meta
+  01" + subtotal anual + total geral), filtro de período client-side (não recalcula
+  acumulado/%).
+- `exportarRelatorio.ts` ganhou `LinhaRelatorio.estiloLinha` (normal/subitem/subtotal/total) —
+  negrito/fill no PDF e XLSX; ausência = normal, US-123 não regride.
+- Config do calendário em 2 lugares: `NovaPropostaForm` (2 selects opcionais) e mini-form
+  editável na capa da Proposta (`CalendarioRepassePropostaMiniForm`, guardado por
+  `podeEditarVersao`) → novo `EditarCalendarioRepassePropostaUseCase` + Server Action.
+- `DuplicarPropostaUseCase` passou a copiar os 2 campos.
+
+### US-144 — Motor de Cálculo Automático de Imposto (conta analítica)
+
+Implementada em `feature/us-144-motor-impostos-analitica`, PR #19, **mergeado**. Migration
+`20260904160000_add_modo_valor_rateio_imposto_e_categoria_aliquota` aplicada (confirmado pelo
+usuário). MVP do épico Impostos, conforme ADR-050:
+
+- Schema: `RateioImpostoGrade` +`modoValor`(DECLARADO|CALCULADO) +`valorBaseSnapshot`;
+  `AliquotaImpostoParametro` +`categoria`(TRIBUTO|INDICE_REAJUSTE); `TipoOperacao`
+  ganhou `IMPOSTOS_GERADOS`.
+- `ValorRealizadoService`: extraída `somarCustoBrutoPorConta` (Empregado+Viagem+Bens, **sem**
+  `RateioImpostoGrade` — evita referência circular); `somarPorContaAnalitica` = base + rateios
+  (comportamento idêntico ao anterior, só reorganizado).
+- Novo `GerarImpostosDaVersaoUseCase`: escopo = pares (alíquota × conta) já vinculados via
+  `RateioImpostoGrade`; 1 linha CALCULADO por par, competência = `Proposta.dataInicio`,
+  Half-Even; só `categoria=TRIBUTO`; pula tributos `CONTRATO`-only em Termo de Parceria
+  (RN_PRO_010); base zero → nenhuma linha; substitui só as CALCULADO, nunca toca DECLARADO
+  (manual ou de reajuste); bloqueia pós-OFICIALIZADO; 1 `$transaction` + `HistoricoOperacao`.
+- UI: botão "Gerar Impostos da Versão" no `RateioImpostoPanel` + aviso de "stale" (RN_TAX_13)
+  + desabilitado sem tributo vinculado (Cenário 8).
+- Testes: Cenários 1–8 da US-144 + caso de colisão com DECLARADO manual na competência de início.
+- **Fora de escopo** (explicitamente deferido): coluna "Custo"/"Custo c/ Impostos" (Frente F) →
+  US-146; imposto sobre conta sintética (Frente B) → US-145.
+
+### Atalho — vincular Alíquota a uma Proposta no cadastro/edição
+
+Pedido à parte do usuário, fora do épico formal: "ao cadastrar ou alterar uma alíquota deve ter
+a opção de escolher a proposta". Perguntado ao usuário o que isso deveria significar (a alíquota
+é catálogo global do tenant, ADR-014) — escolhida a opção **"atalho de UX"**: a alíquota
+continua global; o formulário ganha uma seção opcional (Proposta → Versão vigente automática →
+Conta Analítica → Competência → Valor Declarado) que, ao salvar, também cria/atualiza a linha de
+`RateioImpostoGrade` via `ConfigurarRateioImpostoUseCase` (US-101) já existente — sem use case
+novo, sem migration. Implementado em branch separada (`feature/us-101-atalho-vincular-aliquota-
+proposta`, baseada em `master`, não depende da US-144), PR #20, **mergeado**. Falha no vínculo
+não derruba a criação da alíquota — vira aviso não-bloqueante.
+
+### Lições/pendências desta sessão
+
+- A lição da US-141 ("PR com migration mergeado sem aplicar = 500 em produção") se repetiu na
+  US-142 — reforça que é preciso aplicar o SQL **antes ou imediatamente após** o merge, sempre.
+- `ALTER TYPE ... ADD VALUE` precisa rodar numa execução **separada** do resto da migration no
+  SQL Editor do Supabase (não pode estar na mesma transação) — usado nas migrations da US-142 e
+  US-144, documentado no corpo dos `.sql` e repassado ao usuário nas instruções de aplicação.
+- Nenhum PR pôde ser aberto/mergeado por mim (sem `gh` CLI, sem MCP do GitHub autorizado nesta
+  sessão) — o usuário criou os PRs pelo link do `git push` e mergeou pela UI do GitHub.
+- Pendência nova: `prisma migrate resolve --applied` das 3 últimas migrations (US-141/142/144) —
+  ver item 8 do `STATUS_PROJETO.md`.
+
+---
+
 ## Como usar este arquivo em sessões futuras
 
 No início de uma sessão, se o usuário perguntar "qual o contexto/status de X", leia este arquivo antes de assumir que a memória padrão (`~/.claude/.../memory/`) está atualizada — o ambiente deste projeto (Codespace) pode ter sido recriado desde a última sessão, apagando a memória padrão sem apagar o repositório.
