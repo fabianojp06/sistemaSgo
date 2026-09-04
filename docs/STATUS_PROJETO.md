@@ -14,17 +14,20 @@
 > **Regra:** ao encerrar uma sessão com mudança relevante de estado, atualize este arquivo E
 > `CONTEXTO_SESSOES.md`, e faça commit (fluxo Git híbrido do `CLAUDE.md`).
 
-**Última atualização:** 2026-09-02 (fim da sessão — Cronograma de Desembolso + frente Impostos refinados; usuário vai continuar de outro computador)
+**Última atualização:** 2026-09-04 (US-142 implementada, PR #18 mergeado, migration aplicada em produção)
 
 ---
 
 ## Onde estamos
 
-- **Branch:** `master` sincronizada com `origin/master` (`7e445f6`). Working tree limpo, tudo
-  commitado e enviado. Branch `feature/us-141-municipio-ibge-viagem` ainda existe mas já foi
-  mergeada (PR #17) — pode apagar.
-- **Nenhuma implementação de código pendente.** A sessão foi toda de refinamento/documentação.
-  3 frentes **prontas para o `fullstack-dev`** (ver "Próximo passo").
+- **Branch:** `master` (`8879d27`). **US-142 entregue** (PR #18 mergeado): Cronograma de
+  Desembolso por parcelas no layout ANEXO 9, config de calendário de repasse na Proposta
+  (`parcelasPorAno`/`mesInicialRepasse`) — cadastro + mini-form na capa, export PDF/XLSX com
+  `estiloLinha`. Migration `20260904120000_add_calendario_repasse_proposta` **aplicada em
+  produção** (deu 500 até aplicar — lição US-141 repetida). Falta: `prisma migrate resolve
+  --applied 20260904120000_...` (mesma pendência tipo #7c).
+- **Próxima frente pronta p/ `fullstack-dev`:** US-144 (motor de imposto automático, conta
+  analítica — MVP do épico Impostos, ADR-050 aceito).
 - **Suíte de testes:** validação local impossível nesta rede (npm bloqueado por self-signed
   cert). Tudo depende do CI do GitHub Actions.
 - **Ambiente:** sem `.env` e **sem `node_modules`**; `npm install` falha com
