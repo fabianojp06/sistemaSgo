@@ -1,21 +1,25 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
-import { exportarParaPDF, exportarParaXLSX } from '@/lib/export/exportarRelatorio';
-import type { LinhaCronogramaSerializada } from './cronogramaTipos';
+import { useMemo, useState, useTransition, type ReactNode } from 'react';
+import { exportarParaPDF, exportarParaXLSX, type LinhaRelatorio } from '@/lib/export/exportarRelatorio';
+import type { CronogramaParceladoSerializado } from './cronogramaTipos';
 
 const formatadorMoeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 function formatarMoeda(valor: string | number): string {
   return formatadorMoeda.format(Number(valor));
 }
 
-const formatadorMes = new Intl.DateTimeFormat('pt-BR', { month: 'short', year: 'numeric', timeZone: 'UTC' });
-function formatarCompetencia(iso: string): string {
-  const texto = formatadorMes.format(new Date(iso));
-  return texto.charAt(0).toUpperCase() + texto.slice(1);
+const formatadorMesExtenso = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+function formatarDataExtenso(iso: string): string {
+  // pt-BR devolve "janeiro de 2026"; o ANEXO 9 usa "janeiro 2026".
+  return formatadorMesExtenso.format(new Date(iso)).replace(' de ', ' ');
 }
 
-// Ícones minimalistas inline — mesmo padrão do resto do projeto (EmpregadoPanel.tsx, ViagemPanel.tsx).
+function anoDe(iso: string): number {
+  return new Date(iso).getUTCFullYear();
+}
+
+// Ícones minimalistas inline — mesmo padrão do resto do projeto.
 function IconeCalendario() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-5 w-5">
@@ -59,58 +63,134 @@ function IconeImpressora() {
   );
 }
 
-/** US-122/UC04.01 — Cronograma de Desembolso: matriz temporal Somente Leitura, com
- * exportação PDF/XLSX (ADR-037, geração client-side). Cenário 3 (Anexo) fora de escopo.
- * Redesign desta sessão: faixa de KPIs (mesmo padrão de EmpregadoPanel/ViagemPanel),
- * cabeçalho de tabela fixo (sticky), zebra striping, linhas de fechamento anual com
- * destaque visual mais forte, botões de exportação com hierarquia clara (PDF = ação
- * primária em accent, XLSX = secundária). */
+const COLUNAS = [
+  { chave: 'evento', rotulo: 'Evento' },
+  { chave: 'data', rotulo: 'Data' },
+  { chave: 'descricao', rotulo: 'Descrição do Evento' },
+  { chave: 'desembolsoMensal', rotulo: 'Desembolso Mensal (R$)' },
+  { chave: 'desembolsoAcumulado', rotulo: 'Desembolso Acumulado (R$)' },
+  { chave: 'percentualAcumulado', rotulo: '% Financeiro Acumulado' },
+  { chave: 'valorAcumuladoAno', rotulo: 'Valor Acumulado por Ano do Termo de Parceria (R$)' },
+];
+
+/**
+ * US-142 / ADR-049 — Cronograma de Desembolso por parcelas, layout ANEXO 9.
+ * Tela Somente Leitura na guia da Proposta. Reaproveita a faixa de KPIs, o painel
+ * de filtros aplicados, os botões de exportação (PDF/XLSX client-side, ADR-037) e
+ * o estado de bloqueio "sem dados financeiros" da versão anterior (US-122).
+ *
+ * Filtro de período: puramente visual (client-side) — esconde parcelas fora do
+ * intervalo mas NÃO recalcula Desembolso Acumulado / %. Quando ativo, exibe a nota
+ * de que Acumulado e % se referem ao cronograma completo.
+ */
 export function CronogramaDesembolsoPanel({
   nomeProposta,
   codigoProposta,
   versaoNumero,
   metaNome,
-  linhas,
+  cronograma,
+  calendarioConfigurado,
 }: {
   nomeProposta: string;
   codigoProposta: string;
   versaoNumero: number;
   metaNome: string | null;
-  linhas: LinhaCronogramaSerializada[];
+  cronograma: CronogramaParceladoSerializado | null;
+  calendarioConfigurado: boolean;
 }) {
   const [pending, startTransition] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
+  const [de, setDe] = useState('');
+  const [ate, setAte] = useState('');
 
   const rotuloMeta = metaNome ?? 'Todos'; // RN0250 — nunca dado nulo
 
-  // Rótulos literais do documento de especificação (UC04.01) — usados tanto no
-  // cabeçalho da grade em tela quanto na exportação PDF/XLSX, para não haver
-  // dois textos diferentes descrevendo a mesma coluna.
-  const colunas = [
-    { chave: 'evento', rotulo: 'Evento' },
-    { chave: 'data', rotulo: 'Data' },
-    { chave: 'descricao', rotulo: 'Descrição do Evento' },
-    { chave: 'desembolsoMensal', rotulo: 'Desembolso Mensal (R$)' },
-    { chave: 'desembolsoAcumulado', rotulo: 'Desembolso Acumulado (R$)' },
-    { chave: 'percentualAcumulado', rotulo: '% Financeiro Acumulado (%)' },
-    { chave: 'repasse12Meses', rotulo: 'Valor Repassado a cada 12 meses de execução (R$)' },
-  ];
+  const parcelas = cronograma?.parcelas ?? [];
+  const subtotais = cronograma?.subtotaisAnuais ?? [];
 
-  const linhasFormatadas = linhas.map((l) => ({
-    evento: `Mês ${l.mes}`,
-    data: formatarCompetencia(l.competencia),
-    descricao: `Competência ${formatarCompetencia(l.competencia)}`,
-    desembolsoMensal: formatarMoeda(l.desembolsoMensal),
-    desembolsoAcumulado: formatarMoeda(l.desembolsoAcumulado),
-    percentualAcumulado: `${l.percentualFinanceiroAcumulado}%`,
-    repasse12Meses: l.valorRepassado12Meses !== null ? formatarMoeda(l.valorRepassado12Meses) : '–',
-  }));
+  const filtroAtivo = de !== '' || ate !== '';
+  const parcelasVisiveis = useMemo(() => {
+    if (!filtroAtivo) return parcelas;
+    const deMs = de ? new Date(de).getTime() : -Infinity;
+    const ateMs = ate ? new Date(ate).getTime() : Infinity;
+    return parcelas.filter((p) => {
+      const t = new Date(p.data).getTime();
+      return t >= deMs && t <= ateMs;
+    });
+  }, [parcelas, de, ate, filtroAtivo]);
+
+  const anosDoTP = useMemo(() => subtotais.map((s) => s.ano), [subtotais]);
+  const rotuloAnos =
+    anosDoTP.length === 0
+      ? '—'
+      : anosDoTP.length === 1
+        ? `ANO ${anosDoTP[0]}`
+        : `ANOS ${anosDoTP.slice(0, -1).join(', ')} E ${anosDoTP[anosDoTP.length - 1]}`;
 
   const kpis = useMemo(() => {
-    const custoTotal = linhas.length > 0 ? Number(linhas[linhas.length - 1].desembolsoAcumulado) : 0;
-    const ciclosFechados = linhas.filter((l) => l.mes % 12 === 0).length;
-    return { custoTotal, duracaoMeses: linhas.length, ciclosFechados };
-  }, [linhas]);
+    const valorGlobal = cronograma ? Number(cronograma.valorGlobal) : 0;
+    return { valorGlobal, numParcelas: parcelas.length, anos: anosDoTP.length };
+  }, [cronograma, parcelas.length, anosDoTP.length]);
+
+  // Linhas para exportação — parcela + sub-linha + subtotal anual + total geral.
+  const linhasExport: LinhaRelatorio[] = useMemo(() => {
+    const out: LinhaRelatorio[] = [];
+    for (let i = 0; i < parcelas.length; i++) {
+      const p = parcelas[i];
+      out.push({
+        estiloLinha: 'normal',
+        evento: `Evento T${p.numero}`,
+        data: formatarDataExtenso(p.data),
+        descricao: p.descricao,
+        desembolsoMensal: formatarMoeda(p.desembolso),
+        desembolsoAcumulado: formatarMoeda(p.desembolsoAcumulado),
+        percentualAcumulado: `${p.percentualFinanceiroAcumulado}%`,
+        valorAcumuladoAno: '',
+      });
+      for (const sub of p.subLinhas) {
+        out.push({
+          estiloLinha: 'subitem',
+          evento: '',
+          data: '',
+          descricao: sub.rotulo,
+          desembolsoMensal: formatarMoeda(sub.valor),
+          desembolsoAcumulado: '',
+          percentualAcumulado: '',
+          valorAcumuladoAno: '',
+        });
+      }
+      const proxima = parcelas[i + 1];
+      const fimDeAno = !proxima || anoDe(proxima.data) !== anoDe(p.data);
+      if (fimDeAno) {
+        const st = subtotais.find((s) => s.ano === anoDe(p.data));
+        if (st) {
+          out.push({
+            estiloLinha: 'subtotal',
+            evento: `ANO ${st.ano}`,
+            data: '',
+            descricao: `TOTAL A DESEMBOLSAR EM ${st.ano}`,
+            desembolsoMensal: formatarMoeda(st.totalDoAno),
+            desembolsoAcumulado: formatarMoeda(st.desembolsoAcumulado),
+            percentualAcumulado: `${st.percentualFinanceiroAcumulado}%`,
+            valorAcumuladoAno: formatarMoeda(st.valorAcumuladoPorAnoDoTP),
+          });
+        }
+      }
+    }
+    if (cronograma && parcelas.length > 0) {
+      out.push({
+        estiloLinha: 'total',
+        evento: rotuloAnos,
+        data: '',
+        descricao: 'TOTAL A DESEMBOLSAR NO TERMO DE PARCERIA',
+        desembolsoMensal: formatarMoeda(cronograma.totalGeral),
+        desembolsoAcumulado: formatarMoeda(cronograma.totalGeral),
+        percentualAcumulado: '100,00%',
+        valorAcumuladoAno: formatarMoeda(cronograma.totalGeral),
+      });
+    }
+    return out;
+  }, [parcelas, subtotais, cronograma, rotuloAnos]);
 
   function exportarXLSX() {
     setErro(null);
@@ -118,9 +198,9 @@ export function CronogramaDesembolsoPanel({
       try {
         await exportarParaXLSX({
           nomeArquivo: `cronograma-desembolso-${codigoProposta}`,
-          titulo: `CRONOGRAMA DE DESEMBOLSO — ${nomeProposta}`,
-          colunas,
-          linhas: linhasFormatadas,
+          titulo: `ANEXO 9 — CRONOGRAMA DE DESEMBOLSO — ${nomeProposta}`,
+          colunas: COLUNAS,
+          linhas: linhasExport,
         });
       } catch {
         setErro('Não foi possível gerar o arquivo XLSX.');
@@ -137,18 +217,19 @@ export function CronogramaDesembolsoPanel({
     try {
       exportarParaPDF({
         nomeArquivo: `cronograma-desembolso-${codigoProposta}`,
-        titulo: 'CRONOGRAMA DE DESEMBOLSO',
+        titulo: 'ANEXO 9 — CRONOGRAMA DE DESEMBOLSO',
         subtitulo: `${nomeProposta} — Meta: ${rotuloMeta} — Versão ${versaoNumero}`,
-        colunas,
-        linhas: linhasFormatadas,
-        rodape: 'CRONOGRAMA DE DESEMBOLSO',
+        colunas: COLUNAS,
+        linhas: linhasExport,
+        rodape: 'ANEXO 9 — CRONOGRAMA DE DESEMBOLSO',
       });
     } catch {
       setErro('Não foi possível gerar o arquivo PDF.');
     }
   }
 
-  if (linhas.length === 0) {
+  // Cenário 4 (US-122) — Proposta sem dados financeiros bloqueia a grade inteira.
+  if (!cronograma || parcelas.length === 0) {
     return (
       <div className="rounded-[10px] border border-[#DDE2EA] bg-white p-6 text-sm text-[#5B6270] shadow-sm dark:border-[#2B303C] dark:bg-[#191D26] dark:text-[#A4AAB6]">
         Operação Rejeitada: A Proposta selecionada não possui dados financeiros cadastrados para consolidação.
@@ -156,12 +237,14 @@ export function CronogramaDesembolsoPanel({
     );
   }
 
+  const celulaNum = 'px-3 py-2 text-right tabular-nums whitespace-nowrap';
+
   return (
     <div className="flex flex-col gap-4 rounded-xl bg-[#F7F8FA] p-4 dark:bg-[#12151C] md:p-6 print:bg-white print:p-0 print:text-black">
-      {/* Cabeçalho impresso — título centralizado fixo, só existe na versão para impressão/PDF (cabeçalho do documento, RN0259/layout do relatório). */}
-      <h1 className="hidden text-center text-lg font-bold tracking-wide uppercase print:block">Cronograma de Desembolso</h1>
+      <h1 className="hidden text-center text-lg font-bold tracking-wide uppercase print:block">
+        Anexo 9 — Cronograma de Desembolso
+      </h1>
 
-      {/* Cabeçalho: identificação da Proposta + ações de exportação/impressão */}
       <div className="flex flex-wrap items-start justify-between gap-3 print:hidden">
         <div>
           <h2 className="text-base font-semibold text-[#1A1F29] dark:text-[#EBEDF2]">Cronograma de Desembolso</h2>
@@ -200,7 +283,14 @@ export function CronogramaDesembolsoPanel({
 
       {erro && <p className="text-xs text-[#C43D3D] dark:text-[#E0716B] print:hidden">{erro}</p>}
 
-      {/* Painel de Filtros Aplicados (RN0200/RN0250) — rótulo + valor por item, sempre visível (tela e impressão). */}
+      {!calendarioConfigurado && (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-300 print:hidden">
+          Calendário de repasse não configurado nesta Proposta — usando o padrão de 3 parcelas por ano a partir de janeiro.
+          Configure na capa da Proposta para refletir o Termo de Parceria.
+        </p>
+      )}
+
+      {/* Filtros Aplicados (RN0200/RN0250) */}
       <div className="flex flex-wrap gap-x-6 gap-y-1.5 rounded-lg border border-[#DDE2EA] bg-white px-4 py-3 text-sm dark:border-[#2B303C] dark:bg-[#191D26] print:rounded-none print:border-0 print:border-b print:border-black print:px-0 print:py-2">
         <span>
           <span className="text-[#8A8F98] dark:text-[#767C89]">Termo de Parceria:</span>{' '}
@@ -218,7 +308,48 @@ export function CronogramaDesembolsoPanel({
         </span>
       </div>
 
-      {/* Faixa de KPIs — mesmo padrão de EmpregadoPanel/ViagemPanel; não faz parte do documento oficial, só da tela. */}
+      {/* Filtro de período — client-side, apenas exibição */}
+      <div className="flex flex-wrap items-end gap-3 rounded-lg border border-[#DDE2EA] bg-white px-4 py-3 text-sm dark:border-[#2B303C] dark:bg-[#191D26] print:hidden">
+        <label className="flex flex-col gap-1">
+          <span className="text-xs text-[#8A8F98] dark:text-[#767C89]">Exibir a partir de</span>
+          <input
+            type="date"
+            value={de}
+            onChange={(e) => setDe(e.target.value)}
+            className="rounded-[6px] border border-[#DDE2EA] bg-white px-2 py-1 text-xs dark:border-[#2B303C] dark:bg-[#12151C]"
+          />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs text-[#8A8F98] dark:text-[#767C89]">até</span>
+          <input
+            type="date"
+            value={ate}
+            onChange={(e) => setAte(e.target.value)}
+            className="rounded-[6px] border border-[#DDE2EA] bg-white px-2 py-1 text-xs dark:border-[#2B303C] dark:bg-[#12151C]"
+          />
+        </label>
+        {filtroAtivo && (
+          <button
+            type="button"
+            onClick={() => {
+              setDe('');
+              setAte('');
+            }}
+            className="rounded-[6px] border border-[#DDE2EA] px-2 py-1 text-xs text-[#5B6270] hover:bg-[#EEF1F6] dark:border-[#2B303C] dark:text-[#A4AAB6]"
+          >
+            Limpar
+          </button>
+        )}
+      </div>
+
+      {filtroAtivo && (
+        <p className="text-[11px] text-[#8A8F98] dark:text-[#767C89]">
+          Filtro de período ativo — os valores de <strong>Desembolso Acumulado</strong> e <strong>% Financeiro Acumulado</strong>{' '}
+          referem-se ao cronograma completo, não ao intervalo exibido.
+        </p>
+      )}
+
+      {/* Faixa de KPIs */}
       <div className="rounded-xl bg-slate-900 p-5 shadow-md md:p-6 print:hidden">
         <div className="grid grid-cols-1 gap-5 md:grid-cols-3 md:gap-4">
           <div className="flex items-start gap-3">
@@ -226,8 +357,8 @@ export function CronogramaDesembolsoPanel({
               <IconeMoeda />
             </span>
             <div>
-              <p className="text-xs font-medium tracking-wide text-slate-400">Custo Total do Cronograma</p>
-              <p className="mt-1 text-2xl font-semibold tabular-nums text-amber-400">{formatarMoeda(kpis.custoTotal)}</p>
+              <p className="text-xs font-medium tracking-wide text-slate-400">Valor Global do Termo de Parceria</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums text-amber-400">{formatarMoeda(kpis.valorGlobal)}</p>
             </div>
           </div>
           <div className="flex items-start gap-3">
@@ -235,8 +366,8 @@ export function CronogramaDesembolsoPanel({
               <IconeCalendario />
             </span>
             <div>
-              <p className="text-xs font-medium tracking-wide text-slate-400">Duração da Vigência</p>
-              <p className="mt-1 text-2xl font-semibold tabular-nums text-amber-400">{kpis.duracaoMeses} meses</p>
+              <p className="text-xs font-medium tracking-wide text-slate-400">Nº de Parcelas</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums text-amber-400">{kpis.numParcelas}</p>
             </div>
           </div>
           <div className="flex items-start gap-3">
@@ -244,78 +375,109 @@ export function CronogramaDesembolsoPanel({
               <IconeCiclo />
             </span>
             <div>
-              <p className="text-xs font-medium tracking-wide text-slate-400">Ciclos Anuais Fechados</p>
-              <p className="mt-1 text-2xl font-semibold tabular-nums text-amber-400">{kpis.ciclosFechados}</p>
+              <p className="text-xs font-medium tracking-wide text-slate-400">Anos do Termo de Parceria</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums text-amber-400">{kpis.anos}</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Matriz temporal — Somente Leitura */}
+      {/* Tabela ANEXO 9 */}
       <div className="overflow-hidden rounded-lg border border-gray-100 bg-white shadow-sm dark:border-[#2B303C] dark:bg-[#191D26] print:overflow-visible print:rounded-none print:border-0 print:shadow-none">
         <div className="max-h-[560px] overflow-auto print:max-h-none print:overflow-visible">
-          <table className="w-full min-w-[900px] border-collapse text-left text-xs print:min-w-0">
+          <table className="w-full min-w-[960px] border-collapse text-left text-xs print:min-w-0">
             <thead className="sticky top-0 z-10 bg-slate-50 text-slate-600 dark:bg-[#1F2430] dark:text-[#A4AAB6] print:static print:bg-white print:text-black">
               <tr>
                 <th className="px-3 py-2.5 font-semibold whitespace-nowrap">Evento</th>
                 <th className="px-3 py-2.5 font-semibold whitespace-nowrap">Data</th>
-                <th className="px-3 py-2.5 font-semibold whitespace-nowrap">Descrição do Evento</th>
+                <th className="px-3 py-2.5 font-semibold">Descrição do Evento</th>
                 <th className="px-3 py-2.5 text-right font-semibold whitespace-nowrap">Desembolso Mensal (R$)</th>
                 <th className="px-3 py-2.5 text-right font-semibold whitespace-nowrap">Desembolso Acumulado (R$)</th>
-                <th className="px-3 py-2.5 text-right font-semibold whitespace-nowrap">% Financeiro Acumulado (%)</th>
-                <th className="px-3 py-2.5 text-right font-semibold whitespace-nowrap">Valor Repassado a cada 12 meses de execução (R$)</th>
+                <th className="px-3 py-2.5 text-right font-semibold whitespace-nowrap">% Financeiro Acumulado</th>
+                <th className="px-3 py-2.5 text-right font-semibold whitespace-nowrap">
+                  Valor Acumulado por Ano do Termo de Parceria (R$)
+                </th>
               </tr>
             </thead>
             <tbody>
-              {linhas.map((l, indice) => {
-                const fechamentoAno = l.mes % 12 === 0;
-                const percentual = Number(l.percentualFinanceiroAcumulado);
+              {parcelasVisiveis.map((p, indice) => {
+                const proxima = parcelasVisiveis[indice + 1];
+                const fimDeAno = !filtroAtivo && (!proxima || anoDe(proxima.data) !== anoDe(p.data));
+                const st = fimDeAno ? subtotais.find((s) => s.ano === anoDe(p.data)) : undefined;
                 return (
-                  <tr
-                    key={l.mes}
-                    className={
-                      fechamentoAno
-                        ? 'border-y-2 border-[#2B5FD9]/30 bg-[#E8EEFC] font-semibold dark:border-[#6D93F0]/30 dark:bg-[#1D2A48]'
-                        : `border-b border-gray-100 dark:border-[#2B303C] ${indice % 2 === 1 ? 'bg-slate-50/60 dark:bg-white/[0.02]' : ''}`
-                    }
-                  >
-                    <td className="px-3 py-2 tabular-nums text-[#1A1F29] dark:text-[#EBEDF2]">Mês {l.mes}</td>
-                    <td className="px-3 py-2 tabular-nums whitespace-nowrap text-[#5B6270] dark:text-[#A4AAB6]">
-                      {formatarCompetencia(l.competencia)}
-                    </td>
-                    <td className="px-3 py-2 text-[#5B6270] dark:text-[#A4AAB6]">Competência {formatarCompetencia(l.competencia)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums text-[#1A1F29] dark:text-[#EBEDF2]">
-                      {formatarMoeda(l.desembolsoMensal)}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums text-[#1A1F29] dark:text-[#EBEDF2]">
-                      {formatarMoeda(l.desembolsoAcumulado)}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      <div className="flex items-center justify-end gap-2">
-                        <div className="h-1.5 w-16 overflow-hidden rounded-full bg-gray-100 dark:bg-[#2B303C]">
-                          <div
-                            className="h-full rounded-full bg-[#2B5FD9] dark:bg-[#6D93F0]"
-                            style={{ width: `${Math.min(percentual, 100)}%` }}
-                          />
-                        </div>
-                        <span className="text-[#1A1F29] dark:text-[#EBEDF2]">{l.percentualFinanceiroAcumulado}%</span>
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums text-[#1A1F29] dark:text-[#EBEDF2]">
-                      {l.valorRepassado12Meses !== null ? formatarMoeda(l.valorRepassado12Meses) : <span className="text-[#8A8F98] dark:text-[#767C89]">–</span>}
-                    </td>
-                  </tr>
+                  <FragmentoParcela key={p.numero}>
+                    <tr className="border-b border-gray-100 dark:border-[#2B303C]">
+                      <td className="px-3 py-2 tabular-nums text-[#1A1F29] dark:text-[#EBEDF2]">Evento T{p.numero}</td>
+                      <td className="px-3 py-2 whitespace-nowrap text-[#5B6270] capitalize dark:text-[#A4AAB6]">
+                        {formatarDataExtenso(p.data)}
+                      </td>
+                      <td className="px-3 py-2 text-[#5B6270] dark:text-[#A4AAB6]">{p.descricao}</td>
+                      <td className={`${celulaNum} text-[#1A1F29] dark:text-[#EBEDF2]`}>{formatarMoeda(p.desembolso)}</td>
+                      <td className={`${celulaNum} text-[#1A1F29] dark:text-[#EBEDF2]`}>
+                        {formatarMoeda(p.desembolsoAcumulado)}
+                      </td>
+                      <td className={`${celulaNum} text-[#1A1F29] dark:text-[#EBEDF2]`}>
+                        {p.percentualFinanceiroAcumulado}%
+                      </td>
+                      <td className={celulaNum} />
+                    </tr>
+                    {p.subLinhas.map((sub) => (
+                      <tr key={sub.rotulo} className="border-b border-gray-100 text-[#5B6270] italic dark:border-[#2B303C] dark:text-[#A4AAB6]">
+                        <td className="px-3 py-1.5" />
+                        <td className="px-3 py-1.5" />
+                        <td className="px-3 py-1.5 pl-6">{sub.rotulo}</td>
+                        <td className={celulaNum}>{formatarMoeda(sub.valor)}</td>
+                        <td className={celulaNum} />
+                        <td className={celulaNum} />
+                        <td className={celulaNum} />
+                      </tr>
+                    ))}
+                    {st && (
+                      <tr className="border-y-2 border-[#2B5FD9]/30 bg-[#E8EEFC] font-semibold dark:border-[#6D93F0]/30 dark:bg-[#1D2A48]">
+                        <td className="px-3 py-2 whitespace-nowrap">ANO {st.ano}</td>
+                        <td className="px-3 py-2" />
+                        <td className="px-3 py-2 uppercase">Total a desembolsar em {st.ano}</td>
+                        <td className={celulaNum}>{formatarMoeda(st.totalDoAno)}</td>
+                        <td className={celulaNum}>{formatarMoeda(st.desembolsoAcumulado)}</td>
+                        <td className={celulaNum}>{st.percentualFinanceiroAcumulado}%</td>
+                        <td className={celulaNum}>{formatarMoeda(st.valorAcumuladoPorAnoDoTP)}</td>
+                      </tr>
+                    )}
+                  </FragmentoParcela>
                 );
               })}
+              {!filtroAtivo && (
+                <tr className="border-y-2 border-[#2B5FD9]/50 bg-[#D9E2F3] font-bold dark:border-[#6D93F0]/50 dark:bg-[#243657]">
+                  <td className="px-3 py-2.5 whitespace-nowrap">{rotuloAnos}</td>
+                  <td className="px-3 py-2.5" />
+                  <td className="px-3 py-2.5 uppercase">Total a desembolsar no Termo de Parceria</td>
+                  <td className={celulaNum}>{formatarMoeda(cronograma.totalGeral)}</td>
+                  <td className={celulaNum}>{formatarMoeda(cronograma.totalGeral)}</td>
+                  <td className={celulaNum}>100,00%</td>
+                  <td className={celulaNum}>{formatarMoeda(cronograma.totalGeral)}</td>
+                </tr>
+              )}
+              {parcelasVisiveis.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="px-3 py-6 text-center text-[#8A8F98] dark:text-[#767C89]">
+                    Nenhuma parcela no período selecionado.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
       </div>
+
       <p className="text-[11px] text-[#8A8F98] dark:text-[#767C89] print:hidden">
-        Linhas destacadas em azul marcam o fechamento de cada ciclo de 12 meses (RN0254).
+        Linhas em azul marcam o fechamento de cada ano civil e o total geral do Termo de Parceria. O resíduo de
+        arredondamento é absorvido pela última parcela (RN_CD_002).
       </p>
-      {/* Rodapé do documento impresso — título unificado fixo, conforme layout do relatório. */}
-      <p className="hidden text-center text-[10px] uppercase print:block">Cronograma de Desembolso</p>
+      <p className="hidden text-center text-[10px] uppercase print:block">Anexo 9 — Cronograma de Desembolso</p>
     </div>
   );
+}
+
+function FragmentoParcela({ children }: { children: ReactNode }) {
+  return <>{children}</>;
 }

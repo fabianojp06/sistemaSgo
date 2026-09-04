@@ -3,7 +3,14 @@ import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
 
 export type ColunaRelatorio = { chave: string; rotulo: string };
-export type LinhaRelatorio = Record<string, string | number>;
+
+/** US-142/ADR-049 — hierarquia visual opcional da linha na exportação.
+ * Ausência = 'normal' (comportamento pré-existente, US-123 inalterada). */
+export type EstiloLinhaRelatorio = 'normal' | 'subitem' | 'subtotal' | 'total';
+
+export type LinhaRelatorio = Record<string, string | number> & {
+  estiloLinha?: EstiloLinhaRelatorio;
+};
 
 /**
  * ADR-037 — utilitário de infraestrutura genérico para exportação de
@@ -33,7 +40,18 @@ export async function exportarParaXLSX(params: {
   cabecalhoRow.font = { bold: true };
 
   for (const linha of params.linhas) {
-    sheet.addRow(params.colunas.map((c) => linha[c.chave] ?? ''));
+    const row = sheet.addRow(params.colunas.map((c) => linha[c.chave] ?? ''));
+    const estilo = linha.estiloLinha ?? 'normal';
+    if (estilo === 'subtotal' || estilo === 'total') {
+      row.font = { bold: true };
+      row.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: estilo === 'total' ? 'FFD9E2F3' : 'FFEEF1F6' },
+      };
+    } else if (estilo === 'subitem') {
+      row.font = { italic: true, color: { argb: 'FF5B6270' } };
+    }
   }
 
   sheet.columns.forEach((coluna) => {
@@ -72,6 +90,17 @@ export function exportarParaPDF(params: {
     body: params.linhas.map((linha) => params.colunas.map((c) => String(linha[c.chave] ?? ''))),
     styles: { fontSize: 8 },
     headStyles: { fillColor: [43, 95, 217] },
+    didParseCell: (dados) => {
+      if (dados.section !== 'body') return;
+      const estilo = params.linhas[dados.row.index]?.estiloLinha ?? 'normal';
+      if (estilo === 'subtotal' || estilo === 'total') {
+        dados.cell.styles.fontStyle = 'bold';
+        dados.cell.styles.fillColor = estilo === 'total' ? [217, 226, 243] : [238, 241, 246];
+      } else if (estilo === 'subitem') {
+        dados.cell.styles.fontStyle = 'italic';
+        dados.cell.styles.textColor = [91, 98, 112];
+      }
+    },
     didDrawPage: (dados) => {
       const alturaPagina = doc.internal.pageSize.getHeight();
       const textoRodape = params.rodape ? `${params.rodape} — Página ${dados.pageNumber}` : `Página ${dados.pageNumber}`;

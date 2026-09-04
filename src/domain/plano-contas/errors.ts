@@ -922,6 +922,18 @@ export class FalhaAuditoriaExportacaoRelatorioError extends Error {
   }
 }
 
+// US-142/ADR-049 — calendário de repasse da Proposta inválido. Os dois campos
+// (parcelasPorAno, mesInicialRepasse) andam juntos; parcelasPorAno ∈ {1,2,3,4,6,12};
+// mesInicialRepasse 1..12.
+export class CalendarioRepasseInvalidoError extends Error {
+  constructor(
+    motivo = 'Calendário de repasse inválido: informe Parcelas por Ano (1, 2, 3, 4, 6 ou 12) e Mês Inicial do Repasse (1 a 12) juntos, ou deixe ambos em branco.',
+  ) {
+    super(motivo);
+    this.name = 'CalendarioRepasseInvalidoError';
+  }
+}
+
 // US-138 Cenário 6 — trava de erro: Termo de Parceria/Proposta não selecionado.
 export class RelatorioCronogramaDesembolsoSemPropostaError extends Error {
   constructor() {

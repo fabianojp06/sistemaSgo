@@ -103,7 +103,7 @@ CD-01 a CD-05 e CD-08 **fechados** (ver tabela de decisões acima e abaixo). Res
 |---|---|---|---|
 | GAP-CD-06 | **Viagem sem data (limitação herdada).** Hoje todo o custo de Viagem cai no 1º mês → com parcelas, toda a Viagem entra em T1 (parcela de entrada). Aceitar a limitação nesta US, ou exigir antes uma US de "data da viagem"? | Aberto — decisão do Tech Lead no ADR-049. Recomendação AN/PO: **aceitar como limitação conhecida** (documentar), tratar "data da viagem" como US futura. | Tech Lead |
 | GAP-CD-07 | **Exportação PDF/XLSX** com subtotais anuais + total geral + cabeçalho "APÊNDICE J". | Fechado: **incluído no escopo** desta US. | — |
-| GAP-CD-08 | Onde ficam os 2 campos de config. | **Fechado:** vão em **`Proposta`** (característica contratual do TP), preenchidos na **tela de cadastro/edição da Proposta**. A tela de Cronograma **não edita** — só lê e exibe, com um **filtro de período** para restringir o intervalo mostrado. O ADR-049 ainda decide: nullable com validação na geração, ou default `3` / `1`. | — / Tech Lead (só o default) |
+| GAP-CD-08 | Onde ficam os 2 campos de config. | **Fechado:** vão em **`Proposta`**. Preenchidos: (a) no **formulário de cadastro** de Proposta (US-102); (b) num **mini-form editável na capa da Proposta** (`/propostas/{id}`), liberado só quando a Versão vigente está `RASCUNHO`/`EM_ELABORACAO` (decisão do usuário 2026-09-03 — não existe tela "Editar Proposta"; este mini-form é o menor incremento). A tela de Cronograma **não edita** — só lê + filtro de período. Default de geração `3` / `1` (ADR-049). | ✅ |
 
 ---
 
@@ -192,7 +192,7 @@ E o mesmo para cada linha "TOTAL A DESEMBOLSAR EM XXXX"
 | Domínio | `montarCronogramaDesembolso.ts` ganha uma camada de agregação: das linhas mensais para linhas de parcela. Provável função nova `agregarEmParcelas(linhasMensais, regraRepasse, metas)` → `LinhaParcela[]` + `SubtotalAnual[]` + `TotalGeral`. O cálculo mês a mês continua sendo a base (não jogar fora). |
 | Sub-linha "Meta Única" | Sem rateio entre Metas — uma sub-linha por parcela com o valor cheio. |
 | Schema | **Migration aditiva** — `Proposta` ganha `parcelasPorAno Int?` e `mesInicialRepasse Int?` (1–12). Nullable; default de aplicação `3` / `1` ou bloqueio na geração — ADR-049. |
-| UI de config | Os 2 campos entram na **tela de cadastro/edição da Proposta** (`CadastrarPropostaUseCase`/`EditarPropostaUseCase`/form). A tela de Cronograma **não** os edita. |
+| UI de config | (a) 2 campos no form de **cadastro** de Proposta (`CadastrarPropostaUseCase` + `CadastrarPropostaSchema` + `PropostaListPanel`); (b) **mini-form na capa** da Proposta em `[id]/[[...guia]]/page.tsx` — novo `EditarCalendarioRepassePropostaUseCase` + Server Action, guardado por status da Versão (`podeEditarVersao`). A tela de Cronograma **não** os edita. |
 | Filtro da tela de Cronograma | Read-only. Único controle: **filtro de período** (data inicial / data final de exibição) para recortar o intervalo mostrado. Não altera o cálculo — só a janela exibida. |
 | `page.tsx` (guia cronograma-desembolso) | Passa a montar/serializar a estrutura de parcelas + subtotais. |
 | `CronogramaDesembolsoPanel.tsx` | Reescrito: tabela de parcelas com sub-linhas por Meta, linhas de subtotal anual, linha de total geral. Remove a grade "Mês N". |
