@@ -11,7 +11,8 @@ function formatarMoeda(valor: string | number): string {
 
 const formatadorMesExtenso = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 function formatarDataExtenso(iso: string): string {
-  return formatadorMesExtenso.format(new Date(iso)); // "janeiro 2026"
+  // pt-BR devolve "janeiro de 2026"; o ANEXO 9 usa "janeiro 2026".
+  return formatadorMesExtenso.format(new Date(iso)).replace(' de ', ' ');
 }
 
 function anoDe(iso: string): number {
