@@ -1288,6 +1288,21 @@ não derruba a criação da alíquota — vira aviso não-bloqueante.
 
 ---
 
+## 2026-09-04 (cont.) — US-145 explicada, sem execução
+
+Sessão curta, só de esclarecimento — usuário pediu para entender por que a US-145 (imposto
+sobre conta sintética) é o maior risco do épico Impostos, sem executar nada. Explicado:
+`CalcularValorRealizadoUseCase`/`ValorRealizadoService` alimentam Semáforo, dashboard (US-118) e
+Cronograma de Desembolso — uma regressão ali vaza pra todo lugar; a invariante "sintética = soma
+das filhas" está assumida implicitamente na recursão de `agregar()`, sem um único ponto
+documentado; e o rename de erro (`ContaRateioImpostoNaoAnaliticaError` →
+`ContaRateioImpostoInvalidaError`) só vale para o fluxo de imposto — o reajuste (`prepararPlanoReajuste`,
+US-128/129) precisa continuar exigindo conta analítica, e essa distinção é fácil de vazar sem dar
+erro visível na hora. **Decisão: não executar agora.** Nenhum código alterado nesta sessão — ver
+bloco anterior (2026-09-04) para o estado real do projeto.
+
+---
+
 ## Como usar este arquivo em sessões futuras
 
 No início de uma sessão, se o usuário perguntar "qual o contexto/status de X", leia este arquivo antes de assumir que a memória padrão (`~/.claude/.../memory/`) está atualizada — o ambiente deste projeto (Codespace) pode ter sido recriado desde a última sessão, apagando a memória padrão sem apagar o repositório.
