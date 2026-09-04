@@ -15,7 +15,36 @@ import { calcularMesesSobreposicao } from '@/domain/shared/calcularMesesSobrepos
 export class ValorRealizadoService {
   constructor(private readonly prisma: PrismaClient) {}
 
+  /**
+   * ADR-032 — custo REALIZADO por conta analítica: as 3 fontes de custo bruto
+   * (Viagem + ItemPatrimonial + Empregado) MAIS o `RateioImpostoGrade` (imposto
+   * declarado/calculado). É o número "com imposto".
+   */
   async somarPorContaAnalitica(tenantId: string, versaoId: string): Promise<Map<string, Prisma.Decimal>> {
+    const porConta = await this.somarCustoBrutoPorConta(tenantId, versaoId);
+    const soma = (contaId: string, valor: Prisma.Decimal) =>
+      porConta.set(contaId, (porConta.get(contaId) ?? new Prisma.Decimal(0)).plus(valor));
+
+    // US-144/ADR-050 §C — os rateios de imposto entram SÓ aqui, nunca em
+    // `somarCustoBrutoPorConta` (a base do motor de imposto não pode conter
+    // imposto — evita referência circular).
+    const rateiosImposto = await this.prisma.rateioImpostoGrade.findMany({
+      where: { tenantId, versaoId, ativo: true },
+      select: { contaId: true, valorDeclarado: true },
+    });
+    for (const rateio of rateiosImposto) {
+      soma(rateio.contaId, rateio.valorDeclarado);
+    }
+
+    return porConta;
+  }
+
+  /**
+   * US-144/ADR-050 §C — base bruta por conta analítica: Viagem + ItemPatrimonial
+   * + Empregado, SEM nenhum `RateioImpostoGrade`. É a base sobre a qual o motor
+   * de imposto (`GerarImpostosDaVersaoUseCase`) calcula `imposto = base × alíquota%`.
+   */
+  async somarCustoBrutoPorConta(tenantId: string, versaoId: string): Promise<Map<string, Prisma.Decimal>> {
     const porConta = new Map<string, Prisma.Decimal>();
     const soma = (contaId: string, valor: Prisma.Decimal) =>
       porConta.set(contaId, (porConta.get(contaId) ?? new Prisma.Decimal(0)).plus(valor));
@@ -113,14 +142,6 @@ export class ValorRealizadoService {
         soma(empregado.contaPlanoSaudeId ?? empregado.contaId, multiplicar(empregado.valorPlanoSaudeSnapshot));
         soma(empregado.contaAuxilioCrecheId ?? empregado.contaId, multiplicar(empregado.valorAuxilioCrecheSnapshot));
       }
-    }
-
-    const rateiosImposto = await this.prisma.rateioImpostoGrade.findMany({
-      where: { tenantId, versaoId, ativo: true },
-      select: { contaId: true, valorDeclarado: true },
-    });
-    for (const rateio of rateiosImposto) {
-      soma(rateio.contaId, rateio.valorDeclarado);
     }
 
     return porConta;

@@ -94,6 +94,21 @@ enum TipoOperacao {
   SYNC_GRADE_SALARIAL_CTCEA
   SYNC_CARGO_MERCADO_CATALOGO
   CALENDARIO_REPASSE_PROPOSTA_EDITADO
+  IMPOSTOS_GERADOS
+}
+
+// US-144 / ADR-050 Frente A — origem do valor de uma linha de RateioImpostoGrade.
+enum ModoValorRateioImposto {
+  DECLARADO // usuário digitou (US-101) ou ajuste de reajuste (US-128/129, ADR-040)
+  CALCULADO // sistema calculou base × alíquota% (US-144+)
+}
+
+// US-144 / ADR-050 Frente G — separa o catálogo de tributos (PIS, COFINS, ISS...) do
+// catálogo de índices de reajuste (IPCA, dissídio...), que compartilham a mesma tabela.
+// Só alíquotas TRIBUTO geram imposto automático.
+enum CategoriaAliquotaImposto {
+  TRIBUTO
+  INDICE_REAJUSTE
 }
 
 model Usuario {
@@ -664,6 +679,9 @@ model AliquotaImpostoParametro {
   // dataInicioVigencia. Default MENSAL preserva o comportamento anterior a este
   // campo (crescia todo mês) para índices já cadastrados.
   periodicidadeReajuste PeriodicidadeReajuste @default(MENSAL)
+  // US-144/ADR-050 — só TRIBUTO gera imposto automático; INDICE_REAJUSTE é usado
+  // por Premissas/Reajustes (US-128/129) e nunca é tocado pelo motor de imposto.
+  categoria             CategoriaAliquotaImposto @default(TRIBUTO)
   // Relevantes para ISS (faixa legal 2,00%-5,00%, LC 116/2003); opcionais para outros tributos.
   limiteMinimoPct       Decimal?              @db.Decimal(5, 2)
   limiteMaximoPct       Decimal?              @db.Decimal(5, 2)
@@ -708,6 +726,12 @@ model RateioImpostoGrade {
   conta                    ContaContabil            @relation(fields: [contaId], references: [id])
   competencia              DateTime
   valorDeclarado           Decimal                  @db.Decimal(15, 2)
+  // US-144/ADR-050 Frente A — origem do valor. CALCULADO = base × alíquota% pelo motor
+  // (US-144); DECLARADO = digitado (US-101) ou ajuste de reajuste (US-128/129).
+  modoValor                ModoValorRateioImposto   @default(DECLARADO)
+  /// US-144 — base bruta da conta sobre a qual o imposto CALCULADO incidiu (snapshot da geração).
+  /// NULL para linhas DECLARADO. Não recalcula sozinho.
+  valorBaseSnapshot        Decimal?                 @db.Decimal(15, 2)
   // [US-129/RNF_PR_004] ampliado de Decimal(5,2) para Decimal(9,4) — mesma
   // razão da ADR-040 em AliquotaImpostoParametro.aliquotaPct: o snapshot
   // precisa reter até 4 casas decimais do índice de reajuste aplicado.

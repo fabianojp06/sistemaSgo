@@ -25,6 +25,7 @@ import { ConfigurarSemaforoContaUseCase } from './ConfigurarSemaforoContaUseCase
 import { CalcularValorRealizadoUseCase } from './CalcularValorRealizadoUseCase';
 import { ListarPremissasReajusteUseCase } from './ListarPremissasReajusteUseCase';
 import { ConfigurarRateioImpostoUseCase } from './ConfigurarRateioImpostoUseCase';
+import { GerarImpostosDaVersaoUseCase } from './GerarImpostosDaVersaoUseCase';
 import { DesativarTributoRateioUseCase } from './DesativarTributoRateioUseCase';
 import { CadastrarPropostaUseCase } from './CadastrarPropostaUseCase';
 import { ExcluirVersaoPropostaUseCase } from './ExcluirVersaoPropostaUseCase';
@@ -133,6 +134,10 @@ export function getListarPremissasReajusteUseCase(): ListarPremissasReajusteUseC
 
 export function getConfigurarRateioImpostoUseCase(): ConfigurarRateioImpostoUseCase {
   return new ConfigurarRateioImpostoUseCase(prisma);
+}
+
+export function getGerarImpostosDaVersaoUseCase(): GerarImpostosDaVersaoUseCase {
+  return new GerarImpostosDaVersaoUseCase(prisma);
 }
 
 export function getDesativarTributoRateioUseCase(): DesativarTributoRateioUseCase {
