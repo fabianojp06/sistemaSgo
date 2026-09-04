@@ -56,6 +56,8 @@ function NovaPropostaForm({ podeCriar, onCriada }: { podeCriar: boolean; onCriad
   const [dataInicio, setDataInicio] = useState(`${anoAtual}-01-01`);
   const [dataFim, setDataFim] = useState(`${anoAtual}-12-31`);
   const [categoria, setCategoria] = useState<PropostaListada['categoria']>('CONSOLIDADA');
+  const [parcelasPorAno, setParcelasPorAno] = useState('');
+  const [mesInicialRepasse, setMesInicialRepasse] = useState('');
   const [erro, setErro] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -76,7 +78,15 @@ function NovaPropostaForm({ podeCriar, onCriada }: { podeCriar: boolean; onCriad
   function salvar() {
     setErro(null);
     startTransition(async () => {
-      const resposta = await cadastrarProposta({ tipo, nome, dataInicio, dataFim, categoria });
+      const resposta = await cadastrarProposta({
+        tipo,
+        nome,
+        dataInicio,
+        dataFim,
+        categoria,
+        parcelasPorAno: parcelasPorAno === '' ? null : Number(parcelasPorAno),
+        mesInicialRepasse: mesInicialRepasse === '' ? null : Number(mesInicialRepasse),
+      });
       if (!resposta.sucesso) {
         setErro(resposta.mensagem);
         return;
@@ -139,6 +149,42 @@ function NovaPropostaForm({ podeCriar, onCriada }: { podeCriar: boolean; onCriad
             onChange={(e) => setDataFim(e.target.value)}
             className="w-full rounded border border-[#DDE2EA] bg-white px-2 py-1 text-sm text-[#1A1F29] dark:border-[#2B303C] dark:bg-[#1F2430] dark:text-[#EBEDF2]"
           />
+        </div>
+      </div>
+
+      {/* US-142/ADR-049 — calendário de repasse (opcional; os dois juntos ou nenhum). */}
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
+        <div>
+          <label className="mb-1 block text-xs font-medium text-[#5B6270] dark:text-[#A4AAB6]">Parcelas por ano (repasse)</label>
+          <select
+            value={parcelasPorAno}
+            onChange={(e) => setParcelasPorAno(e.target.value)}
+            className="w-full rounded border border-[#DDE2EA] bg-white px-2 py-1 text-sm text-[#1A1F29] dark:border-[#2B303C] dark:bg-[#1F2430] dark:text-[#EBEDF2]"
+          >
+            <option value="">— (padrão: 3)</option>
+            {[1, 2, 3, 4, 6, 12].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-[#5B6270] dark:text-[#A4AAB6]">Mês inicial do repasse</label>
+          <select
+            value={mesInicialRepasse}
+            onChange={(e) => setMesInicialRepasse(e.target.value)}
+            className="w-full rounded border border-[#DDE2EA] bg-white px-2 py-1 text-sm text-[#1A1F29] dark:border-[#2B303C] dark:bg-[#1F2430] dark:text-[#EBEDF2]"
+          >
+            <option value="">— (padrão: Janeiro)</option>
+            {['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'].map(
+              (nome, i) => (
+                <option key={nome} value={i + 1}>
+                  {nome}
+                </option>
+              ),
+            )}
+          </select>
         </div>
       </div>
 

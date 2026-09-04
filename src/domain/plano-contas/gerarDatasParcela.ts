@@ -35,6 +35,33 @@ export type ParcelaDatada = {
 
 export const PARCELAS_POR_ANO_VALIDAS: readonly number[] = [1, 2, 3, 4, 6, 12];
 
+/**
+ * Valida o par (parcelasPorAno, mesInicialRepasse) do calendário de repasse da
+ * Proposta [US-142/ADR-049]. Regra: ambos preenchidos ou ambos nulos;
+ * parcelasPorAno ∈ {1,2,3,4,6,12}; mesInicialRepasse inteiro 1..12.
+ * Retorna o par normalizado (ambos `null` quando não configurado) ou lança
+ * a mensagem de erro (string) que o chamador embrulha no erro de domínio.
+ */
+export function validarCalendarioRepasse(
+  parcelasPorAno: number | null | undefined,
+  mesInicialRepasse: number | null | undefined,
+): { parcelasPorAno: number | null; mesInicialRepasse: number | null } {
+  const ppa = parcelasPorAno ?? null;
+  const mir = mesInicialRepasse ?? null;
+
+  if (ppa === null && mir === null) return { parcelasPorAno: null, mesInicialRepasse: null };
+  if (ppa === null || mir === null) {
+    throw new Error('Informe Parcelas por Ano e Mês Inicial do Repasse juntos, ou deixe ambos em branco.');
+  }
+  if (!PARCELAS_POR_ANO_VALIDAS.includes(ppa)) {
+    throw new Error(`Parcelas por Ano inválido: ${ppa} (esperado 1, 2, 3, 4, 6 ou 12).`);
+  }
+  if (!Number.isInteger(mir) || mir < 1 || mir > 12) {
+    throw new Error(`Mês Inicial do Repasse inválido: ${mir} (esperado 1 a 12).`);
+  }
+  return { parcelasPorAno: ppa, mesInicialRepasse: mir };
+}
+
 function primeiroDiaDoMes(ano: number, mesIndex0: number): Date {
   return new Date(Date.UTC(ano, mesIndex0, 1));
 }

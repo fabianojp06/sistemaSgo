@@ -17,7 +17,10 @@ import { EmpregadoPanel } from '../../EmpregadoPanel';
 import { ViagemPanel } from '../../ViagemPanel';
 import { ItemPatrimonialPanel } from '../../ItemPatrimonialPanel';
 import { CronogramaDesembolsoPanel } from '../../CronogramaDesembolsoPanel';
+import { CalendarioRepassePropostaMiniForm } from '../../CalendarioRepassePropostaMiniForm';
 import { montarCronogramaDesembolso } from '@/domain/plano-contas/montarCronogramaDesembolso';
+import { agregarEmParcelas } from '@/domain/plano-contas/agregarEmParcelas';
+import { Prisma } from '@prisma/client';
 import { PremissasReajusteGrid } from '../../PremissasReajusteGrid';
 import { ReajusteLoteModal } from '../../ReajusteLoteModal';
 import { getListarPremissasReajusteUseCase } from '@/application/use-cases/plano-contas/container';
@@ -207,7 +210,7 @@ export default async function PropostaDetalhePage({
     itensIniciais = itensDb.map((i) => ({ id: i.id, descricao: i.descricao, valorTotal: i.valorTotal.toString() }));
   }
 
-  let cronogramaLinhas: import('../../cronogramaTipos').LinhaCronogramaSerializada[] = [];
+  let cronogramaParcelado: import('../../cronogramaTipos').CronogramaParceladoSerializado | null = null;
   let metaNomeCronograma: string | null = null;
   if (guiaAtiva === 'cronograma-desembolso') {
     const [empregadosCronograma, viagensCronograma, itensCronograma, rateiosCronograma, metaCronograma] = await Promise.all([
@@ -248,14 +251,37 @@ export default async function PropostaDetalhePage({
         itensCronograma,
         rateiosCronograma,
       );
-      cronogramaLinhas = linhas.map((l) => ({
-        mes: l.mes,
-        competencia: l.competencia.toISOString(),
-        desembolsoMensal: l.desembolsoMensal.toString(),
-        desembolsoAcumulado: l.desembolsoAcumulado.toString(),
-        percentualFinanceiroAcumulado: l.percentualFinanceiroAcumulado.toString(),
-        valorRepassado12Meses: l.valorRepassado12Meses?.toString() ?? null,
-      }));
+      // US-142/ADR-049 — camada de agregação por cima do motor mensal (não alterado).
+      // O Valor Global é o desembolso acumulado da última linha mensal.
+      const valorGlobal =
+        linhas.length > 0 ? linhas[linhas.length - 1].desembolsoAcumulado : new Prisma.Decimal(0);
+      const cronograma = agregarEmParcelas(linhas, {
+        dataInicio: proposta.dataInicio,
+        dataFim: proposta.dataFim,
+        parcelasPorAno: proposta.parcelasPorAno ?? 3,
+        mesInicialRepasse: proposta.mesInicialRepasse ?? 1,
+        valorGlobal,
+      });
+      cronogramaParcelado = {
+        totalGeral: cronograma.totalGeral.toString(),
+        valorGlobal: cronograma.valorGlobal.toString(),
+        parcelas: cronograma.parcelas.map((p) => ({
+          numero: p.numero,
+          data: p.data.toISOString(),
+          descricao: p.descricao,
+          desembolso: p.desembolso.toString(),
+          desembolsoAcumulado: p.desembolsoAcumulado.toString(),
+          percentualFinanceiroAcumulado: p.percentualFinanceiroAcumulado.toString(),
+          subLinhas: p.subLinhas.map((s) => ({ rotulo: s.rotulo, valor: s.valor.toString() })),
+        })),
+        subtotaisAnuais: cronograma.subtotaisAnuais.map((s) => ({
+          ano: s.ano,
+          totalDoAno: s.totalDoAno.toString(),
+          desembolsoAcumulado: s.desembolsoAcumulado.toString(),
+          percentualFinanceiroAcumulado: s.percentualFinanceiroAcumulado.toString(),
+          valorAcumuladoPorAnoDoTP: s.valorAcumuladoPorAnoDoTP.toString(),
+        })),
+      };
     }
   }
 
@@ -298,6 +324,12 @@ export default async function PropostaDetalhePage({
             Versão {versao.status === 'OFICIALIZADO' ? 'oficializada' : 'encerrada'} — somente leitura.
           </p>
         )}
+        <CalendarioRepassePropostaMiniForm
+          propostaId={id}
+          parcelasPorAno={proposta.parcelasPorAno}
+          mesInicialRepasse={proposta.mesInicialRepasse}
+          editavel={!readOnly}
+        />
       </header>
 
       <PropostaTabs propostaId={id} guias={GUIAS} guiaAtiva={guiaAtiva} />
@@ -372,7 +404,8 @@ export default async function PropostaDetalhePage({
             codigoProposta={proposta.codigo}
             versaoNumero={versao.numeroVersao}
             metaNome={metaNomeCronograma}
-            linhas={cronogramaLinhas}
+            cronograma={cronogramaParcelado}
+            calendarioConfigurado={proposta.parcelasPorAno != null}
           />
         )}
 

@@ -29,6 +29,7 @@ import { DesativarTributoRateioUseCase } from './DesativarTributoRateioUseCase';
 import { CadastrarPropostaUseCase } from './CadastrarPropostaUseCase';
 import { ExcluirVersaoPropostaUseCase } from './ExcluirVersaoPropostaUseCase';
 import { DuplicarPropostaUseCase } from './DuplicarPropostaUseCase';
+import { EditarCalendarioRepassePropostaUseCase } from './EditarCalendarioRepassePropostaUseCase';
 import { CriarUnidadeFuncionalUseCase } from './CriarUnidadeFuncionalUseCase';
 import { InativarUnidadeFuncionalUseCase } from './InativarUnidadeFuncionalUseCase';
 import { ImportarEstruturaOrganizacionalUseCase } from './ImportarEstruturaOrganizacionalUseCase';
@@ -148,6 +149,10 @@ export function getExcluirVersaoPropostaUseCase(): ExcluirVersaoPropostaUseCase 
 
 export function getDuplicarPropostaUseCase(): DuplicarPropostaUseCase {
   return new DuplicarPropostaUseCase(prisma);
+}
+
+export function getEditarCalendarioRepassePropostaUseCase(): EditarCalendarioRepassePropostaUseCase {
+  return new EditarCalendarioRepassePropostaUseCase(prisma);
 }
 
 export function getCriarUnidadeFuncionalUseCase(): CriarUnidadeFuncionalUseCase {

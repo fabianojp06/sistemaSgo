@@ -10,6 +10,7 @@ import { VersaoJaVigenteError } from '@/domain/plano-contas/errors';
 import {
   getCadastrarPropostaUseCase,
   getDuplicarPropostaUseCase,
+  getEditarCalendarioRepassePropostaUseCase,
   getExcluirVersaoPropostaUseCase,
   getCriarVersaoPropostaUseCase,
   getRestaurarVersaoPropostaUseCase,
@@ -79,6 +80,11 @@ const CadastrarPropostaSchema = z.object({
   dataInicio: z.coerce.date(),
   dataFim: z.coerce.date(),
   categoria: z.enum(['CONSOLIDADA', 'POR_META']),
+  // US-142/ADR-049 — calendário de repasse (opcional; os dois juntos ou nenhum).
+  parcelasPorAno: z
+    .union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(6), z.literal(12)])
+    .nullish(),
+  mesInicialRepasse: z.number().int().min(1).max(12).nullish(),
 });
 
 export type PropostaCadastradaResultado = { id: string; codigo: string; versaoInicialId: string };
@@ -90,6 +96,8 @@ export async function cadastrarProposta(input: {
   dataInicio: string;
   dataFim: string;
   categoria: 'CONSOLIDADA' | 'POR_META';
+  parcelasPorAno?: number | null;
+  mesInicialRepasse?: number | null;
 }): Promise<ActionResultComDados<PropostaCadastradaResultado>> {
   const contexto = await usuarioAtual();
   if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
@@ -109,6 +117,40 @@ export async function cadastrarProposta(input: {
     const proposta = await getCadastrarPropostaUseCase().execute({ ...contexto, ...entrada.data });
     revalidatePath('/propostas');
     return { sucesso: true, dados: { id: proposta.id, codigo: proposta.codigo, versaoInicialId: proposta.versaoInicial.id } };
+  } catch (erro) {
+    return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
+  }
+}
+
+const EditarCalendarioRepasseSchema = z.object({
+  propostaId: z.string().min(1),
+  parcelasPorAno: z
+    .union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(6), z.literal(12)])
+    .nullable(),
+  mesInicialRepasse: z.number().int().min(1).max(12).nullable(),
+});
+
+/** US-142/ADR-049 — edita o calendário de repasse na capa da Proposta (mini-form). */
+export async function editarCalendarioRepasseProposta(input: {
+  propostaId: string;
+  parcelasPorAno: number | null;
+  mesInicialRepasse: number | null;
+}): Promise<ActionResult> {
+  const contexto = await usuarioAtual();
+  if (!contexto) return { sucesso: false, mensagem: 'Sessão inválida.' };
+
+  const entrada = EditarCalendarioRepasseSchema.safeParse(input);
+  if (!entrada.success) {
+    return { sucesso: false, mensagem: 'Calendário de repasse inválido: verifique Parcelas por Ano e Mês Inicial.' };
+  }
+
+  const temPermissao = await usuarioTemFuncionalidade(prisma, contexto.tenantId, contexto.usuarioId, 'propostas.criar');
+  if (!temPermissao) return { sucesso: false, mensagem: 'Perfil sem permissão para editar a Proposta.' };
+
+  try {
+    await getEditarCalendarioRepassePropostaUseCase().execute({ ...contexto, ...entrada.data });
+    revalidatePath('/propostas');
+    return { sucesso: true };
   } catch (erro) {
     return { sucesso: false, mensagem: erro instanceof Error ? erro.message : 'Erro desconhecido.' };
   }

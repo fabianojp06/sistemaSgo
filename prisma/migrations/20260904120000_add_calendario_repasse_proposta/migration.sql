@@ -1,6 +1,9 @@
 -- US-142 / ADR-049 — Calendário de repasse na Proposta (Cronograma de Desembolso por parcelas, layout ANEXO 9).
 -- Dois campos opcionais que andam juntos: ambos preenchidos ou ambos nulos.
 
+-- Novo tipo de operação de auditoria para a edição do calendário na capa da Proposta.
+ALTER TYPE "TipoOperacao" ADD VALUE IF NOT EXISTS 'CALENDARIO_REPASSE_PROPOSTA_EDITADO';
+
 ALTER TABLE "Proposta" ADD COLUMN "parcelasPorAno" INTEGER;
 ALTER TABLE "Proposta" ADD COLUMN "mesInicialRepasse" INTEGER;
 

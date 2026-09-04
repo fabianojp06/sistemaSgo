@@ -1,10 +1,12 @@
 import type { CategoriaProposta, PrismaClient, Proposta, TipoProposta, VersaoProposta } from '@prisma/client';
 import {
+  CalendarioRepasseInvalidoError,
   CamposObrigatoriosPropostaError,
   CodigoPropostaGeracaoFalhouError,
   DatasPropostaInvalidasError,
 } from '@/domain/plano-contas/errors';
 import { gerarProximoCodigoProposta, isUniqueConstraintError } from '@/domain/plano-contas/gerarCodigoProposta';
+import { validarCalendarioRepasse } from '@/domain/plano-contas/gerarDatasParcela';
 
 const MAX_TENTATIVAS_CODIGO = 5;
 
@@ -16,6 +18,9 @@ type CadastrarPropostaInput = {
   dataInicio: Date;
   dataFim: Date;
   categoria: CategoriaProposta;
+  // US-142/ADR-049 — calendário de repasse (opcional; os dois juntos ou nenhum).
+  parcelasPorAno?: number | null;
+  mesInicialRepasse?: number | null;
 };
 
 type CadastrarPropostaResult = Proposta & { versaoInicial: VersaoProposta };
@@ -39,6 +44,13 @@ export class CadastrarPropostaUseCase {
       throw new DatasPropostaInvalidasError();
     }
 
+    let calendario: { parcelasPorAno: number | null; mesInicialRepasse: number | null };
+    try {
+      calendario = validarCalendarioRepasse(input.parcelasPorAno, input.mesInicialRepasse);
+    } catch (erro) {
+      throw new CalendarioRepasseInvalidoError(erro instanceof Error ? erro.message : undefined);
+    }
+
     const ano = new Date().getFullYear();
 
     for (let tentativa = 0; tentativa < MAX_TENTATIVAS_CODIGO; tentativa++) {
@@ -56,6 +68,8 @@ export class CadastrarPropostaUseCase {
               dataInicio: input.dataInicio,
               dataFim: input.dataFim,
               status: 'RASCUNHO',
+              parcelasPorAno: calendario.parcelasPorAno,
+              mesInicialRepasse: calendario.mesInicialRepasse,
             },
           });
 

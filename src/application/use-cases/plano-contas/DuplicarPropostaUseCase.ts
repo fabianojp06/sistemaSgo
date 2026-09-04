@@ -72,6 +72,10 @@ export class DuplicarPropostaUseCase {
               dataInicio,
               dataFim,
               status: 'RASCUNHO',
+              // US-142/ADR-049 — o calendário de repasse é um parâmetro da Proposta,
+              // faz parte da configuração; a cópia leva junto.
+              parcelasPorAno: origem.parcelasPorAno,
+              mesInicialRepasse: origem.mesInicialRepasse,
             },
           });
 
