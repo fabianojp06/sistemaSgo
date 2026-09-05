@@ -14,7 +14,7 @@
 > **Regra:** ao encerrar uma sessão com mudança relevante de estado, atualize este arquivo E
 > `CONTEXTO_SESSOES.md`, e faça commit (fluxo Git híbrido do `CLAUDE.md`).
 
-**Última atualização:** 2026-09-04 (US-142 + US-144 entregues e em produção; atalho de vínculo Alíquota↔Proposta também entregue)
+**Última atualização:** 2026-09-05 (rede de regressão do `ValorRealizadoService`/`CalcularValorRealizadoUseCase` escrita e commitada — branch pushada, PR ainda não aberto — pré-requisito da US-145)
 
 ---
 
@@ -104,8 +104,16 @@ por Proposta × Versão × Conta. Épico + ADR-050 aceito:
   cadastro/edição da alíquota (fora do épico formal, decisão pontual do usuário).
 - 🔜 **US-145** (próxima) — imposto sobre conta sintética (ADR-050 Frente B, `contaId` aceita
   sintética; nova fase de agregação no `CalcularValorRealizadoUseCase`; invariante "sintética =
-  soma das filhas" passa a ter exceção com flag `temImpostoDireto`). **Maior risco** — escrever
-  suíte de regressão do `CalcularValorRealizadoUseCase` antes de mexer.
+  soma das filhas" passa a ter exceção com flag `temImpostoDireto`). **Maior risco.**
+  **2026-09-05 — pré-requisito cumprido:** rede de regressão escrita (`analista-testes-qa`) —
+  `ValorRealizadoService.test.ts` (novo, 9 testes) + bloco novo em
+  `CalcularValorRealizadoUseCase.test.ts` (6 testes) congelando a invariante bottom-up atual
+  antes da fase C1. Validado contra o `ValorRealizadoService` já refatorado pela US-144: suíte
+  isolada 23/23, suíte completa 415/415, `tsc --noEmit` limpo. Commitado e empurrado na branch
+  `test/regressao-valor-realizado-pre-us145` (`4e02c46`) —
+  https://github.com/fabianojp06/sistemaSgo/pull/new/test/regressao-valor-realizado-pre-us145.
+  **PR ainda não aberto** (usuário abre pela UI do GitHub, mesmo padrão de PRs anteriores).
+  **US-145 só começa depois desse PR mergeado.**
 - 🔜 **US-146** — exibir "Custo" vs "Custo c/ Impostos" (Semáforo, dashboard US-118, guia Valor
   Orçado). Menor risco, depende de US-145 para fazer sentido completo (mas pode ir isolada).
 - ⏸️ **US-147** (opcional) — separar tributo de índice de reajuste em modelos distintos; dívida
@@ -114,10 +122,11 @@ por Proposta × Versão × Conta. Épico + ADR-050 aceito:
 ## Próximo passo combinado
 
 > **Retomando de outro computador:** leia este arquivo + `docs/CONTEXTO_SESSOES.md` (bloco
-> "2026-09-04"). Nada de código pendente no momento — 2 PRs desta sessão já mergeados e com
-> migration aplicada. Próxima frente natural: **US-145** (imposto sobre conta sintética,
-> `docs/US-145 ...md`, ADR-050 Frente B) — maior risco do épico, começar pela suíte de
-> regressão do `CalcularValorRealizadoUseCase`.
+> "2026-09-05"). **Passo imediato:** abrir e mergear o PR da branch
+> `test/regressao-valor-realizado-pre-us145` (rede de regressão, sem código de produção,
+> `/code-review` antes do merge por tocar o núcleo financeiro). Só depois disso mergeado,
+> começar a **US-145** (imposto sobre conta sintética, `docs/US-145 ...md`, ADR-050 Frente B) —
+> maior risco do épico.
 >
 > Outros candidatos, sem urgência: (a) build de `/orcamentario/acompanhamento` (pendência #1);
 > (b) follow-up leve da US-141 (pendência #7); (c) `prisma migrate resolve --applied` das 3

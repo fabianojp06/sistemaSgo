@@ -1303,6 +1303,61 @@ bloco anterior (2026-09-04) para o estado real do projeto.
 
 ---
 
+## 2026-09-05 — Rede de regressão do `ValorRealizadoService`/`CalcularValorRealizadoUseCase` (pré-requisito da US-145)
+
+Sessão iniciada com clone do repositório num computador novo (`gh repo clone
+fabianojp06/sistemaSgo`). Retomou o pré-requisito registrado nas sessões de 2026-09-02/04:
+"blindar `CalcularValorRealizadoUseCase`/`ValorRealizadoService` com testes de regressão antes
+da US-145". Trabalho conduzido pela skill `analista-testes-qa` (Automation Mode).
+
+**Diagnóstico de cobertura (antes de escrever qualquer teste):**
+- `ValorRealizadoService.somarPorContaAnalitica` (mapa bruto por conta — Viagem, Item,
+  Empregado×overlap, Rateio) **nunca teve teste próprio**, só era exercitado de raspão pelo mock
+  do use case.
+- `CalcularValorRealizadoUseCase.agregar` (recursão bottom-up do Semáforo) tinha só 1 cenário
+  sintético de 2 níveis — sem árvore 3+ níveis, sem filha mista analítica+sintética.
+- `montarResumoValorOrcado` (dashboard US-118, mesma invariante bottom-up) já tinha cobertura
+  razoável; `montarCronogramaDesembolso` também — não mexidos.
+- **Ponto de ruptura identificado:** hoje todo `RateioImpostoGrade.valorDeclarado` cai no mapa
+  bruto sob uma `contaId` que o `agregar()` assume ser sempre analítica, propagando para a
+  sintética-pai por soma de filhas. A US-145 (fase C1) muda exatamente isso — passa a somar
+  direto na sintética, **depois** do bottom-up. Sem uma trava, a mudança pode vazar
+  silenciosamente para Semáforo/dashboard/Cronograma.
+
+**O que foi feito:**
+1. `src/domain/plano-contas/ValorRealizadoService.test.ts` (**novo**, 9 testes): cada fonte
+   isolada (Viagem, Item, Empregado com overlap de período via `calcularMesesSobreposicao`,
+   Rateio), fallback de conta por componente do Empregado (ADR-029), versão inexistente, um
+   teste "TRAVA US-145" (documenta que hoje toda `contaId` de rateio é tratada igual, sem
+   distinção analítica/sintética) e um golden com as 4 fontes combinadas.
+2. `CalcularValorRealizadoUseCase.test.ts`: novo bloco `describe` (6 testes) — árvore de 3
+   níveis (sintética = soma exata das folhas em cada nível), filha analítica + filha sintética
+   sem dupla contagem, sintética sem filhas, conta inexistente, "TRAVA US-145" (rateio numa
+   analítica propaga para a sintética-pai hoje) e um golden de árvore completa com as 4 fontes.
+   Nenhum teste existente foi alterado.
+3. Validado com `npm install` (funcionou normalmente neste computador — sem o bloqueio de
+   certificado de outras sessões) + `npx vitest run` (23/23 nos 2 arquivos novos, 415/415 na
+   suíte inteira) + `npx tsc --noEmit` (limpo). Repetido depois de puxar os 13 commits que
+   estavam só em `origin/master` (US-142/US-144 mergeadas em 2026-09-04, que refatoraram
+   `ValorRealizadoService.somarPorContaAnalitica` em `somarCustoBrutoPorConta` + rateios) —
+   os 23 testes seguiram verdes sem nenhum ajuste, confirmando que a refatoração da US-144
+   preservou o comportamento.
+4. Commit `4e02c46` em branch nova `test/regressao-valor-realizado-pre-us145` (só os 2 arquivos
+   de teste — `package-lock.json` teve um diff espúrio de `fsevents`/`dev:true`, descartado
+   antes do commit para não levar ruído). Push feito
+   (`git push -u origin test/regressao-valor-realizado-pre-us145`); **PR ainda não aberto** —
+   usuário abre pela UI do GitHub, mesmo padrão das sessões anteriores (sem `gh`/MCP do GitHub
+   autorizado aqui).
+
+**Estado ao pausar:**
+- `origin/master` = `01c5e0a`, sem mudanças. A rede de regressão vive só na branch
+  `test/regressao-valor-realizado-pre-us145` (`4e02c46`), pushada, PR não aberto.
+- **Nenhum código de produção alterado.** Só testes novos.
+- **Próximo passo:** abrir o PR, rodar `/code-review` (fluxo do CLAUDE.md — toca o núcleo de
+  agregação financeira, mesmo sendo só teste) e mergear. **Só depois disso a US-145 começa.**
+
+---
+
 ## Como usar este arquivo em sessões futuras
 
 No início de uma sessão, se o usuário perguntar "qual o contexto/status de X", leia este arquivo antes de assumir que a memória padrão (`~/.claude/.../memory/`) está atualizada — o ambiente deste projeto (Codespace) pode ter sido recriado desde a última sessão, apagando a memória padrão sem apagar o repositório.
