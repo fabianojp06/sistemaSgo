@@ -1358,7 +1358,7 @@ da US-145". Trabalho conduzido pela skill `analista-testes-qa` (Automation Mode)
 
 ---
 
-## 2026-09-07 — PR #21 mergeado (rede de regressão pré-US-145); US-145 desbloqueada
+## 2026-09-07 — PR #21 mergeado (rede de regressão pré-US-145); depois US-145 adiada pelo usuário
 
 Sessão curta de fechamento. Retomada num computador onde `npm install` funciona (sem o bloqueio
 de certificado corporativo de outras redes).
@@ -1383,11 +1383,16 @@ de certificado corporativo de outras redes).
 - **US-145 desbloqueada.** Pré-requisito (congelar a invariante "sintética = soma das filhas"
   antes da fase C1) cumprido.
 
-**Próximo passo:** implementar a **US-145** (imposto sobre conta sintética, `docs/US-145 ...md`,
-ADR-050 Frente B) via `fullstack-dev` — branch + PR + `/code-review`. **Sem migration nova** (a
-da US-144 já cobre `modoValor`/`categoria`; a validação analítica↔sintética é de aplicação).
-Atenção: os testes marcados "TRAVA US-145" nos 2 arquivos de teste vão precisar de atualização
-deliberada junto da decisão C1 — são o alarme, não regressão.
+**Decisão do usuário (ainda em 2026-09-07):** **não executar a US-145** agora — **adiada**, volta
+ao backlog sem data (`⏸️`). Sem motivo técnico, é decisão de prioridade. A rede de regressão do
+PR #21 fica valendo como pré-requisito para quando for retomada. US-146 (que depende
+conceitualmente da US-145) segue junto. **Nenhuma próxima frente foi definida** — não retomar a
+US-145 sem pedido explícito.
+
+**Estado real ao fechar:** `master` = `23f95d1` (docs) depois deste registro. Sem frente ativa.
+Candidatos sem urgência (do `STATUS_PROJETO.md`): build quebrado de `/orcamentario/acompanhamento`
+(pendência #1), follow-up leve da US-141 (#7), `prisma migrate resolve --applied` das 3 migrations
+(#8), tradução EN-US, US-127, desbloquear US-140 (precisa ADR).
 
 ---
 

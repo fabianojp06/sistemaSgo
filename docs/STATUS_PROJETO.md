@@ -14,7 +14,7 @@
 > **Regra:** ao encerrar uma sessão com mudança relevante de estado, atualize este arquivo E
 > `CONTEXTO_SESSOES.md`, e faça commit (fluxo Git híbrido do `CLAUDE.md`).
 
-**Última atualização:** 2026-09-07 (rede de regressão do `ValorRealizadoService`/`CalcularValorRealizadoUseCase` **mergeada** — PR #21, `/code-review` sem findings — US-145 desbloqueada para implementação)
+**Última atualização:** 2026-09-07 (rede de regressão mergeada — PR #21; **US-145 adiada por decisão do usuário** — sem próxima frente definida)
 
 ---
 
@@ -42,9 +42,10 @@
 - **Pendência nova:** `prisma migrate resolve --applied` das 3 últimas migrations (US-141,
   US-142, US-144) — histórico do Prisma fora de sincronia com o banco (mesmo padrão da
   pendência #7c, nunca bloqueou nada até agora).
-- **Próxima frente pronta p/ `fullstack-dev`:** **US-145** (imposto sobre conta sintética —
-  maior risco, ADR-050 Frente B; **pré-requisito de regressão já mergeado, PR #21**) → depois
-  **US-146** (exibir "Custo" vs "Custo c/ Impostos").
+- **Próxima frente:** **nenhuma definida.** US-145 foi **adiada por decisão do usuário**
+  (2026-09-07) — volta ao backlog sem data; a rede de regressão do PR #21 continua valendo como
+  pré-requisito para quando for retomada. US-146 depende conceitualmente da US-145. Candidatos
+  sem urgência: ver "Próximo passo combinado".
 - **Suíte de testes:** neste computador o `npm install` **funciona** (sem o bloqueio de
   certificado de outras redes) — `npx vitest run` / `npx tsc --noEmit` rodam localmente. Em
   2026-09-07: suíte completa verde após o merge do PR #21.
@@ -105,17 +106,16 @@ por Proposta × Versão × Conta. Épico + ADR-050 aceito:
   estamos" acima.
 - ✅ **Atalho de UX entregue** (2026-09-04, PR #20) — vincular Alíquota↔Proposta direto no
   cadastro/edição da alíquota (fora do épico formal, decisão pontual do usuário).
-- 🔜 **US-145** (próxima, **desbloqueada**) — imposto sobre conta sintética (ADR-050 Frente B,
-  `contaId` aceita sintética; nova fase de agregação no `CalcularValorRealizadoUseCase`;
-  invariante "sintética = soma das filhas" passa a ter exceção com flag `temImpostoDireto`).
-  **Maior risco.**
-  **Pré-requisito CUMPRIDO** (PR #21, mergeado 2026-09-07, `c56cc78`): rede de regressão
-  bottom-up (`analista-testes-qa`) — `ValorRealizadoService.test.ts` (novo, 9 testes) + bloco
-  novo em `CalcularValorRealizadoUseCase.test.ts` (6 testes) congelando a invariante atual antes
-  da fase C1. CI verde, `/code-review` sem findings (diff 100% test-only). Validado: suíte
-  isolada 23/23, suíte completa 415/415, `tsc --noEmit` limpo.
-  **Ao implementar a US-145:** os testes "TRAVA US-145" nesses 2 arquivos vão precisar de
-  atualização deliberada (mudam junto da decisão C1) — não são regressão, são o alarme.
+- ⏸️ **US-145 ADIADA** (decisão do usuário, 2026-09-07) — imposto sobre conta sintética
+  (ADR-050 Frente B). Volta ao backlog sem data. Nenhum motivo técnico — decisão de prioridade.
+  **Pré-requisito já feito e mergeado** (PR #21, `c56cc78`): rede de regressão bottom-up
+  (`analista-testes-qa`) — `ValorRealizadoService.test.ts` (novo, 9 testes) + bloco novo em
+  `CalcularValorRealizadoUseCase.test.ts` (6 testes) congelando a invariante "sintética = soma
+  das filhas" antes da fase C1. `/code-review` sem findings (diff 100% test-only). Suíte
+  isolada 23/23, completa 415/415, `tsc` limpo.
+  **Quando for retomada:** os testes marcados "TRAVA US-145" nesses 2 arquivos vão precisar de
+  atualização deliberada (mudam junto da decisão C1) — não são regressão, são o alarme. O resto
+  da rede deve continuar verde intacto.
 - 🔜 **US-146** — exibir "Custo" vs "Custo c/ Impostos" (Semáforo, dashboard US-118, guia Valor
   Orçado). Menor risco, depende de US-145 para fazer sentido completo (mas pode ir isolada).
 - ⏸️ **US-147** (opcional) — separar tributo de índice de reajuste em modelos distintos; dívida
@@ -124,11 +124,9 @@ por Proposta × Versão × Conta. Épico + ADR-050 aceito:
 ## Próximo passo combinado
 
 > **Retomando de outro computador:** leia este arquivo + `docs/CONTEXTO_SESSOES.md` (bloco
-> "2026-09-07"). **Passo imediato:** implementar a **US-145** (imposto sobre conta sintética,
-> `docs/US-145 ...md`, ADR-050 Frente B) via `fullstack-dev` — maior risco do épico, mas o
-> pré-requisito (rede de regressão bottom-up) já está mergeado (PR #21). Branch + PR +
-> `/code-review` (regra financeira). A migration da US-144 (`modoValor`/`categoria`) já cobre a
-> US-145 — **US-145 não tem migration nova** (a validação analítica/sintética é de aplicação).
+> "2026-09-07"). **Nenhuma frente definida.** US-145 foi adiada por decisão do usuário — não
+> retomar sem pedido explícito. Aguardando o usuário escolher o próximo rumo entre os
+> candidatos sem urgência abaixo.
 >
 > Outros candidatos, sem urgência: (a) build de `/orcamentario/acompanhamento` (pendência #1);
 > (b) follow-up leve da US-141 (pendência #7); (c) `prisma migrate resolve --applied` das 3
