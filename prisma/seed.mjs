@@ -248,6 +248,25 @@ async function seedModuloOrcamentario() {
   });
 }
 
+// EP085/24 — Módulo de Administração (Operadores e Permissões). Só o perfil
+// Administrador o acessa (RN_SEED_003); o seed já atribui toda funcionalidade
+// ativa ao Administrador, então basta declarar módulo + funcionalidades aqui.
+async function seedModuloAdministracao() {
+  const modulo = await prisma.modulo.upsert({
+    where: { chave: 'administracao' },
+    update: {},
+    create: { chave: 'administracao', nome: 'Administração' },
+  });
+
+  // UC02.11/UC02.12 — Manter/Cadastrar Usuários. NAVEGAVEL: link próprio no menu,
+  // rota /administracao/usuarios (ver ROTA_POR_FUNCIONALIDADE em MenuLateral.tsx).
+  await prisma.funcionalidade.upsert({
+    where: { moduloId_chave: { moduloId: modulo.id, chave: 'administracao.usuarios' } },
+    update: {},
+    create: { moduloId: modulo.id, chave: 'administracao.usuarios', nome: 'Usuários' },
+  });
+}
+
 // US-111 (ADR-025) — "Gestor Master" nasce como uma linha de Perfil por tenant, sem
 // hierarquia no schema. Recebe só a funcionalidade de homologação — a de aprovação N1
 // já chega ao Administrador automaticamente (linha 117-129, "recebe toda funcionalidade
@@ -310,6 +329,7 @@ async function main() {
 
   await seedModuloPlanoContas();
   await seedModuloOrcamentario();
+  await seedModuloAdministracao();
 
   const totalUsuarios = await prisma.$queryRaw`SELECT count(*)::int AS total FROM "Usuario"`;
   console.log('contagem via SQL bruto:', JSON.stringify(totalUsuarios));
