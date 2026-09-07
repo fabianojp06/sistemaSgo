@@ -5,8 +5,9 @@ import { resolverPermissaoEfetiva } from '@/domain/administracao/resolverPermiss
  * RNF_PLA_REQ_005 — checa se o usuário tem a funcionalidade ativa via algum perfil.
  *
  * EP085/US-203 — o resultado passa por `resolverPermissaoEfetiva`, que subtrai as
- * exceções por usuário (UsuarioPerfilExcecao). FUNDAÇÃO: `excecoes` = [] (passthrough
- * — comportamento idêntico ao anterior). A Frente D busca e aplica as exceções reais.
+ * exceções de acesso por usuário (UsuarioPerfilExcecao): se todos os pares
+ * (perfil, funcionalidade) que concediam a `chave` estiverem excetuados para o
+ * usuário, o acesso é negado.
  */
 export async function usuarioTemFuncionalidade(
   prisma: PrismaClient,
@@ -14,13 +15,19 @@ export async function usuarioTemFuncionalidade(
   usuarioId: string,
   chave: string,
 ): Promise<boolean> {
-  const pares = await prisma.perfilFuncionalidade.findMany({
-    where: {
-      funcionalidade: { chave, ativo: true, modulo: { ativo: true } },
-      perfil: { tenantId, usuarios: { some: { tenantId, usuarioId } } },
-    },
-    select: { perfilId: true, funcionalidadeId: true },
-  });
+  const [pares, excecoes] = await Promise.all([
+    prisma.perfilFuncionalidade.findMany({
+      where: {
+        funcionalidade: { chave, ativo: true, modulo: { ativo: true } },
+        perfil: { tenantId, usuarios: { some: { tenantId, usuarioId } } },
+      },
+      select: { perfilId: true, funcionalidadeId: true },
+    }),
+    prisma.usuarioPerfilExcecao.findMany({
+      where: { tenantId, usuarioId, funcionalidade: { chave } },
+      select: { perfilId: true, funcionalidadeId: true },
+    }),
+  ]);
 
-  return resolverPermissaoEfetiva(pares, []).length > 0;
+  return resolverPermissaoEfetiva(pares, excecoes).length > 0;
 }
