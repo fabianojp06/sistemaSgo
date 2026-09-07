@@ -26,6 +26,15 @@ enum StatusUsuario {
   INATIVO
 }
 
+// EP085 / UC02.12 / US-204 — estado do acesso inicial do usuário. Senha/convite são
+// do Clerk; este enum só rastreia o ciclo do convite do lado do SGO.
+enum SituacaoAcessoUsuario {
+  CONVITE_PENDENTE
+  CONVITE_ENVIADO
+  FALHA_ENVIO_CONVITE
+  ACESSO_ATIVO
+}
+
 enum TipoOperacao {
   RELATORIO_CRONOGRAMA_DESEMBOLSO_EXPORTADO
   LOGIN_SUCESSO
@@ -43,6 +52,12 @@ enum TipoOperacao {
   SEMAFORO_CONFIGURADO
   RATEIO_IMPOSTO_CONFIGURADO
   RATEIO_IMPOSTO_DESATIVADO
+  USUARIO_CRIADO
+  USUARIO_PERFIL_ASSOCIADO
+  USUARIO_PERFIL_DESASSOCIADO
+  USUARIO_PERFIL_EXCECAO_DEFINIDA
+  USUARIO_ACESSO_GERADO
+  USUARIO_CONVITE_REENVIADO
   PROPOSTA_CRIADA
   VERSAO_PROPOSTA_EXCLUIDA
   PROPOSTA_DUPLICADA
@@ -112,20 +127,24 @@ enum CategoriaAliquotaImposto {
 }
 
 model Usuario {
-  id                     String        @id @default(uuid())
-  clerkUserId            String        @unique
+  id                     String                @id @default(uuid())
+  clerkUserId            String                @unique
   tenantId               String
   nomeCompleto           String
-  email                  String        @unique
-  status                 StatusUsuario @default(ATIVO)
-  bloqueado              Boolean       @default(false)
-  contadorFalhas         Int           @default(0)
-  trocarSenhaObrigatoria Boolean       @default(false)
-  createdAt              DateTime      @default(now())
-  updatedAt              DateTime      @updatedAt
+  // EP085 / UC02.12 — login de negócio, único e imutável após o cadastro (RN0065/RN0066).
+  login                  String                @unique
+  email                  String                @unique
+  status                 StatusUsuario         @default(ATIVO)
+  situacaoAcesso         SituacaoAcessoUsuario  @default(CONVITE_PENDENTE)
+  bloqueado              Boolean               @default(false)
+  contadorFalhas         Int                   @default(0)
+  trocarSenhaObrigatoria Boolean               @default(false)
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
 
   historicoOperacoes HistoricoOperacao[]
   perfis             UsuarioPerfil[]
+  perfilExcecoes     UsuarioPerfilExcecao[]
 
   @@index([tenantId])
 }
@@ -157,19 +176,24 @@ model Funcionalidade {
   tipo     TipoFuncionalidade @default(NAVEGAVEL)
   ativo    Boolean            @default(true)
 
-  perfis PerfilFuncionalidade[]
+  perfis   PerfilFuncionalidade[]
+  excecoes UsuarioPerfilExcecao[]
 
   @@unique([moduloId, chave])
 }
 
 // Perfis são definidos por tenant [ADR-001] — RN0027/RN0030 pressupõem permissão por perfil, não por usuário.
 model Perfil {
-  id       String @id @default(uuid())
-  tenantId String
-  nome     String
+  id        String  @id @default(uuid())
+  tenantId  String
+  nome      String
+  // EP085 / UC02.07-UC02.09 — descrição e status do perfil (RN0070).
+  descricao String?
+  ativo     Boolean @default(true)
 
   permissoes PerfilFuncionalidade[]
   usuarios   UsuarioPerfil[]
+  excecoes   UsuarioPerfilExcecao[]
 
   @@unique([tenantId, nome])
   @@index([tenantId])
@@ -193,6 +217,23 @@ model UsuarioPerfil {
 
   @@id([usuarioId, perfilId])
   @@index([tenantId])
+}
+
+// EP085 / UC02.10 / US-203 — exceção de acesso por usuário: REMOVE de um usuário o
+// acesso a uma funcionalidade específica de um perfil ao qual ele pertence (REQ0080).
+// Aditiva por ausência: sem linha aqui, o acesso segue integralmente o perfil.
+model UsuarioPerfilExcecao {
+  usuarioId        String
+  usuario          Usuario        @relation(fields: [usuarioId], references: [id])
+  perfilId         String
+  perfil           Perfil         @relation(fields: [perfilId], references: [id])
+  funcionalidadeId String
+  funcionalidade   Funcionalidade @relation(fields: [funcionalidadeId], references: [id])
+  tenantId         String
+
+  @@id([usuarioId, perfilId, funcionalidadeId])
+  @@index([tenantId])
+  @@index([usuarioId])
 }
 
 // Append-only — nenhuma UPDATE/DELETE deve ser executada nesta tabela [RNF0006]

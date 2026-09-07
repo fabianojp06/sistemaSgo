@@ -31,12 +31,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Usuário sem e-mail primário' }, { status: 422 });
   }
 
+  const loginDerivado =
+    (typeof usuario.username === 'string' && usuario.username.trim()) ||
+    emailPrimario.email_address.split('@')[0];
+
   const sincronizarUsuario = new SincronizarUsuarioClerkUseCase(prisma);
   await sincronizarUsuario.execute({
     clerkUserId: usuario.id,
     tenantId: 'default', // single-tenant enquanto o middleware multi-tenant não existe [src/infrastructure/tenant.ts]
     nomeCompleto: [usuario.first_name, usuario.last_name].filter(Boolean).join(' ') || emailPrimario.email_address,
     email: emailPrimario.email_address,
+    login: loginDerivado,
   });
 
   return NextResponse.json({ sincronizado: true });
