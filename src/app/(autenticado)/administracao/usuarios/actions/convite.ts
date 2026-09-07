@@ -8,8 +8,8 @@ import { NaoAutorizadoError, ReenvioConviteInvalidoError } from '@/domain/admini
 export type ActionResult = { sucesso: true; mensagem: string } | { sucesso: false; mensagem: string };
 
 /**
- * US-204 — reenviar o convite de acesso de um usuário que ainda não fez o 1º login.
- * FUNDAÇÃO: esqueleto. Corpo real na Frente E.
+ * US-204 — ADIADO (envio de e-mail fora de escopo nesta fase, decisão 2026-09-07).
+ * Mantido como esqueleto para não quebrar o barrel de actions.
  */
 export async function reenviarConvite(_usuarioId: string): Promise<ActionResult> {
   try {
