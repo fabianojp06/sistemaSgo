@@ -14,13 +14,15 @@
 
 Cobre o núcleo do UC02.12. O cadastro só é concluído quando **três efeitos ocorrem de forma atômica**:
 
-1. criação da identidade no Clerk via convite (`ConviteIdentidadeService`, ver [[US-204]]);
+1. criação da **identidade no Clerk sem envio de e-mail** (`IdentidadeUsuarioService.criarIdentidade` → `users.createUser({ skipPasswordRequirement: true })`);
 2. persistência do registro `Usuario` local vinculado ao `clerkUserId`;
 3. registro em `HistoricoOperacao` (UC02.22, `TipoOperacao = USUARIO_CRIADO`).
 
 A associação de perfis é **obrigatória** (RN0079) e detalhada em [[US-202]]; as exceções de acesso em [[US-203]]. Este fluxo não permite salvar sem ao menos um perfil.
 
-**Ordem de resiliência (compensação):** a chamada ao Clerk ocorre **antes** do commit local. Se o Clerk falhar, nada é persistido. Se a persistência local (ou o log) falhar **após** o Clerk criar a identidade, o convite é revogado (`ConviteIdentidadeService.revogarConvite`) — não pode restar conta órfã em nenhum dos lados.
+**Decisão 2026-09-07 — sem disparo de e-mail nesta fase.** O Clerk continua sendo o provedor de identidade e o usuário passa a conseguir autenticar após o cadastro, mas o convite/e-mail de definição de senha **não é enviado**. A senha inicial é comunicada/resetada manualmente pelo Administrador (via UC02.13 — fora do escopo desta US). O usuário nasce com `situacaoAcesso = CONVITE_PENDENTE` (identidade criada, senha inicial ainda não comunicada). Ver [[US-204]].
+
+**Ordem de resiliência (compensação):** a chamada ao Clerk ocorre **antes** do commit local. Se o Clerk falhar, nada é persistido. Se a persistência local (ou o log) falhar **após** o Clerk criar a identidade, a identidade é removida (`IdentidadeUsuarioService.excluirIdentidade`) — não pode restar conta órfã em nenhum dos lados.
 
 Regras aplicáveis: RN0065 (login único), RN0066 (login imutável após cadastro — enforçado na US de alteração), REQ0074 (nome, login, e-mail, status obrigatórios), RN0059 (Administrador não digita senha), RNF0004/EP085 + RN0022/EP083 (autorização RBAC revalidada no backend — ver [[US-205]]).
 
@@ -38,11 +40,11 @@ Dado que o usuário autenticado possui perfil "Administrador" no tenant corrente
 Quando ele preenche Nome Completo="João da Silva", E-mail="j.silva@fsg.org.br", Login="j.silva", Status="Ativo"
   E seleciona ao menos um Perfil de Acesso (conforme US-202)
   E clica em [Salvar]
-Então o sistema cria a identidade no Clerk via convite, disparando o e-mail de definição de senha
-  E persiste um registro em Usuario com clerkUserId, tenantId, nomeCompleto, email, login, status=ATIVO, situacaoAcesso=CONVITE_ENVIADO
+Então o sistema cria a identidade no Clerk SEM enviar e-mail
+  E persiste um registro em Usuario com clerkUserId, tenantId, nomeCompleto, email, login, status=ATIVO, situacaoAcesso=CONVITE_PENDENTE
   E persiste as associações de perfil na mesma transação (US-202)
   E grava em HistoricoOperacao: tipoOperacao=USUARIO_CRIADO, usuarioId (executor), dataHoraEvento, descricao "Cadastrou o usuário [João da Silva]", ipEstacao, clerkSessionId, dadosSerializados com a capa criada (sem segredo)
-  E exibe "Usuário cadastrado com sucesso. Um e-mail de acesso foi enviado para j.silva@fsg.org.br."
+  E exibe "Usuário cadastrado com sucesso. A senha inicial deve ser comunicada ao usuário pelo Administrador."
   E retorna para a listagem [UC02.11 — Manter Usuários]
 ```
 
@@ -82,20 +84,20 @@ Então o sistema exibe "Informe um e-mail válido."
   E a operação é bloqueada
 ```
 
-**Cenário 6 — Falha na criação no Clerk aborta o cadastro**
+**Cenário 6 — Falha na criação da identidade no Clerk aborta o cadastro**
 ```gherkin
 Dado que os dados do formulário são válidos
-Quando a chamada de criação de convite no Clerk falha (erro de rede ou rejeição da API)
+Quando a chamada users.createUser no Clerk falha (erro de rede ou rejeição da API)
 Então nenhum registro Usuario é persistido localmente
   E o sistema exibe "Não foi possível criar a conta de acesso no momento. Tente novamente."
   E a exceção é registrada (console.error / SysLog — UC02.21)
 ```
 
-**Cenário 7 — Falha na persistência local após criar no Clerk (compensação)**
+**Cenário 7 — Falha na persistência local após criar a identidade no Clerk (compensação)**
 ```gherkin
-Dado que o convite no Clerk foi criado com sucesso
+Dado que a identidade no Clerk foi criada com sucesso
 Quando a gravação do registro Usuario, das associações de perfil ou do HistoricoOperacao falha
-Então o sistema revoga o convite recém-criado no Clerk (rollback compensatório)
+Então o sistema exclui a identidade recém-criada no Clerk (rollback compensatório)
   E não deixa registro parcial em nenhum dos lados
   E exibe "Falha ao concluir o cadastro. Nenhuma conta foi criada."
 ```
@@ -113,8 +115,8 @@ Então o sistema descarta os dados preenchidos sem criar nada
 | Aspecto | Detalhe |
 |---|---|
 | Tabelas afetadas | `Usuario` (INSERT), `UsuarioPerfil` (INSERT — via US-202), `UsuarioPerfilExcecao` (INSERT — via US-203), `HistoricoOperacao` (INSERT) |
-| Serviço externo | Clerk — `ConviteIdentidadeService.criarConvite` / `.revogarConvite` (porta em `src/application/ports/`) |
-| Transação? | Sim — `prisma.$transaction`: `Usuario` + `UsuarioPerfil` + `UsuarioPerfilExcecao` + `HistoricoOperacao`. Chamada ao Clerk **antes** do commit; falha no commit ⇒ `revogarConvite` (compensação) |
+| Serviço externo | Clerk — `IdentidadeUsuarioService.criarIdentidade` / `.excluirIdentidade` (porta em `src/application/ports/IdentidadeUsuarioService.ts`). **Sem invitations / sem e-mail** nesta fase |
+| Transação? | Sim — `prisma.$transaction`: `Usuario` + `UsuarioPerfil` + `UsuarioPerfilExcecao` + `HistoricoOperacao`. Chamada ao Clerk **antes** do commit; falha no commit ⇒ `excluirIdentidade` (compensação) |
 | Requer lock? | Não — INSERT. Unicidade de `login` e `email` por constraint UNIQUE + verificação prévia para mensagem amigável (`isUniqueConstraintError` como rede de segurança) |
 | Multi-tenant | `tenantId` de `getTenantId()` aplicado ao `Usuario` e a cada `UsuarioPerfil` |
 | Auditoria | `HistoricoOperacao`: tenantId, usuarioId (executor), tipoOperacao=USUARIO_CRIADO, descricao, ipEstacao, clerkSessionId, dadosSerializados (capa, sem senha) |
@@ -123,16 +125,15 @@ Então o sistema descarta os dados preenchidos sem criar nada
 
 ### Dependências
 
-- **Fundação UC02.12** (`feat/uc0212-fundacao`): schema/migration (`login`, `situacaoAcesso`, enums de `TipoOperacao`), stubs de use-case, porta `ConviteIdentidadeService`, `guardAdministrador()`, scaffold da rota
+- **Fundação UC02.12** (mergeada, PR #22 + ajuste "sem convite"): schema/migration (`login`, `situacaoAcesso`, enums de `TipoOperacao`), stubs de use-case, porta `IdentidadeUsuarioService`, `guardAdministrador()`, scaffold da rota
 - [[US-202]] — associação de perfil (mesma tela; salvar exige ≥ 1 perfil)
-- [[US-204]] — geração/envio do acesso inicial (o convite é o mesmo objeto criado aqui)
+- [[US-204]] — fatia reduzida: só define `situacaoAcesso = CONVITE_PENDENTE` + auditoria (envio de e-mail adiado)
 - [[US-205]] — `guardAdministrador()` já protege a action
-- Integração Clerk com convites habilitados
 
 ### Definition of Done
 
 - [ ] Cenários 1 a 8 implementados e aprovados em homologação
-- [ ] Conta nunca fica órfã: testado com falha simulada no Clerk (Cenário 6) e com falha simulada na persistência local (Cenário 7 — `revogarConvite` chamado)
+- [ ] Conta nunca fica órfã: testado com falha simulada no Clerk (Cenário 6) e com falha simulada na persistência local (Cenário 7 — `excluirIdentidade` chamado)
 - [ ] `login` e `email` com constraint UNIQUE no schema + verificação prévia com mensagem amigável
 - [ ] Administrador nunca vê campo de senha (RN0059) — inspeção da UI
 - [ ] Log de auditoria gravado no cenário de sucesso com todos os campos obrigatórios

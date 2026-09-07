@@ -7,13 +7,12 @@ export type GerarAcessoInicialInput = {
   executorId: string;
   usuarioId: string;
   usuarioNome: string;
-  /** resultado do convite já criado pelo CriarUsuarioUseCase (US-201) */
-  conviteEnviado: boolean;
 };
 
 /**
- * US-204 — dentro da transação de cadastro, define `Usuario.situacaoAcesso`
- * (CONVITE_ENVIADO ou FALHA_ENVIO_CONVITE) e grava HistoricoOperacao
+ * US-204 (fatia reduzida — envio de e-mail ADIADO) — dentro da transação de
+ * cadastro, define `Usuario.situacaoAcesso = CONVITE_PENDENTE` (identidade criada,
+ * senha inicial ainda não comunicada) e grava HistoricoOperacao
  * (USUARIO_ACESSO_GERADO) — RN0050. Nenhuma senha é gerada/logada pelo SGO (RN0059).
  *
  * FUNDAÇÃO: stub. Corpo real na Frente E (feat/us-204-acesso-inicial).
