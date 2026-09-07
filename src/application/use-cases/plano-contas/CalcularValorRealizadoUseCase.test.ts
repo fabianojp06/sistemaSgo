@@ -243,3 +243,168 @@ describe('CalcularValorRealizadoUseCase', () => {
     expect(resultado.get('transporte')!.valorRealizado.toNumber()).toBe(100); // 50*2
   });
 });
+
+/**
+ * REDE DE REGRESSÃO — agregação bottom-up, pré US-145 (Imposto sobre Conta
+ * Sintética / ADR-050 C1).
+ *
+ * A US-145 vai inserir uma fase de "ajuste próprio da sintética" DEPOIS do
+ * bottom-up (`agregar`), quebrando de propósito a invariante
+ * "sintética = soma pura das filhas". Estes cenários CONGELAM a invariante
+ * atual — enquanto ela ainda vale — para que a nova fase seja uma adição
+ * consciente e não uma regressão silenciosa no Semáforo. Só alterar os
+ * valores esperados aqui junto de uma decisão registrada na US-145.
+ */
+describe('CalcularValorRealizadoUseCase — invariante bottom-up (pré US-145)', () => {
+  const no = (id: string, idPai: string | null, isAnalitica: boolean): ContaMock => ({
+    id,
+    idPai,
+    isAnalitica,
+    semaforoVerdePct: null,
+    semaforoAmareloPct: null,
+    semaforoLaranjaPct: null,
+  });
+
+  it('árvore de 3 níveis: sintética = soma exata das analíticas-folha, em cada nível', async () => {
+    const prisma = criarPrismaMock({
+      contas: [
+        no('raiz', null, false),
+        no('meio-a', 'raiz', false),
+        no('meio-b', 'raiz', false),
+        no('f1', 'meio-a', true),
+        no('f2', 'meio-a', true),
+        no('f3', 'meio-b', true),
+      ],
+      valoresOrcados: [
+        { contaId: 'f1', valor: 1000 },
+        { contaId: 'f2', valor: 1000 },
+        { contaId: 'f3', valor: 1000 },
+      ],
+      itens: [
+        { contaId: 'f1', valorTotal: 100 },
+        { contaId: 'f2', valorTotal: 200 },
+        { contaId: 'f3', valorTotal: 300 },
+      ],
+    });
+    const useCase = new CalcularValorRealizadoUseCase(prisma as never);
+
+    const r = await useCase.execute('t1', 'v1', ['raiz', 'meio-a', 'meio-b', 'f1']);
+
+    expect(r.get('f1')!.valorRealizado.toNumber()).toBe(100);
+    expect(r.get('meio-a')!.valorRealizado.toNumber()).toBe(300); // 100 + 200
+    expect(r.get('meio-b')!.valorRealizado.toNumber()).toBe(300);
+    expect(r.get('raiz')!.valorRealizado.toNumber()).toBe(600); // soma pura das 3 folhas
+    expect(r.get('raiz')!.valorOrcado.toNumber()).toBe(3000);
+  });
+
+  it('sintética com filha analítica + filha sintética: soma recursiva sem dupla contagem', async () => {
+    const prisma = criarPrismaMock({
+      contas: [
+        no('raiz', null, false),
+        no('an-direta', 'raiz', true),
+        no('sub', 'raiz', false),
+        no('an-neta', 'sub', true),
+      ],
+      itens: [
+        { contaId: 'an-direta', valorTotal: 400 },
+        { contaId: 'an-neta', valorTotal: 600 },
+      ],
+    });
+    const useCase = new CalcularValorRealizadoUseCase(prisma as never);
+
+    const r = await useCase.execute('t1', 'v1', ['raiz', 'sub']);
+
+    expect(r.get('sub')!.valorRealizado.toNumber()).toBe(600);
+    expect(r.get('raiz')!.valorRealizado.toNumber()).toBe(1000);
+  });
+
+  it('sintética sem filhas: realizado 0, parcial false (não sinaliza cobertura incompleta)', async () => {
+    const prisma = criarPrismaMock({ contas: [no('vazia', null, false)] });
+    const useCase = new CalcularValorRealizadoUseCase(prisma as never);
+
+    const badge = (await useCase.execute('t1', 'v1', ['vazia'])).get('vazia')!;
+
+    expect(badge.valorRealizado.toNumber()).toBe(0);
+    expect(badge.valorOrcado.toNumber()).toBe(0);
+    expect(badge.parcial).toBe(false);
+  });
+
+  it('conta inexistente no tenant: zeros e parcial true (comportamento atual documentado)', async () => {
+    const prisma = criarPrismaMock({ contas: [no('c1', null, true)] });
+    const useCase = new CalcularValorRealizadoUseCase(prisma as never);
+
+    const badge = (await useCase.execute('t1', 'v1', ['fantasma'])).get('fantasma')!;
+
+    expect(badge.valorRealizado.toNumber()).toBe(0);
+    expect(badge.parcial).toBe(true);
+  });
+
+  it('TRAVA US-145 — RateioImpostoGrade numa analítica hoje propaga para a sintética-pai via bottom-up', async () => {
+    // Pós US-145, um rateio com contaId SINTÉTICA será somado direto na
+    // sintética (fase C1), não via propagação. Este teste fixa o mundo atual:
+    // rateio sempre em analítica, sempre propagado pelo `agregar`.
+    const prisma = criarPrismaMock({
+      contas: [no('raiz', null, false), no('f1', 'raiz', true), no('f2', 'raiz', true)],
+      itens: [{ contaId: 'f1', valorTotal: 200000 }],
+      rateiosImposto: [{ contaId: 'f1', valorDeclarado: 18500 }],
+    });
+    const useCase = new CalcularValorRealizadoUseCase(prisma as never);
+
+    const r = await useCase.execute('t1', 'v1', ['raiz', 'f1', 'f2']);
+
+    expect(r.get('f1')!.valorRealizado.toNumber()).toBe(218500);
+    expect(r.get('f2')!.valorRealizado.toNumber()).toBe(0);
+    expect(r.get('raiz')!.valorRealizado.toNumber()).toBe(218500); // soma pura das filhas
+  });
+
+  it('GOLDEN — árvore + 4 fontes + overlap de Empregado: badge completo por conta', async () => {
+    const propostaPeriodo = { dataInicio: new Date('2026-01-01'), dataFim: new Date('2026-12-31') };
+    const prisma = criarPrismaMock({
+      propostaPeriodo,
+      contas: [
+        no('raiz', null, false),
+        no('pessoal', 'raiz', true),
+        no('viagens', 'raiz', false),
+        no('c-passagem', 'viagens', true),
+        no('c-diaria', 'viagens', true),
+        no('c-transporte', 'viagens', true),
+        no('bens', 'raiz', true),
+      ],
+      valoresOrcados: [
+        { contaId: 'pessoal', valor: 100000 },
+        { contaId: 'bens', valor: 50000 },
+      ],
+      empregados: [
+        { contaId: 'pessoal', custoTotalMensal: 5000, periodoInicio: new Date('2026-01-01'), periodoFim: null }, // 12m
+        { contaId: 'pessoal', custoTotalMensal: 3000, periodoInicio: new Date('2026-07-01'), periodoFim: null }, // 6m
+      ],
+      viagens: [
+        {
+          contaPassagemId: 'c-passagem',
+          contaDiariaId: 'c-diaria',
+          contaTransporteId: 'c-transporte',
+          quantidadePessoas: 3,
+          mediaDias: 4,
+          custoUnitarioPassagem: 800,
+          custoUnitarioDiaria: 250,
+          custoUnitarioTransporte: 120,
+        },
+      ],
+      itens: [{ contaId: 'bens', valorTotal: 45000 }],
+      rateiosImposto: [{ contaId: 'pessoal', valorDeclarado: 8500 }],
+    });
+    const useCase = new CalcularValorRealizadoUseCase(prisma as never);
+
+    const r = await useCase.execute('t1', 'v1', ['raiz', 'pessoal', 'viagens', 'bens']);
+
+    const pessoal = 5000 * 12 + 3000 * 6 + 8500; // 86500
+    const viagens = 800 * 3 + 250 * 3 * 4 + 120 * 3; // 2400 + 3000 + 360 = 5760
+    const bens = 45000;
+
+    expect(r.get('pessoal')!.valorRealizado.toNumber()).toBe(pessoal);
+    expect(r.get('viagens')!.valorRealizado.toNumber()).toBe(viagens);
+    expect(r.get('bens')!.valorRealizado.toNumber()).toBe(bens);
+    expect(r.get('raiz')!.valorRealizado.toNumber()).toBe(pessoal + viagens + bens); // 137260
+    expect(r.get('raiz')!.parcial).toBe(false);
+  });
+});
