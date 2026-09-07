@@ -1358,6 +1358,39 @@ da US-145". Trabalho conduzido pela skill `analista-testes-qa` (Automation Mode)
 
 ---
 
+## 2026-09-07 — PR #21 mergeado (rede de regressão pré-US-145); US-145 desbloqueada
+
+Sessão curta de fechamento. Retomada num computador onde `npm install` funciona (sem o bloqueio
+de certificado corporativo de outras redes).
+
+**O que foi feito:**
+- `git pull` — 2 commits novos na `master` desde 2026-09-05 (traduções EN-US US-126→US-131, sem
+  relação com o épico).
+- `/code-review` no **PR #21** (rede de regressão bottom-up de `ValorRealizadoService` /
+  `CalcularValorRealizadoUseCase`): **0 findings** — o diff é 100% `*.test.ts`, fora do escopo
+  do review de correção. CI do PR já estava verde (`test` = lint+tsc+vitest+build, Vercel,
+  GitGuardian).
+- **PR #21 mergeado** pelo usuário (squash, `c56cc78`, 2026-09-07T18:41:05Z). Merge via `gh`
+  pelo assistente foi **bloqueado pelo classificador de permissões** — usuário mergeou pela UI.
+  Branch local `test/regressao-valor-realizado-pre-us145` apagada; a branch **remota** não foi
+  apagada no merge (limpeza pendente, sem impacto).
+- `docs/STATUS_PROJETO.md` e este arquivo atualizados.
+
+**Estado ao final:**
+- `master` = `c56cc78`. Rede de regressão (`ValorRealizadoService.test.ts` + bloco novo em
+  `CalcularValorRealizadoUseCase.test.ts`, 15 testes) agora na `master`. Nenhum código de
+  produção alterado por esse PR.
+- **US-145 desbloqueada.** Pré-requisito (congelar a invariante "sintética = soma das filhas"
+  antes da fase C1) cumprido.
+
+**Próximo passo:** implementar a **US-145** (imposto sobre conta sintética, `docs/US-145 ...md`,
+ADR-050 Frente B) via `fullstack-dev` — branch + PR + `/code-review`. **Sem migration nova** (a
+da US-144 já cobre `modoValor`/`categoria`; a validação analítica↔sintética é de aplicação).
+Atenção: os testes marcados "TRAVA US-145" nos 2 arquivos de teste vão precisar de atualização
+deliberada junto da decisão C1 — são o alarme, não regressão.
+
+---
+
 ## Como usar este arquivo em sessões futuras
 
 No início de uma sessão, se o usuário perguntar "qual o contexto/status de X", leia este arquivo antes de assumir que a memória padrão (`~/.claude/.../memory/`) está atualizada — o ambiente deste projeto (Codespace) pode ter sido recriado desde a última sessão, apagando a memória padrão sem apagar o repositório.
