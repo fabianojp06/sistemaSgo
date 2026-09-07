@@ -15,6 +15,7 @@ describe('SincronizarUsuarioClerkUseCase', () => {
       tenantId: 'default',
       nomeCompleto: 'Fabiano Garcia',
       email: 'fabiano@example.com',
+      login: 'fabiano',
     });
 
     expect(prisma.usuario.upsert).toHaveBeenCalledWith({
@@ -25,6 +26,7 @@ describe('SincronizarUsuarioClerkUseCase', () => {
         tenantId: 'default',
         nomeCompleto: 'Fabiano Garcia',
         email: 'fabiano@example.com',
+        login: 'fabiano',
       },
     });
   });
