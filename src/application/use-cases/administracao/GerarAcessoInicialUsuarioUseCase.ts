@@ -14,11 +14,26 @@ export type GerarAcessoInicialInput = {
  * cadastro, define `Usuario.situacaoAcesso = CONVITE_PENDENTE` (identidade criada,
  * senha inicial ainda não comunicada) e grava HistoricoOperacao
  * (USUARIO_ACESSO_GERADO) — RN0050. Nenhuma senha é gerada/logada pelo SGO (RN0059).
- *
- * FUNDAÇÃO: stub. Corpo real na Frente E (feat/us-204-acesso-inicial).
+ * A promoção a ACESSO_ATIVO acontece no 1º login, via webhook do Clerk.
  */
 export class GerarAcessoInicialUsuarioUseCase {
-  async execute(_input: GerarAcessoInicialInput): Promise<{ situacaoAcesso: SituacaoAcessoUsuario }> {
-    throw new Error('GerarAcessoInicialUsuarioUseCase: não implementado (Frente E / US-204).');
+  async execute(input: GerarAcessoInicialInput): Promise<{ situacaoAcesso: SituacaoAcessoUsuario }> {
+    const situacaoAcesso: SituacaoAcessoUsuario = 'CONVITE_PENDENTE';
+
+    await input.tx.usuario.update({
+      where: { id: input.usuarioId },
+      data: { situacaoAcesso },
+    });
+    await input.tx.historicoOperacao.create({
+      data: {
+        tenantId: input.tenantId,
+        usuarioId: input.executorId,
+        tipoOperacao: 'USUARIO_ACESSO_GERADO',
+        descricao: `Gerou o acesso inicial do usuário "${input.usuarioNome}"`,
+        dadosSerializados: { usuarioId: input.usuarioId, situacaoAcesso },
+      },
+    });
+
+    return { situacaoAcesso };
   }
 }

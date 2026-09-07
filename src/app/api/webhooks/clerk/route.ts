@@ -18,6 +18,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Assinatura de webhook inválida' }, { status: 400 });
   }
 
+  // EP085/US-204 — no 1º login o usuário deixa de estar "aguardando acesso".
+  if (evento.type === 'session.created') {
+    const clerkUserId = evento.data.user_id;
+    if (typeof clerkUserId === 'string') {
+      await prisma.usuario.updateMany({
+        where: { clerkUserId, situacaoAcesso: { in: ['CONVITE_PENDENTE', 'CONVITE_ENVIADO', 'FALHA_ENVIO_CONVITE'] } },
+        data: { situacaoAcesso: 'ACESSO_ATIVO' },
+      });
+    }
+    return NextResponse.json({ sincronizado: true, evento: 'session.created' });
+  }
+
   if (evento.type !== 'user.created' && evento.type !== 'user.updated') {
     return NextResponse.json({ ignorado: evento.type });
   }

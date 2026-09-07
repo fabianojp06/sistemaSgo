@@ -70,8 +70,12 @@ export class ObterMenuUsuarioUseCase {
       }
     }
 
-    // EP085/US-203 — exceções por usuário entram aqui (hoje vazio: passthrough).
-    const efetivas = resolverPermissaoEfetiva(concedidas, []);
+    // EP085/US-203 — subtrai as exceções de acesso por usuário (UsuarioPerfilExcecao).
+    const excecoes = await this.prisma.usuarioPerfilExcecao.findMany({
+      where: { tenantId, usuarioId },
+      select: { perfilId: true, funcionalidadeId: true },
+    });
+    const efetivas = resolverPermissaoEfetiva(concedidas, excecoes);
 
     const modulosPorChave = new Map<string, ModuloMenu>();
     for (const item of efetivas) {
