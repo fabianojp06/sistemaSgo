@@ -10,6 +10,11 @@ const ROTA_POR_FUNCIONALIDADE: Record<string, string> = {
   'propostas.visualizar': '/propostas',
   'orcamentario.visualizar': '/orcamentario',
   'orcamentario.premissas-reajustes.visualizar': '/orcamentario#premissas-reajustes',
+  // Sem entrada aqui, o item cai no fallback `<span>` do render abaixo e aparece
+  // cinza e não-clicável no menu — foi o que aconteceu com o Relatório de
+  // Cronograma de Desembolso desde a US-138.
+  'orcamentario.cronograma-desembolso-relatorio.visualizar': '/orcamentario/cronograma-desembolso-relatorio',
+  'orcamentario.anexo6-custo-empregados.visualizar': '/orcamentario/anexo6-custo-empregados',
   'aliquotas-impostos.visualizar': '/aliquotas-impostos',
   'tabela-salarial.visualizar': '/tabela-salarial',
 };

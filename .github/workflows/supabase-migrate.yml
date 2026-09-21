@@ -22,6 +22,17 @@ jobs:
   migrate:
     runs-on: ubuntu-latest
     env:
+      # 2026-09-21: renomeadas para os nomes que o datasource do schema.prisma
+      # passou a ler em 2026-08-27 (PR #13, troca de DATABASE_URL pelo par da
+      # integração Supabase↔Vercel). Com os nomes antigos, `prisma migrate
+      # deploy` e o seed falhavam em "Environment variable not found:
+      # POSTGRES_PRISMA_URL" — por isso a última execução verde deste workflow
+      # é de 2026-08-03. São os MESMOS secrets, apontando para o MESMO banco:
+      # só o nome da variável muda. DATABASE_URL/DIRECT_URL seguem exportadas
+      # para os scripts avulsos (remover-usuario-orfao, limpar-plano-contas),
+      # que criam o PrismaClient pelo mesmo schema.
+      POSTGRES_PRISMA_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+      POSTGRES_URL_NON_POOLING: ${{ secrets.SUPABASE_DIRECT_URL }}
       DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
       DIRECT_URL: ${{ secrets.SUPABASE_DIRECT_URL }}
       CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
