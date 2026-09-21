@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client';
 import type { FaixaPlanoSaude, TipoValorAdicional } from '@prisma/client';
 
-type BeneficiosCargo = {
+export type BeneficiosCargo = {
   encargosSociaisPct: Prisma.Decimal.Value;
   vaAtivo: boolean;
   vaValorUnitario: Prisma.Decimal.Value;

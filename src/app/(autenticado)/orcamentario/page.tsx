@@ -20,6 +20,14 @@ function IconeRelatorio() {
     </svg>
   );
 }
+function IconeAnexo6() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-[1.2rem] w-[1.2rem]">
+      <path d="M6 3h8l4 4v14H6z" strokeLinejoin="round" />
+      <path d="M14 3v4h4M9 12h6M9 16h6" strokeLinecap="round" />
+    </svg>
+  );
+}
 function IconeAcompanhamento() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-[1.2rem] w-[1.2rem]">
@@ -114,6 +122,9 @@ export default async function OrcamentarioPage() {
   const podeVerRelatorioCronograma = usuario
     ? await usuarioTemFuncionalidade(prisma, tenantId, usuario.id, 'orcamentario.cronograma-desembolso-relatorio.visualizar')
     : false;
+  const podeVerAnexo6 = usuario
+    ? await usuarioTemFuncionalidade(prisma, tenantId, usuario.id, 'orcamentario.anexo6-custo-empregados.visualizar')
+    : false;
 
   const propostas = await prisma.proposta.findMany({
     where: { tenantId },
@@ -158,6 +169,16 @@ export default async function OrcamentarioPage() {
             status="pronto"
             titulo="Relatório de Cronograma"
             descricao="Filtro por Termo Aditivo e Exercício, Totais Finais, exportação com trilha de auditoria."
+            rotuloAcao="Abrir relatório"
+          />
+        )}
+        {podeVerAnexo6 && (
+          <RelatorioTile
+            href="/orcamentario/anexo6-custo-empregados"
+            icone={<IconeAnexo6 />}
+            status="pronto"
+            titulo="ANEXO 6 — Custo de Empregados"
+            descricao="Composição dos custos de remuneração e benefícios por Cargo, no layout da IN 05/2017."
             rotuloAcao="Abrir relatório"
           />
         )}
