@@ -176,16 +176,28 @@ describe('montarAnexo6 — regras de montagem das colunas', () => {
     expect(valorDaLinha(anexo, '2.3', 'Outros (Auxílio-Creche)')).toBe('300.00');
   });
 
-  it('adicionais e função gratificada aparecem no Módulo 1, sem entrar na base de encargos (ADR-044)', () => {
+  it('adicionais aparecem no Módulo 1 sem entrar na base de encargos (ADR-044)', () => {
     const anexo = montarAnexo6(
-      [cargo({ periculosidadeAtivo: true, periculosidadeTipo: 'PERCENTUAL', periculosidadeValor: '30', funcaoGratificada: '500.00' })],
+      [cargo({ periculosidadeAtivo: true, periculosidadeTipo: 'PERCENTUAL', periculosidadeValor: '30' })],
       DIAS_UTEIS,
     );
 
     expect(valorDaLinha(anexo, '1', 'Adicional de Periculosidade')).toBe('1855.37'); // 30% de 6.184,57
-    expect(valorDaLinha(anexo, '1', 'Outros (Função Gratificada)')).toBe('500.00');
-    expect(valorDaLinha(anexo, '1', 'Total')).toBe('8539.94');
-    // 13º continua 8,33% do Salário-Base, não do Módulo 1 inteiro
+    expect(valorDaLinha(anexo, '1', 'Total')).toBe('8039.94'); // 6.184,57 + 1.855,37
+    // 13º continua 8,33% do salário, não do Módulo 1 inteiro (que já tem o adicional)
     expect(valorDaLinha(anexo, '2.1', '13º (décimo terceiro) Salário')).toBe('515.17');
+  });
+
+  it('Função Gratificada NÃO é contada duas vezes: Salário-Base (A) + Gratificação (G) = Cargo.salarioTotal', () => {
+    // `Cargo.salarioTotal` do banco já é "Fonte Ativa + Função Gratificada"
+    // (US-107/calcularSalarioTotalCargo) — aqui, 5.684,57 de fonte + 500,00.
+    const anexo = montarAnexo6([cargo({ salarioTotal: '6184.57', funcaoGratificada: '500.00' })], DIAS_UTEIS);
+
+    expect(valorDaLinha(anexo, '1', 'Salário-Base*')).toBe('5684.57');
+    expect(valorDaLinha(anexo, '1', 'Outros (Função Gratificada)')).toBe('500.00');
+    expect(valorDaLinha(anexo, '1', 'Total')).toBe('6184.57');
+    // Encargos continuam sobre o salarioTotal cheio (A + G), não sobre a linha A
+    expect(valorDaLinha(anexo, '2.1', '13º (décimo terceiro) Salário')).toBe('515.17');
+    expect(valorDaLinha(anexo, '2.2', 'INSS')).toBe('1236.91');
   });
 });

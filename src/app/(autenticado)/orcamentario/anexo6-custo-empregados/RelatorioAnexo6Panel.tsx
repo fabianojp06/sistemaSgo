@@ -25,10 +25,14 @@ export function RelatorioAnexo6Panel({
   codigoProposta,
   nomeProposta,
   anexo,
+  geradoEm,
 }: {
   codigoProposta: string;
   nomeProposta: string;
   anexo: Anexo6Serializado;
+  /** Carimbo de geração calculado no servidor — `new Date()` no corpo do
+   *  Client Component faria o HTML do servidor divergir do cliente. */
+  geradoEm: string;
 }) {
   const [pending, startTransition] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
@@ -274,10 +278,10 @@ export function RelatorioAnexo6Panel({
       <p className="text-[11px] text-[#8A8F98] dark:text-[#767C89] print:hidden">
         * Salário-Base conforme cadastro do Cargo. A coluna <strong>Total</strong> é a soma simples das colunas de Cargo (valor por
         empregado), sem multiplicar pelo número de empregados — igual ao anexo de referência. Percentuais dos Módulos 2, 3 e 6 são
-        fixos (IN 05/2017). Relatório gerado em {new Date().toLocaleString('pt-BR')}.
+        fixos (IN 05/2017). Relatório gerado em {geradoEm}.
       </p>
       <p className="hidden text-center text-[10px] uppercase print:block">
-        ANEXO 6 — Composição de Custo de Empregados — gerado em {new Date().toLocaleString('pt-BR')}
+        ANEXO 6 — Composição de Custo de Empregados — gerado em {geradoEm}
       </p>
     </div>
   );

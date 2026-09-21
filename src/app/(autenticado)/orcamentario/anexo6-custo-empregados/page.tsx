@@ -59,7 +59,11 @@ export default async function Anexo6CustoEmpregadosPage({
 
       const [cargos, contagemEmpregados, parametros] = await Promise.all([
         prisma.cargo.findMany({
-          where: { tenantId, propostaId: proposta.id, ativo: true },
+          // Cargo RASCUNHO (ADR-042) tem salarioTotal 0 e nem conta/período
+          // definidos — entraria como coluna toda zerada num documento formal,
+          // e ainda consumiria um bloco de páginas no PDF. Mesmo filtro já
+          // usado em propostas/[id]/[[...guia]]/page.tsx.
+          where: { tenantId, propostaId: proposta.id, ativo: true, status: { not: 'RASCUNHO' } },
           orderBy: { nomeCargoMercado: 'asc' },
           select: {
             id: true,
@@ -174,7 +178,12 @@ export default async function Anexo6CustoEmpregadosPage({
       )}
 
       {propostaSelecionada && anexo && (
-        <RelatorioAnexo6Panel codigoProposta={propostaSelecionada.codigo} nomeProposta={propostaSelecionada.nome} anexo={anexo} />
+        <RelatorioAnexo6Panel
+          codigoProposta={propostaSelecionada.codigo}
+          nomeProposta={propostaSelecionada.nome}
+          anexo={anexo}
+          geradoEm={new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
+        />
       )}
     </main>
   );

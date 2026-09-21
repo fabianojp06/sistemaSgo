@@ -135,9 +135,13 @@ export function exportarParaPDF(params: {
           dados.cell.styles.textColor = [91, 98, 112];
         }
       },
-      didDrawPage: (dados) => {
+      didDrawPage: () => {
         const alturaPagina = doc.internal.pageSize.getHeight();
-        const textoRodape = params.rodape ? `${params.rodape} — Página ${dados.pageNumber}` : `Página ${dados.pageNumber}`;
+        // `dados.pageNumber` do autoTable reinicia em 1 a cada chamada — com a
+        // paginação por blocos de colunas o rodapé sairia "1, 2, 1, 2...".
+        // O número do documento vem do próprio jsPDF.
+        const numeroPagina = doc.getCurrentPageInfo().pageNumber;
+        const textoRodape = params.rodape ? `${params.rodape} — Página ${numeroPagina}` : `Página ${numeroPagina}`;
         doc.setFontSize(8);
         doc.text(textoRodape, larguraPagina / 2, alturaPagina - 8, { align: 'center' });
       },

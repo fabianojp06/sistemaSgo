@@ -87,22 +87,31 @@ type ComposicaoCargo = {
 /**
  * Base de incidência dos Módulos 2.1, 2.2 e 3.
  *
- * ATENÇÃO — regra de negócio a confirmar com AN/PO: usamos o Salário-Base
- * (Cargo.salarioTotal), NÃO o total do Módulo 1. É o que mantém o anexo
- * coerente com `calcularCustoTotalCargo` (ADR-044: Periculosidade e
- * Insalubridade são somadas DEPOIS dos encargos e nunca compõem a base).
- * No anexo de referência os dois critérios dão o mesmo número, porque lá
- * Periculosidade e Insalubridade são zero — a divergência só aparece em Cargo
- * com adicional ativo. Trocar de critério é mudar esta única função.
+ * É o `Cargo.salarioTotal` — que já é "valor da Fonte Ativa + Função
+ * Gratificada" (US-107, `calcularSalarioTotalCargo`), ou seja, as linhas A + G
+ * do Módulo 1. Fica de fora só Periculosidade/Insalubridade, coerente com
+ * `calcularCustoTotalCargo` (ADR-044: adicionais entram DEPOIS dos encargos e
+ * nunca compõem a base).
+ *
+ * ATENÇÃO — regra a confirmar com AN/PO: no anexo de referência os adicionais
+ * são zero, então esse critério e "encargos sobre o Módulo 1 inteiro" dão o
+ * mesmo número; a divergência só aparece em Cargo com adicional ativo. Trocar
+ * de critério é mudar esta única função.
  */
-function baseDeEncargos(salarioBase: Prisma.Decimal): Prisma.Decimal {
-  return salarioBase;
+function baseDeEncargos(salarioTotal: Prisma.Decimal): Prisma.Decimal {
+  return salarioTotal;
 }
 
 function comporCargo(cargo: CargoParaAnexo6, diasUteisPadrao: number, pct: PercentuaisAnexo6): ComposicaoCargo {
-  const salarioBase = dinheiro(new Prisma.Decimal(cargo.salarioTotal));
+  // `Cargo.salarioTotal` NÃO é a linha A do anexo: ele já embute a Função
+  // Gratificada (US-107). A linha A é o salário sem a gratificação, que volta
+  // sozinha na linha G — somar as duas sem descontar contaria a gratificação
+  // duas vezes e inflaria Módulo 1, Subtotal, PIS, ISS e o Valor Total.
+  const salarioTotal = dinheiro(new Prisma.Decimal(cargo.salarioTotal));
   const componentes = calcularBreakdownComponenteCusto(cargo, cargo.salarioTotal, diasUteisPadrao);
-  const base = baseDeEncargos(salarioBase);
+  const gratificacao = dinheiro(componentes.gratificacao);
+  const salarioBase = salarioTotal.minus(gratificacao);
+  const base = baseDeEncargos(salarioTotal);
 
   const modulo1 = {
     A: salarioBase,
@@ -111,7 +120,7 @@ function comporCargo(cargo: CargoParaAnexo6, diasUteisPadrao: number, pct: Perce
     D: ZERO, // Adicional Noturno — não modelado no SGO
     E: ZERO, // Hora Noturna Reduzida — não modelado no SGO
     F: ZERO, // Hora Extra — não modelado no SGO
-    G: dinheiro(componentes.gratificacao),
+    G: gratificacao,
     total: ZERO,
   };
   modulo1.total = somar([modulo1.A, modulo1.B, modulo1.C, modulo1.D, modulo1.E, modulo1.F, modulo1.G]);
