@@ -246,6 +246,20 @@ async function seedModuloOrcamentario() {
       nome: 'Relatório de Cronograma de Desembolso',
     },
   });
+
+  // ANEXO 6 — Composição dos Custos de Remuneração e Benefícios (Empregados).
+  // Relatório formal por Proposta, no layout da IN 05/2017 (uma coluna por
+  // Cargo), com exportação PDF/XLSX auditada. NAVEGAVEL — aponta pro seletor
+  // de Proposta, igual ao Relatório de Cronograma de Desembolso.
+  await prisma.funcionalidade.upsert({
+    where: { moduloId_chave: { moduloId: modulo.id, chave: 'orcamentario.anexo6-custo-empregados.visualizar' } },
+    update: {},
+    create: {
+      moduloId: modulo.id,
+      chave: 'orcamentario.anexo6-custo-empregados.visualizar',
+      nome: 'ANEXO 6 — Composição de Custo de Empregados',
+    },
+  });
 }
 
 // US-111 (ADR-025) — "Gestor Master" nasce como uma linha de Perfil por tenant, sem

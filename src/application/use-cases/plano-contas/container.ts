@@ -13,6 +13,7 @@ import { SincronismoCargoMercadoCatalogoLockRepository } from '@/infrastructure/
 import { SincronizarCargoMercadoCatalogoUseCase } from './SincronizarCargoMercadoCatalogoUseCase';
 import { BuscarCargoMercadoCatalogoUseCase } from './BuscarCargoMercadoCatalogoUseCase';
 import { RegistrarExportacaoRelatorioCronogramaUseCase } from './RegistrarExportacaoRelatorioCronogramaUseCase';
+import { RegistrarExportacaoAnexo6UseCase } from './RegistrarExportacaoAnexo6UseCase';
 import { CriarAgrupadorUseCase } from './CriarAgrupadorUseCase';
 import { EditarAgrupadorUseCase } from './EditarAgrupadorUseCase';
 import { ExcluirAgrupadorUseCase } from './ExcluirAgrupadorUseCase';
@@ -218,6 +219,10 @@ export function getBuscarCargoMercadoCatalogoUseCase(): BuscarCargoMercadoCatalo
 
 export function getRegistrarExportacaoRelatorioCronogramaUseCase(): RegistrarExportacaoRelatorioCronogramaUseCase {
   return new RegistrarExportacaoRelatorioCronogramaUseCase(prisma);
+}
+
+export function getRegistrarExportacaoAnexo6UseCase(): RegistrarExportacaoAnexo6UseCase {
+  return new RegistrarExportacaoAnexo6UseCase(prisma);
 }
 
 export function getCadastrarMetaUseCase(): CadastrarMetaUseCase {

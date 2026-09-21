@@ -63,6 +63,29 @@ export async function exportarParaXLSX(params: {
   dispararDownload(blob, `${params.nomeArquivo}.xlsx`);
 }
 
+/**
+ * Divide as colunas em blocos que cabem na página, repetindo as colunas fixas
+ * (rótulo da linha, percentual…) no começo de cada bloco. Sem
+ * `colunasPorBloco`, devolve um bloco só — comportamento pré-existente.
+ */
+function dividirColunasEmBlocos(
+  colunas: ColunaRelatorio[],
+  colunasFixas: number,
+  colunasPorBloco?: number,
+): ColunaRelatorio[][] {
+  if (!colunasPorBloco || colunasPorBloco <= 0) return [colunas];
+
+  const fixas = colunas.slice(0, colunasFixas);
+  const variaveis = colunas.slice(colunasFixas);
+  if (variaveis.length <= colunasPorBloco) return [colunas];
+
+  const blocos: ColunaRelatorio[][] = [];
+  for (let inicio = 0; inicio < variaveis.length; inicio += colunasPorBloco) {
+    blocos.push([...fixas, ...variaveis.slice(inicio, inicio + colunasPorBloco)]);
+  }
+  return blocos;
+}
+
 export function exportarParaPDF(params: {
   nomeArquivo: string;
   titulo: string;
@@ -70,43 +93,55 @@ export function exportarParaPDF(params: {
   colunas: ColunaRelatorio[];
   linhas: LinhaRelatorio[];
   rodape?: string;
+  /** Colunas iniciais repetidas em cada bloco de páginas (padrão: 1). */
+  colunasFixas?: number;
+  /** Máximo de colunas variáveis por bloco. Omitido = tudo numa tabela só —
+   *  é o comportamento usado pelos relatórios de poucas colunas. */
+  colunasPorBloco?: number;
 }): void {
   if (typeof window === 'undefined') return;
 
   const doc = new jsPDF({ orientation: 'landscape' });
   const larguraPagina = doc.internal.pageSize.getWidth();
+  const blocos = dividirColunasEmBlocos(params.colunas, params.colunasFixas ?? 1, params.colunasPorBloco);
 
-  doc.setFontSize(14);
-  doc.text(params.titulo, larguraPagina / 2, 15, { align: 'center' });
+  blocos.forEach((colunasDoBloco, indiceBloco) => {
+    if (indiceBloco > 0) doc.addPage();
 
-  if (params.subtitulo) {
-    doc.setFontSize(10);
-    doc.text(params.subtitulo, larguraPagina / 2, 21, { align: 'center' });
-  }
+    doc.setFontSize(14);
+    doc.text(params.titulo, larguraPagina / 2, 15, { align: 'center' });
 
-  autoTable(doc, {
-    startY: params.subtitulo ? 27 : 22,
-    head: [params.colunas.map((c) => c.rotulo)],
-    body: params.linhas.map((linha) => params.colunas.map((c) => String(linha[c.chave] ?? ''))),
-    styles: { fontSize: 8 },
-    headStyles: { fillColor: [43, 95, 217] },
-    didParseCell: (dados) => {
-      if (dados.section !== 'body') return;
-      const estilo = params.linhas[dados.row.index]?.estiloLinha ?? 'normal';
-      if (estilo === 'subtotal' || estilo === 'total') {
-        dados.cell.styles.fontStyle = 'bold';
-        dados.cell.styles.fillColor = estilo === 'total' ? [217, 226, 243] : [238, 241, 246];
-      } else if (estilo === 'subitem') {
-        dados.cell.styles.fontStyle = 'italic';
-        dados.cell.styles.textColor = [91, 98, 112];
-      }
-    },
-    didDrawPage: (dados) => {
-      const alturaPagina = doc.internal.pageSize.getHeight();
-      const textoRodape = params.rodape ? `${params.rodape} — Página ${dados.pageNumber}` : `Página ${dados.pageNumber}`;
-      doc.setFontSize(8);
-      doc.text(textoRodape, larguraPagina / 2, alturaPagina - 8, { align: 'center' });
-    },
+    const sufixoBloco = blocos.length > 1 ? ` (colunas ${indiceBloco + 1} de ${blocos.length})` : '';
+    const subtitulo = params.subtitulo ? `${params.subtitulo}${sufixoBloco}` : sufixoBloco.trim();
+    if (subtitulo) {
+      doc.setFontSize(10);
+      doc.text(subtitulo, larguraPagina / 2, 21, { align: 'center' });
+    }
+
+    autoTable(doc, {
+      startY: subtitulo ? 27 : 22,
+      head: [colunasDoBloco.map((c) => c.rotulo)],
+      body: params.linhas.map((linha) => colunasDoBloco.map((c) => String(linha[c.chave] ?? ''))),
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [43, 95, 217] },
+      didParseCell: (dados) => {
+        if (dados.section !== 'body') return;
+        const estilo = params.linhas[dados.row.index]?.estiloLinha ?? 'normal';
+        if (estilo === 'subtotal' || estilo === 'total') {
+          dados.cell.styles.fontStyle = 'bold';
+          dados.cell.styles.fillColor = estilo === 'total' ? [217, 226, 243] : [238, 241, 246];
+        } else if (estilo === 'subitem') {
+          dados.cell.styles.fontStyle = 'italic';
+          dados.cell.styles.textColor = [91, 98, 112];
+        }
+      },
+      didDrawPage: (dados) => {
+        const alturaPagina = doc.internal.pageSize.getHeight();
+        const textoRodape = params.rodape ? `${params.rodape} — Página ${dados.pageNumber}` : `Página ${dados.pageNumber}`;
+        doc.setFontSize(8);
+        doc.text(textoRodape, larguraPagina / 2, alturaPagina - 8, { align: 'center' });
+      },
+    });
   });
 
   doc.save(`${params.nomeArquivo}.pdf`);
