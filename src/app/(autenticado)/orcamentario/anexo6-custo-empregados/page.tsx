@@ -179,6 +179,7 @@ export default async function Anexo6CustoEmpregadosPage({
 
       {propostaSelecionada && anexo && (
         <RelatorioAnexo6Panel
+          propostaId={propostaSelecionada.id}
           codigoProposta={propostaSelecionada.codigo}
           nomeProposta={propostaSelecionada.nome}
           anexo={anexo}

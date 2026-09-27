@@ -37,7 +37,12 @@ export class RegistrarExportacaoAnexo6UseCase {
           },
         },
       });
-    } catch {
+    } catch (erro) {
+      // A mensagem que chega ao usuário é sempre genérica, mas a causa raiz
+      // precisa sobreviver no log: o modo de falha mais provável aqui é a
+      // migration do enum TipoOperacao ainda não aplicada em produção, que
+      // sem este log vira "falha ao gravar a trilha" sem pista nenhuma.
+      console.error('RegistrarExportacaoAnexo6UseCase: falha ao gravar HistoricoOperacao', erro);
       throw new FalhaAuditoriaExportacaoRelatorioError();
     }
   }

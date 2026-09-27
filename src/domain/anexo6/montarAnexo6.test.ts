@@ -123,6 +123,30 @@ describe('montarAnexo6 — fechamento aritmético', () => {
   });
 });
 
+describe('montarAnexo6 — cada bloco fecha na própria soma', () => {
+  // Achado do /code-review: "C Tributos" era subtotal de C.1/C.2/C.3 mas saía no
+  // nível 'rubrica', então somar as linhas visíveis do Módulo 6 dava o dobro.
+  it.each(['1', '2.1', '2.2', '2.3', '3', '5', '6'])(
+    'bloco %s: soma das rubricas = linha Total',
+    (codigoBloco) => {
+      const anexo = montarAnexo6(
+        [cargo({ vaAtivo: true, vaValorUnitario: '30.00', planoSaudeAtivo: true, planoSaudeValor: '450.00' })],
+        DIAS_UTEIS,
+      );
+      const bloco = anexo.blocos.find((b) => b.codigo === codigoBloco);
+      if (!bloco) throw new Error(`Bloco não encontrado: ${codigoBloco}`);
+
+      const somaRubricas = bloco.linhas
+        .filter((l) => l.nivel === 'rubrica')
+        .reduce((acc, l) => acc.plus(l.valores[0]), new Prisma.Decimal(0));
+      const total = bloco.linhas.find((l) => l.rotulo === 'Total');
+      if (!total) throw new Error(`Bloco sem linha Total: ${codigoBloco}`);
+
+      expect(somaRubricas.toFixed(2)).toBe(total.valores[0].toFixed(2));
+    },
+  );
+});
+
 describe('montarAnexo6 — regras de montagem das colunas', () => {
   it('coluna Total é a soma SIMPLES das colunas de Cargo, sem ponderar pelo headcount', () => {
     const anexo = montarAnexo6(

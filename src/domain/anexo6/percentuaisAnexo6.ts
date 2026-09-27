@@ -24,7 +24,12 @@ export type RubricaFixa = {
 
 /** Módulo 1 — Composição da Remuneração. */
 export const RUBRICAS_MODULO_1 = {
-  salarioBase: { codigo: 'A', rotulo: 'Salário-Base*', percentual: '100.00' },
+  // Sem percentual de propósito: a linha A é `salarioTotal - funcaoGratificada`,
+  // então ela só equivale a 100% da base de encargos nos Cargos sem gratificação
+  // (com gratificação a proporção muda por Cargo, e a coluna "Percentual (%)" é
+  // uma só para todas as colunas). Imprimir "100,00%" fixo seria mentira em
+  // qualquer Cargo gratificado — a coluna mostra "-".
+  salarioBase: { codigo: 'A', rotulo: 'Salário-Base*', percentual: null },
   periculosidade: { codigo: 'B', rotulo: 'Adicional de Periculosidade', percentual: null },
   insalubridade: { codigo: 'C', rotulo: 'Adicional de Insalubridade', percentual: null },
   adicionalNoturno: { codigo: 'D', rotulo: 'Adicional Noturno', percentual: null },
