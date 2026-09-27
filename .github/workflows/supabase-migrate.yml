@@ -22,7 +22,30 @@ jobs:
   migrate:
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+      # 2026-09-21: renomeadas para os nomes que o datasource do schema.prisma
+      # passou a ler em 2026-08-27 (PR #13, troca de DATABASE_URL pelo par da
+      # integração Supabase↔Vercel). Com os nomes antigos, `prisma migrate
+      # deploy` e o seed falhavam em "Environment variable not found:
+      # POSTGRES_PRISMA_URL" — por isso a última execução verde deste workflow
+      # é de 2026-08-03. São os MESMOS secrets, apontando para o MESMO banco:
+      # só o nome da variável muda. DATABASE_URL/DIRECT_URL seguem exportadas
+      # para os scripts avulsos (remover-usuario-orfao, limpar-plano-contas),
+      # que criam o PrismaClient pelo mesmo schema.
+      #
+      # 2026-09-22: TODAS as quatro apontam para SUPABASE_DIRECT_URL, que hoje
+      # guarda a string do Session pooler (aws-0-*.pooler.supabase.com:5432).
+      # Motivo: SUPABASE_DATABASE_URL ainda guarda a Direct connection
+      # (db.<ref>.supabase.co:5432), que o Supabase só publica em IPv6 —
+      # runners do GitHub Actions são IPv4-only e batem em P1001 ("Can't reach
+      # database server"). Foi exatamente assim que o seed falhou no run #35,
+      # no mesmo job em que o `migrate deploy` passou pelo pooler.
+      # Este workflow é pontual (uma migration + um seed por vez), então não
+      # ganha nada com pool de conexões: a sessão do pooler serve aos dois.
+      # Trocar SUPABASE_DATABASE_URL pela string do pooler também resolveria —
+      # se isso for feito um dia, dá para voltar a separar as variáveis aqui.
+      POSTGRES_PRISMA_URL: ${{ secrets.SUPABASE_DIRECT_URL }}
+      POSTGRES_URL_NON_POOLING: ${{ secrets.SUPABASE_DIRECT_URL }}
+      DATABASE_URL: ${{ secrets.SUPABASE_DIRECT_URL }}
       DIRECT_URL: ${{ secrets.SUPABASE_DIRECT_URL }}
       CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
     steps:

@@ -24,3 +24,18 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Relatórios largos (ANEXO 6, Cronograma de Desembolso) são desenhados para
+   paisagem: no retrato o navegador corta as colunas da direita sem avisar.
+   A fonte menor cabe mais uma ou duas colunas por folha. Afeta só a impressão
+   — nenhuma regra aqui vale em tela. */
+@media print {
+  @page {
+    size: landscape;
+    margin: 10mm;
+  }
+
+  table {
+    font-size: 8pt;
+  }
+}

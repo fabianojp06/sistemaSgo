@@ -108,6 +108,13 @@ function comporCargo(cargo: CargoParaAnexo6, diasUteisPadrao: number, pct: Perce
   // sozinha na linha G — somar as duas sem descontar contaria a gratificação
   // duas vezes e inflaria Módulo 1, Subtotal, PIS, ISS e o Valor Total.
   const salarioTotal = dinheiro(new Prisma.Decimal(cargo.salarioTotal));
+  // `componentes.encargosSociais` (Cargo.encargosSociaisPct) é deliberadamente
+  // NÃO usado aqui: o ANEXO 6 decompõe os encargos rubrica a rubrica pelos
+  // percentuais estatutários fixos (8,33 + 5,56 + 33,50 + 3,00 = 50,39%), que é
+  // a razão de existir do anexo. Consequência a ter em mente ao conferir os
+  // números: se o Cargo estiver cadastrado com um pct diferente disso, o total
+  // deste relatório NÃO vai bater com `custoTotalCargo` nem com o Cronograma de
+  // Desembolso — são duas bases distintas, não divergência de cálculo.
   const componentes = calcularBreakdownComponenteCusto(cargo, cargo.salarioTotal, diasUteisPadrao);
   const gratificacao = dinheiro(componentes.gratificacao);
   const salarioBase = salarioTotal.minus(gratificacao);
@@ -346,9 +353,11 @@ export function montarAnexo6(
         linha(RUBRICAS_MODULO_6.custosIndiretos, 'rubrica', coluna((c) => c.modulo6.custosIndiretos)),
         linha(RUBRICAS_MODULO_6.lucro, 'rubrica', coluna((c) => c.modulo6.lucro)),
         // O anexo de referência imprime "C Tributos" sempre 0,00, como mero
-        // rótulo das linhas C.1/C.2/C.3. Aqui C é o subtotal real das três —
-        // o Total do Módulo 6 continua idêntico, e a coluna passa a fechar.
-        linhaTotal('C  Tributos', coluna((c) => c.modulo6.tributos), 'rubrica'),
+        // rótulo das linhas C.1/C.2/C.3. Aqui C é o subtotal real das três, e
+        // por isso sai no nível 'subtotal': no nível 'rubrica' ele apareceria
+        // como se fosse mais uma irmã de C.1/C.2/C.3 e a soma das linhas
+        // visíveis daria o dobro do Total do bloco.
+        linhaTotal('C  Tributos', coluna((c) => c.modulo6.tributos), 'subtotal'),
         linha(RUBRICAS_MODULO_6.pis, 'rubrica', coluna((c) => c.modulo6.pis)),
         linha(RUBRICAS_MODULO_6.tributosEstaduais, 'rubrica', coluna((c) => c.modulo6.tributosEstaduais)),
         linha(RUBRICAS_MODULO_6.iss, 'rubrica', coluna((c) => c.modulo6.iss)),

@@ -18,15 +18,22 @@ function formatarPercentual(percentual: string | null): string {
  *  mantém a coluna legível depois de repetir Rubrica/%/Total em cada bloco. */
 const CARGOS_POR_PAGINA_PDF = 10;
 
+/** Acima disso, a tabela não cabe numa folha A4 paisagem nem com a fonte
+ *  reduzida do print — o caminho honesto passa a ser o PDF, que pagina as
+ *  colunas em blocos. */
+const CARGOS_QUE_CABEM_NA_IMPRESSAO = 8;
+
 /** Campos do cabeçalho do anexo que o SGO ainda não modela (ver análise do PDF). */
 const NAO_MODELADO = 'Não informado no SGO';
 
 export function RelatorioAnexo6Panel({
+  propostaId,
   codigoProposta,
   nomeProposta,
   anexo,
   geradoEm,
 }: {
+  propostaId: string;
   codigoProposta: string;
   nomeProposta: string;
   anexo: Anexo6Serializado;
@@ -83,13 +90,9 @@ export function RelatorioAnexo6Panel({
   async function gravarAuditoriaEEntao(formato: 'PDF' | 'XLSX' | 'IMPRESSAO', depois: () => void) {
     setErro(null);
     startTransition(async () => {
-      const resultado = await registrarExportacaoAnexo6Action({
-        propostaCodigo: codigoProposta,
-        propostaNome: nomeProposta,
-        formato,
-        quantidadeCargos: anexo.colunas.length,
-        quantidadeEmpregados: anexo.quantidadeTotalEmpregados,
-      });
+      // Só id + formato: código, nome e quantitativos a Server Action lê do
+      // banco, dentro do tenant — ver comentário em actions.ts.
+      const resultado = await registrarExportacaoAnexo6Action({ propostaId, formato });
       if (!resultado.sucesso) {
         setErro(resultado.mensagem);
         return;
@@ -158,6 +161,11 @@ export function RelatorioAnexo6Panel({
             type="button"
             onClick={imprimir}
             disabled={pending}
+            title={
+              anexo.colunas.length > CARGOS_QUE_CABEM_NA_IMPRESSAO
+                ? 'Muitos Cargos para uma folha: a impressão direta corta colunas. Prefira o PDF, que quebra as colunas em blocos.'
+                : undefined
+            }
             className="rounded-[7px] border border-[#DDE2EA] bg-white px-3 py-1.5 text-xs font-medium text-[#5B6270] shadow-sm hover:bg-[#EEF1F6] disabled:opacity-50 dark:border-[#2B303C] dark:bg-[#191D26] dark:text-[#A4AAB6]"
           >
             Imprimir
@@ -182,6 +190,13 @@ export function RelatorioAnexo6Panel({
       </div>
 
       {erro && <p className="text-xs text-[#C43D3D] dark:text-[#E0716B] print:hidden">{erro}</p>}
+
+      {anexo.colunas.length > CARGOS_QUE_CABEM_NA_IMPRESSAO && (
+        <p className="text-xs text-[#C2740A] dark:text-[#F2B155] print:hidden">
+          Este quadro tem {anexo.colunas.length} Cargos — mais do que cabe numa folha. Use <strong>PDF</strong>, que quebra as
+          colunas em blocos de {CARGOS_POR_PAGINA_PDF}; a impressão direta do navegador corta as colunas que não couberem.
+        </p>
+      )}
 
       {/* Cabeçalho I a V do anexo. III/IV/V não têm origem no SGO hoje — saem
           declarados como tal em vez de inventar valor. */}
